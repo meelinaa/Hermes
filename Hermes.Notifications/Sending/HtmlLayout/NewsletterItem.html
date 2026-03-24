@@ -7,14 +7,26 @@
 
 <!-- News Item -->
 <tr>
-    <td style="padding: 8px 40px 24px;">
-        <span style="display:inline-block; background-color:#1a1a2e; color:#c9a84c; font-family:'Noto Sans', sans-serif; font-size:10px; font-weight:700; letter-spacing:2px; padding: 3px 10px; border-radius:3px; text-transform:uppercase;">{{CATEGORY}}</span>
-        <h2 style="margin: 12px 0 8px; font-family:'Georgia', serif; font-size:20px; color:#1a1a2e; line-height:1.3; font-weight:normal;">
-            {{TITLE}}
-        </h2>
-        <p style="margin:0; font-family:'Noto Sans', sans-serif; font-size:14px; color:#555; line-height:1.8;">
-            {{CONTENT}}
-        </p>
-        <a href="{{URL}}" style="display:inline-block; margin-top:12px; font-family:'Noto Sans', sans-serif; font-size:13px; font-weight:600; color:#c9a84c; text-decoration:none; border-bottom: 1px solid #c9a84c;">Weiterlesen →</a>
+    <td style="padding: 8px 0 24px;">
+
+        <!-- Bild mit Category Badge darüber -->
+        <div style="position:relative; width:100%;">
+            <img src="{{IMAGEURL}}" alt="{{TITLE}}" width="100%" style="display:block; width:100%; max-height:220px; object-fit:cover;" />
+            <div style="position:absolute; top:12px; left:40px;">
+                <span style="display:inline-block; background-color:#1a1a2e; color:#c9a84c; font-family:'Noto Sans', sans-serif; font-size:10px; font-weight:700; letter-spacing:2px; padding: 3px 10px; border-radius:3px; text-transform:uppercase;">{{CATEGORY}}</span>
+            </div>
+        </div>
+
+        <!-- Text Content -->
+        <div style="padding: 16px 40px 0;">
+            <h2 style="margin: 0 0 8px; font-family:'Georgia', serif; font-size:20px; color:#1a1a2e; line-height:1.3; font-weight:normal;">
+                {{TITLE}}
+            </h2>
+            <p style="margin:0; font-family:'Noto Sans', sans-serif; font-size:14px; color:#555; line-height:1.8;">
+                {{CONTENT}}
+            </p>
+            <a href="{{URL}}" style="display:inline-block; margin-top:12px; font-family:'Noto Sans', sans-serif; font-size:13px; font-weight:600; color:#c9a84c; text-decoration:none; border-bottom: 1px solid #c9a84c;">Weiterlesen →</a>
+        </div>
+
     </td>
 </tr>
