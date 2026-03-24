@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="Hermes.NewsClient/Hermes.NewsClient.csproj" Id="41bd1639-cada-487e-a872-6e63b3814230" />
   <Project Path="Hermes.Notifications/Hermes.Notifications.csproj" Id="92ecb35d-1e79-4353-b2d3-dfd192b7240a" />
   <Project Path="Hermes/Hermes.csproj" />
 </Solution>
