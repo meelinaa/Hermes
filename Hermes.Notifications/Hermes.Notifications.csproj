@@ -8,4 +8,10 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Sending\HtmlLayout\NewsletterHeader.html" />
+    <EmbeddedResource Include="Sending\HtmlLayout\NewsletterItem.html" />
+    <EmbeddedResource Include="Sending\HtmlLayout\NewsletterFooter.html" />
+  </ItemGroup>
+
 </Project>
