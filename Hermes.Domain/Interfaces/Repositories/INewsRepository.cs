@@ -1,6 +1,6 @@
 using Hermes.Domain.Entities;
 
-namespace Hermes.Infrastructure.Repositories.Interfaces;
+namespace Hermes.Domain.Interfaces.Repositories;
 
 public interface INewsRepository
 {

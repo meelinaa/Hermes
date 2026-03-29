@@ -1,6 +1,6 @@
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
-using Hermes.Infrastructure.Data.Interfaces;
+using Hermes.Domain.Interfaces.DBContext;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 

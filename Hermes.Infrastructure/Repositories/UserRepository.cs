@@ -1,6 +1,6 @@
 using Hermes.Domain.Entities;
-using Hermes.Infrastructure.Data.Interfaces;
-using Hermes.Infrastructure.Repositories.Interfaces;
+using Hermes.Domain.Interfaces.DBContext;
+using Hermes.Domain.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Infrastructure.Repositories;
@@ -8,22 +8,16 @@ namespace Hermes.Infrastructure.Repositories;
 /// <summary>
 /// EF Core implementation of <see cref="IUserRepository"/>.
 /// </summary>
-public sealed class UserRepository : IUserRepository
+/// <remarks>
+/// Initializes a new instance of <see cref="UserRepository"/>.
+/// </remarks>
+public sealed class UserRepository(IHermesDbContext db) : IUserRepository
 {
-    private readonly IHermesDbContext _db;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="UserRepository"/>.
-    /// </summary>
-    public UserRepository(IHermesDbContext db)
-    {
-        _db = db;
-    }
 
     /// <inheritdoc />
     public async Task<User?> GetUserByIdAsync(int id, CancellationToken ct = default)
     {
-        return await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct).ConfigureAwait(false);
+        return await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -35,35 +29,35 @@ public sealed class UserRepository : IUserRepository
         }
 
         var normalized = email.Trim();
-        return await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalized, ct).ConfigureAwait(false);
+        return await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalized, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task CreateUserAsync(User user, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(user);
-        await _db.Users.AddAsync(user, ct).ConfigureAwait(false);
-        await _db.SaveChangesAsync(ct).ConfigureAwait(false);
+        await db.Users.AddAsync(user, ct).ConfigureAwait(false);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task UpdateUserAsync(User user, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(user);
-        _db.Users.Update(user);
-        await _db.SaveChangesAsync(ct).ConfigureAwait(false);
+        db.Users.Update(user);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task DeleteUserAsync(int id, CancellationToken ct = default)
     {
-        var entity = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct).ConfigureAwait(false);
+        var entity = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct).ConfigureAwait(false);
         if (entity is null)
         {
             return;
         }
 
-        _db.Users.Remove(entity);
-        await _db.SaveChangesAsync(ct).ConfigureAwait(false);
+        db.Users.Remove(entity);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 }

@@ -1,7 +1,7 @@
 using Hermes.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hermes.Infrastructure.Data.Interfaces
+namespace Hermes.Domain.Interfaces.DBContext
 {
     public interface IHermesDbContext
     {
