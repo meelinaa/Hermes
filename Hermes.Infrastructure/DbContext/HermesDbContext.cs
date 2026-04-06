@@ -85,6 +85,33 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     }
 
     /// <inheritdoc />
+    public async Task<List<News>> GetAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        return await News.AsNoTracking()
+            .Where(n => n.UserId == userId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
+    {
+        return await News.AsNoTracking()
+            .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), "User id must be greater than zero.");
+        return await News.Where(n => n.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(log);
@@ -113,11 +140,11 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         {
             entity.ToTable("news");
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.UserId);
 
             entity.HasOne(n => n.User)
-                .WithOne(u => u.NewsSettings)
-                .HasForeignKey<News>(n => n.UserId)
+                .WithMany(u => u.News)
+                .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.Property(e => e.Keywords)
@@ -171,4 +198,6 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             entity.Property(e => e.Channel).HasConversion<string>();
         });
     }
+
+    
 }

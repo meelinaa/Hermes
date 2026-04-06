@@ -84,6 +84,31 @@ namespace Hermes.Domain.Interfaces.DBContext
         Task DeleteNewsAsync(News news, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Returns all news settings rows for the given user (read-only query).
+        /// </summary>
+        /// <param name="userId">User identifier.</param>
+        /// <param name="cancellationToken">Token to cancel the operation.</param>
+        /// <returns>List of news rows for that user (may be empty).</returns>
+        Task<List<News>> GetAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Returns the news row with the given id only if it belongs to <paramref name="userId"/>; otherwise <c>null</c> (scoped lookup for authorization).
+        /// </summary>
+        /// <param name="userId">Owner user id (must match <see cref="News.UserId"/>).</param>
+        /// <param name="id">Primary key of the news row.</param>
+        /// <param name="cancellationToken">Token to cancel the operation.</param>
+        /// <returns>The news row, or <c>null</c> if not found or not owned by the user.</returns>
+        Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Deletes all news rows for the given user. Returns how many rows were removed.
+        /// </summary>
+        /// <param name="userId">Owner user id.</param>
+        /// <param name="cancellationToken">Token to cancel the operation.</param>
+        /// <returns>Number of deleted rows.</returns>
+        Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Inserts a notification log entry and saves changes immediately.
         /// </summary>
         /// <param name="log">The log entry to insert.</param>

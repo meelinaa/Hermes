@@ -1,4 +1,5 @@
-using Hermes.Application.ApiService;
+using Hermes.Application.Services;
+using Hermes.Domain.Interfaces.DBContext;
 using Hermes.Infrastructure.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
@@ -26,11 +27,13 @@ public static class ApiServiceCollectionExtensions
 
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+        services.AddScoped<IHermesDbContext>(sp => sp.GetRequiredService<HermesDbContext>());
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
-        // Services for application logic.
-        services.AddScoped<ApiService, ApiService>();
-        Log.Information("Registered ApiService with scoped lifetime");
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<INewsService, NewsService>();
+        services.AddScoped<INotificationLogService, NotificationLogService>();
+        Log.Information("Registered application services: UserService, NewsService, NotificationLogService");
 
         services.AddControllers();
         services.AddOpenApi();

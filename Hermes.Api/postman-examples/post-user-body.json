@@ -1,0 +1,9 @@
+{
+  "id": 0,
+  "name": "Max Mustermann",
+  "email": "max@example.com",
+  "passwordHash": "$2a$11$PLACEHOLDER_USE_REAL_HASH_IN_PRODUCTION",
+  "isEmailVerified": false,
+  "twoFactorCode": null,
+  "twoFactorExpiry": null
+}
