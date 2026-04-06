@@ -25,6 +25,81 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public DbSet<NotificationLog> NotificationLogs { get; set; } = null!;
 
     /// <inheritdoc />
+    public async Task SetUserAsync(User user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        await Users.AddAsync(user, cancellationToken).ConfigureAwait(false);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<User?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
+    {
+        return await Users.FirstOrDefaultAsync(u => u.Name == name, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateUserAsync(User user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        Users.Update(user);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteUserAsync(User user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        Users.Remove(user);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task SetNewsAsync(News news, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(news);
+        await News.AddAsync(news, cancellationToken).ConfigureAwait(false);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateNewsAsync(News news, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(news);
+        News.Update(news);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteNewsAsync(News news, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(news);
+        News.Remove(news);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+        await NotificationLogs.AddAsync(log, cancellationToken).ConfigureAwait(false);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<NotificationLog?> GetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
+    {
+        return await NotificationLogs.FirstOrDefaultAsync(u => u.Id == log.Id, cancellationToken).ConfigureAwait(false);
+    }
+    
+
+    /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(entity =>
