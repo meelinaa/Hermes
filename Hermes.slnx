@@ -5,5 +5,7 @@
   <Project Path="Hermes.Infrastructure/Hermes.Infrastructure.csproj" Id="8578627b-de54-4b67-9560-6874e62ff396" />
   <Project Path="Hermes.NewsClient/Hermes.NewsClient.csproj" Id="41bd1639-cada-487e-a872-6e63b3814230" />
   <Project Path="Hermes.Notifications/Hermes.Notifications.csproj" Id="92ecb35d-1e79-4353-b2d3-dfd192b7240a" />
+  <Project Path="Hermes.WebFrontend/Hermes.WebFrontend.Client/Hermes.WebFrontend.Client.csproj" Id="c48c8970-d55f-4741-86b3-e21f29fe396f" />
+  <Project Path="Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj" Id="13eb8d64-6f7a-42e9-9fbd-5e8e577dd21e" />
   <Project Path="Hermes/Hermes.csproj" />
 </Solution>
