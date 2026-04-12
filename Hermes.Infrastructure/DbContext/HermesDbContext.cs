@@ -5,6 +5,7 @@ using Hermes.Domain.Exceptions;
 using Hermes.Domain.Interfaces.DBContext;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.Xml.Linq;
 
 namespace Hermes.Infrastructure.Data;
 
@@ -49,44 +50,51 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return null;
+            throw new ArgumentException("Name cannot be empty", nameof(name));
+
         var user = await Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Name == name, cancellationToken)
             .ConfigureAwait(false);
-        return user is null ? null : MapToUserScope(user);
+
+        // Prüfung: Wenn 'user' null ist, wurde niemand gefunden
+        return user is null ? throw new UserNotFoundException($"User with name '{name}' was not found.") : MapToUserScope(user);
     }
 
     /// <inheritdoc />
     public async Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
-            return null;
+            throw new ArgumentException("Email cannot be empty", nameof(email));
+
         var normalized = email.Trim().ToLowerInvariant();
         var user = await Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
             .ConfigureAwait(false);
-        return user is null ? null : MapToUserScope(user);
+
+        // Prüfung: Wenn 'user' null ist, wurde niemand gefunden
+        return user is null ? throw new UserNotFoundException($"User with email '{email}' was not found.") : MapToUserScope(user);
     }
 
     /// <inheritdoc />
     public async Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
-            return null;
+            throw new ArgumentException("Id cannot be empty", nameof(id));
         var user = await Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken)
             .ConfigureAwait(false);
-        return user is null ? null : MapToUserScope(user);
+        return user is null ? throw new UserNotFoundException($"User with id '{id}' was not found.") : MapToUserScope(user);
     }
 
     /// <inheritdoc />
-    public async Task<User?> GetUserEntityForAuthenticationByNameAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<User?> GetUserEntityForAuthenticationByNameAsync(string name, CancellationToken cancellationToken = default) // This method is used for authentication, so it returns the full User entity (including password hash), not just the UserScope.
     {
         if (string.IsNullOrWhiteSpace(name))
             return null;
-        return await Users.AsNoTracking()
+        User? user = await Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Name == name, cancellationToken)
             .ConfigureAwait(false);
+        return user is null ? throw new UserNotFoundException() : user;
     }
 
     /// <inheritdoc />
@@ -95,9 +103,11 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (string.IsNullOrWhiteSpace(email))
             return null;
         var normalized = email.Trim().ToLowerInvariant();
-        return await Users.AsNoTracking()
+        User? user = await Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
             .ConfigureAwait(false);
+        return user is null ? throw new UserNotFoundException() : user;
+
     }
 
     /// <inheritdoc />
@@ -144,18 +154,21 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     /// <inheritdoc />
     public async Task<List<News>> GetAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
-        return await News.AsNoTracking()
+        List<News> news = await News.AsNoTracking()
             .Where(n => n.UserId == userId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        return news is null ? throw new NewsNotFoundException() : news;
     }
 
     /// <inheritdoc />
     public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
-        return await News.AsNoTracking()
+        News? news = await News.AsNoTracking()
             .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
+        return news is null ? throw new NewsNotFoundException() : news;
+
     }
 
     /// <inheritdoc />

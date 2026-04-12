@@ -7,7 +7,7 @@ namespace Hermes.Domain.Exceptions;
 public sealed class EmailAlreadyExistsException : Exception
 {
     public EmailAlreadyExistsException()
-        : base("Diese E-Mail-Adresse wird bereits verwendet. Bitte verwenden Sie eine andere E-Mail-Adresse.")
+        : base("This email address is already registered. Please use a different email address.")
     {
     }
 

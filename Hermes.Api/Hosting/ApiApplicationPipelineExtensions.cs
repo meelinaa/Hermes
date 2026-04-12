@@ -54,10 +54,82 @@ public static class ApiApplicationPipelineExtensions
                             HttpContext = context,
                             ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
                             {
-                                Title = "E-Mail bereits registriert",
+                                Title = "E-Mail already exists.",
                                 Status = StatusCodes.Status409Conflict,
                                 Detail = duplicateEmail.Message,
                                 Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8",
+                                Instance = $"{context.Request.Method} {context.Request.Path}"
+                            }
+                        });
+                        return;
+                    }
+
+                    if (error is UserNotFoundException userNotFound)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status404NotFound;
+                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                        {
+                            HttpContext = context,
+                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                            {
+                                Title = "User not found.",
+                                Status = StatusCodes.Status404NotFound,
+                                Detail = userNotFound.Message,
+                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+                                Instance = $"{context.Request.Method} {context.Request.Path}"
+                            }
+                        });
+                        return;
+                    }
+
+                    if (error is EmailNotVerifiedException emailNotVerified)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                        {
+                            HttpContext = context,
+                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                            {
+                                Title = "E-mail not verified.",
+                                Status = StatusCodes.Status403Forbidden,
+                                Detail = emailNotVerified.Message,
+                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.3",
+                                Instance = $"{context.Request.Method} {context.Request.Path}"
+                            }
+                        });
+                        return;
+                    }
+
+                    if (error is NewsNotFoundException newsNotFound)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status404NotFound;
+                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                        {
+                            HttpContext = context,
+                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                            {
+                                Title = "News not found.",
+                                Status = StatusCodes.Status404NotFound,
+                                Detail = newsNotFound.Message,
+                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+                                Instance = $"{context.Request.Method} {context.Request.Path}"
+                            }
+                        });
+                        return;
+                    }
+
+                    if (error is NewsAccessDeniedException newsAccessDenied)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                        {
+                            HttpContext = context,
+                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                            {
+                                Title = "News access denied.",
+                                Status = StatusCodes.Status403Forbidden,
+                                Detail = newsAccessDenied.Message,
+                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.3",
                                 Instance = $"{context.Request.Method} {context.Request.Path}"
                             }
                         });
