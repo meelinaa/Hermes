@@ -1,10 +1,13 @@
+using Hermes.Api.Http;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Controllers;
 
 /// <summary>Notification logs under <c>api/v1/users/{userId}/notification-logs</c>.</summary>
+[Authorize]
 [ApiController]
 [Route("api/v1/users/{userId:int}/notification-logs")]
 public class NotificationLogsController(INotificationLogService notificationLogService) : ControllerBase
@@ -28,13 +31,10 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     /// <c>channel</c>: <c>Email</c>, <c>Telegram</c> (or <c>0</c>/<c>1</c>).
     /// </remarks>
     [HttpPost]
-    public async Task<ActionResult<NotificationLog>> Post(
-        int userId,
-        [FromBody] NotificationLog log,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<NotificationLog>> Post(int userId, [FromBody] NotificationLog log, CancellationToken cancellationToken)
     {
         if (log.UserId != 0 && log.UserId != userId)
-            return BadRequest("NotificationLog.UserId must match the route or be 0.");
+            return this.BadRequestProblem("NotificationLog.UserId must match the route or be 0.");
         log.UserId = userId;
 
         await notificationLogService.SetNotificationLogAsync(log, cancellationToken).ConfigureAwait(false);

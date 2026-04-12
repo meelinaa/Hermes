@@ -1,4 +1,8 @@
+using FluentValidation;
+using Hermes.Api.Http;
+using Hermes.Api.Validation;
 using Hermes.Application.Models;
+using Hermes.Application.Security;
 using Hermes.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,12 +31,28 @@ public class AuthController(IUserService userService) : ControllerBase
     /// </code>
     /// </remarks>
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Login(
+        [FromBody] LoginRequest request,
+        IValidator<LoginRequest> validator,
+        IJwtTokenIssuer tokenIssuer,
+        CancellationToken cancellationToken)
     {
+        var fv = await validator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!fv.IsValid)
+            return fv.ToValidationProblem(this);
+
         var result = await userService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
         if (!result.Success)
-            return Unauthorized(new { success = false, message = result.ErrorMessage });
+            return this.UnauthorizedProblem(result.ErrorMessage);
 
-        return Ok(new { success = true, userId = result.UserId });
+        var access = tokenIssuer.Issue(result.UserId!.Value, result.Email, result.Name);
+        return Ok(new
+        {
+            success = true,
+            userId = result.UserId,
+            accessToken = access.Token,
+            tokenType = "Bearer",
+            expiresAt = access.ExpiresAtUtc
+        });
     }
 }

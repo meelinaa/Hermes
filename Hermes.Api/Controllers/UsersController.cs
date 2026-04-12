@@ -1,11 +1,14 @@
+using Hermes.Api.Http;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Controllers;
 
 /// <summary>User CRUD under <c>api/v1/users</c>. JSON uses camelCase.</summary>
+[Authorize]
 [ApiController]
 [Route("api/v1/users")]
 public class UsersController(IUserService userService) : ControllerBase
@@ -25,13 +28,14 @@ public class UsersController(IUserService userService) : ControllerBase
     /// }
     /// </code>
     /// </remarks>
+    [AllowAnonymous]
     [HttpPost]
     public async Task<ActionResult<UserScope>> SetNewUser([FromBody] User request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.Name))
-            return BadRequest("Name is required.");
+            return this.BadRequestProblem("Name is required.");
         if (string.IsNullOrEmpty(request.PasswordHash))
-            return BadRequest("Password is required.");
+            return this.BadRequestProblem("Password is required.");
 
         UserScope userScope = await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -57,9 +61,9 @@ public class UsersController(IUserService userService) : ControllerBase
     public async Task<ActionResult> UpdateUser([FromBody] User request, CancellationToken cancellationToken)
     {
         if (request.Id <= 0)
-            return BadRequest("User Id is required for update.");
+            return this.BadRequestProblem("User Id is required for update.");
         if (string.IsNullOrEmpty(request.Name))
-            return BadRequest("Name is required.");
+            return this.BadRequestProblem("Name is required.");
 
         await userService.UpdateUserAsync(request, cancellationToken).ConfigureAwait(false);
         return Ok();
@@ -72,7 +76,7 @@ public class UsersController(IUserService userService) : ControllerBase
     {
         var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (user is null)
-            return NotFound();
+            return this.NotFoundProblem();
 
         await userService.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
         return Ok();
@@ -84,19 +88,19 @@ public class UsersController(IUserService userService) : ControllerBase
     public async Task<ActionResult<User>> GetUserById(int id, CancellationToken cancellationToken)
     {
         var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
-        return user is null ? NotFound() : Ok(user);
+        return user is null ? this.NotFoundProblem() : Ok(user);
     }
 
-    /// <summary>Get user by name. No body.</summary>
-    /// <remarks><b>GET</b> <c>api/v1/users/by-name?name=Max%20Mustermann</c></remarks>
-    [HttpGet("{email:string}")]
+    /// <summary>Get user by e-mail address (path segment).</summary>
+    /// <remarks><b>GET</b> <c>api/v1/users/by-email/{email}</c> — URL-encode the address (e.g. <c>%40</c> for <c>@</c>). Uses a fixed prefix so routes like <c>/api/v1/users/news</c> are not treated as an e-mail.</remarks>
+    [HttpGet("by-email/{email}")]
     public async Task<ActionResult<UserScope>> GetUserByEmail(string email, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email))
-            return BadRequest("Query parameter 'email' is required.");
+            return this.BadRequestProblem("Path segment 'email' is required.");
 
-        UserScope user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        UserScope? user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
 
-        return user is null ? NotFound() : Ok(user);
+        return user is null ? this.NotFoundProblem() : Ok(user);
     }
 }

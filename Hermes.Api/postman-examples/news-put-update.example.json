@@ -1,0 +1,14 @@
+{
+  "method": "PUT",
+  "url": "http://localhost:5165/api/v1/users/news",
+  "body": {
+    "id": 5,
+    "userId": 1,
+    "keywords": ["ai"],
+    "category": [14],
+    "languages": [15],
+    "countries": [14],
+    "sendOnWeekdays": [4],
+    "sendAtTimes": ["09:00:00"]
+  }
+}

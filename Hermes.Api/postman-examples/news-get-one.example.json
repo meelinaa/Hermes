@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "http://localhost:5165/api/v1/users/news/userId=1/newsId=5",
+  "note": "Composite path segments (literal + id). No body. 404 if not found or wrong owner."
+}

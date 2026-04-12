@@ -60,7 +60,7 @@ public sealed class UserService(IHermesDbContext db) : IUserService
         if (!valid)
             return new LoginResult(false, "Invalid login or password.", null);
 
-        return new LoginResult(true, null, user.Id);
+        return new LoginResult(true, null, user.Id, user.Email, user.Name);
     }
 
     public async Task UpdateUserAsync(User user, CancellationToken cancellationToken = default)

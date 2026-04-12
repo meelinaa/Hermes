@@ -1,3 +1,5 @@
+using FluentValidation;
+using Hermes.Api.Validation;
 using Hermes.Application.Services;
 using Hermes.Domain.Interfaces.DBContext;
 using Hermes.Domain.Interfaces.Services;
@@ -7,6 +9,7 @@ using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
+using System.Text.Json.Serialization;
 
 namespace Hermes.Api.Hosting;
 
@@ -36,9 +39,15 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<INotificationLogService, NotificationLogService>();
         Log.Information("Registered application services: UserService, NewsService, NotificationLogService");
 
-        services.AddControllers();
+        services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            });
+        services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
+        services.AddHermesJwtAuthentication(configuration);
         services.AddOpenApi();
-        Log.Information("Added controllers and OpenAPI services");
+        Log.Information("Added controllers, JWT authentication, FluentValidation, and OpenAPI services");
 
         // RFC 7807 ProblemDetails for validation errors and exception handler integration.
         services.AddProblemDetails();

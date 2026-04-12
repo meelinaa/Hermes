@@ -1,0 +1,6 @@
+{
+  "method": "GET",
+  "url": "http://localhost:5165/api/v1/users/news/1/list",
+  "body": null,
+  "note": "Replace 1 with the user id. No request body; returns all News rows for that user."
+}

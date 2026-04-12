@@ -1,10 +1,13 @@
+using Hermes.Api.Http;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Controllers;
 
 /// <summary>Preserves <c>POST api/v1/add/user</c> for existing clients; same behavior as <see cref="UsersController.Post"/>.</summary>
+[AllowAnonymous]
 [ApiController]
 [Route("api/v1")]
 public class UserRegistrationCompatController(IUserService userService) : ControllerBase
@@ -27,9 +30,9 @@ public class UserRegistrationCompatController(IUserService userService) : Contro
     public async Task<ActionResult<User>> PostAddUser([FromBody] User request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.Name))
-            return BadRequest("Name is required.");
+            return this.BadRequestProblem("Name is required.");
         if (string.IsNullOrEmpty(request.PasswordHash))
-            return BadRequest("Password is required.");
+            return this.BadRequestProblem("Password is required.");
 
         await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
         return Ok(request);

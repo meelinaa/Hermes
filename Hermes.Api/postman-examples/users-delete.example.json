@@ -1,0 +1,6 @@
+{
+  "method": "DELETE",
+  "url": "http://localhost:5165/api/v1/users/1",
+  "body": null,
+  "note": "Replace 1 with the user id. No JSON body."
+}

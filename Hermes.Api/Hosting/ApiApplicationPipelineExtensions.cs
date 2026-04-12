@@ -1,6 +1,7 @@
 using Hermes.Api.Middleware;
 using Hermes.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using System.Text.Json;
@@ -35,126 +36,86 @@ public static class ApiApplicationPipelineExtensions
             };
         });
 
-        // Map unhandled exceptions to ProblemDetails (JSON); hides exception message in non-development environments.
+        // JSON ProblemDetails for all environments. Do not register UseDeveloperExceptionPage here — it runs inside
+        // the exception handler pipeline and would return verbose 500 HTML/JSON before domain exceptions map to 4xx.
         app.UseExceptionHandler(exceptionHandlerApp =>
         {
             exceptionHandlerApp.Run(async context =>
             {
                 var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
                 var exceptionHandlerFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
-                if (exceptionHandlerFeature?.Error is { } error)
+                if (exceptionHandlerFeature?.Error is not { } error)
+                    return;
+
+                context.Response.ContentType = "application/problem+json";
+
+                if (error is EmailAlreadyExistsException)
                 {
-                    context.Response.ContentType = "application/problem+json";
-
-                    if (error is EmailAlreadyExistsException duplicateEmail)
-                    {
-                        context.Response.StatusCode = StatusCodes.Status409Conflict;
-                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
-                        {
-                            HttpContext = context,
-                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
-                            {
-                                Title = "E-Mail already exists.",
-                                Status = StatusCodes.Status409Conflict,
-                                Detail = duplicateEmail.Message,
-                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8",
-                                Instance = $"{context.Request.Method} {context.Request.Path}"
-                            }
-                        });
-                        return;
-                    }
-
-                    if (error is UserNotFoundException userNotFound)
-                    {
-                        context.Response.StatusCode = StatusCodes.Status404NotFound;
-                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
-                        {
-                            HttpContext = context,
-                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
-                            {
-                                Title = "User not found.",
-                                Status = StatusCodes.Status404NotFound,
-                                Detail = userNotFound.Message,
-                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
-                                Instance = $"{context.Request.Method} {context.Request.Path}"
-                            }
-                        });
-                        return;
-                    }
-
-                    if (error is EmailNotVerifiedException emailNotVerified)
-                    {
-                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
-                        {
-                            HttpContext = context,
-                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
-                            {
-                                Title = "E-mail not verified.",
-                                Status = StatusCodes.Status403Forbidden,
-                                Detail = emailNotVerified.Message,
-                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.3",
-                                Instance = $"{context.Request.Method} {context.Request.Path}"
-                            }
-                        });
-                        return;
-                    }
-
-                    if (error is NewsNotFoundException newsNotFound)
-                    {
-                        context.Response.StatusCode = StatusCodes.Status404NotFound;
-                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
-                        {
-                            HttpContext = context,
-                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
-                            {
-                                Title = "News not found.",
-                                Status = StatusCodes.Status404NotFound,
-                                Detail = newsNotFound.Message,
-                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
-                                Instance = $"{context.Request.Method} {context.Request.Path}"
-                            }
-                        });
-                        return;
-                    }
-
-                    if (error is NewsAccessDeniedException newsAccessDenied)
-                    {
-                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
-                        {
-                            HttpContext = context,
-                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
-                            {
-                                Title = "News access denied.",
-                                Status = StatusCodes.Status403Forbidden,
-                                Detail = newsAccessDenied.Message,
-                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.3",
-                                Instance = $"{context.Request.Method} {context.Request.Path}"
-                            }
-                        });
-                        return;
-                    }
-
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    context.Response.StatusCode = StatusCodes.Status409Conflict;
                     await problemDetailsService.WriteAsync(new ProblemDetailsContext
                     {
                         HttpContext = context,
-                        ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
-                        {
-                            Title = "An error occurred",
-                            Status = StatusCodes.Status500InternalServerError,
-                            Detail = app.Environment.IsDevelopment() ? error.Message : null,
-                            Instance = $"{context.Request.Method} {context.Request.Path}"
-                        }
+                        ProblemDetails = CreateMinimalProblem("Email already exists.", StatusCodes.Status409Conflict)
                     });
+                    return;
                 }
+
+                if (error is UserNotFoundException)
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = CreateMinimalProblem("User not found.", StatusCodes.Status404NotFound)
+                    });
+                    return;
+                }
+
+                if (error is EmailNotVerifiedException)
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = CreateMinimalProblem("Email not verified.", StatusCodes.Status403Forbidden)
+                    });
+                    return;
+                }
+
+                if (error is NewsNotFoundException)
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = CreateMinimalProblem("News not found.", StatusCodes.Status404NotFound)
+                    });
+                    return;
+                }
+
+                if (error is NewsAccessDeniedException)
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = CreateMinimalProblem("News access denied.", StatusCodes.Status403Forbidden)
+                    });
+                    return;
+                }
+
+                Log.Error(error, "Unhandled exception");
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                {
+                    HttpContext = context,
+                    ProblemDetails = CreateMinimalProblem("An error occurred.", StatusCodes.Status500InternalServerError)
+                });
             });
         });
 
         if (app.Environment.IsDevelopment())
         {
-            app.UseDeveloperExceptionPage();
             app.MapOpenApi();
             // Permissive CORS for local frontend tooling; production uses FrontendPolicy below.
             app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
@@ -165,6 +126,7 @@ public static class ApiApplicationPipelineExtensions
             app.UseCors("FrontendPolicy");
         }
 
+        app.UseAuthentication();
         app.UseAuthorization();
 
         // Return a small HTML or plain body for 404/405 etc. instead of an empty response body.
@@ -200,4 +162,14 @@ public static class ApiApplicationPipelineExtensions
 
         app.MapControllers();
     }
+
+    /// <summary>Short RFC 7807 body: title + status only (no exception message, type, or instance).</summary>
+    private static ProblemDetails CreateMinimalProblem(string title, int status) => new()
+    {
+        Title = title,
+        Status = status,
+        Detail = null,
+        Type = null,
+        Instance = null
+    };
 }

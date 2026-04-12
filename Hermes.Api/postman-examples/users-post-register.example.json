@@ -1,0 +1,13 @@
+{
+  "method": "POST",
+  "url": "http://localhost:5165/api/v1/users",
+  "body": {
+    "id": 0,
+    "name": "Max Mustermann",
+    "email": "max@example.com",
+    "passwordHash": "plain-password-here",
+    "isEmailVerified": false,
+    "twoFactorCode": null,
+    "twoFactorExpiry": null
+  }
+}

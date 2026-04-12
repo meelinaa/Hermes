@@ -1,0 +1,9 @@
+{
+  "method": "POST",
+  "url": "http://localhost:5165/api/v1/auth/login",
+  "body": {
+    "nameOrEmail": "max@example.com",
+    "password": "your-plain-password"
+  },
+  "note": "200 returns accessToken, tokenType Bearer, expiresAt, userId. Send Authorization: Bearer <accessToken> on protected routes (users except POST register, all news, notification-logs)."
+}

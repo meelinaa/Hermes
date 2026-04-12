@@ -1,0 +1,13 @@
+{
+  "method": "PUT",
+  "url": "http://localhost:5165/api/v1/users",
+  "body": {
+    "id": 1,
+    "name": "Max Mustermann",
+    "email": "max@example.com",
+    "passwordHash": "only-if-changing-password",
+    "isEmailVerified": true,
+    "twoFactorCode": null,
+    "twoFactorExpiry": null
+  }
+}

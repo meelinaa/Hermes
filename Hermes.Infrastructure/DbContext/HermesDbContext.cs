@@ -4,8 +4,8 @@ using Hermes.Domain.Enums;
 using Hermes.Domain.Exceptions;
 using Hermes.Domain.Interfaces.DBContext;
 using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using System.Text.Json;
-using System.Xml.Linq;
 
 namespace Hermes.Infrastructure.Data;
 
@@ -31,6 +31,9 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task SetUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
+        if (user.Id != 0)
+            throw new ArgumentException("New users must have id 0 before insert.", nameof(user));
+
         if (!string.IsNullOrWhiteSpace(user.Email))
         {
             var normalized = user.Email.Trim().ToLowerInvariant();
@@ -50,13 +53,12 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Name cannot be empty", nameof(name));
+            throw new ArgumentException("Name cannot be empty.", nameof(name));
 
         var user = await Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Name == name, cancellationToken)
             .ConfigureAwait(false);
 
-        // Prüfung: Wenn 'user' null ist, wurde niemand gefunden
         return user is null ? throw new UserNotFoundException($"User with name '{name}' was not found.") : MapToUserScope(user);
     }
 
@@ -64,14 +66,13 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("Email cannot be empty", nameof(email));
+            throw new ArgumentException("Email cannot be empty.", nameof(email));
 
         var normalized = email.Trim().ToLowerInvariant();
         var user = await Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
             .ConfigureAwait(false);
 
-        // Prüfung: Wenn 'user' null ist, wurde niemand gefunden
         return user is null ? throw new UserNotFoundException($"User with email '{email}' was not found.") : MapToUserScope(user);
     }
 
@@ -79,7 +80,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
-            throw new ArgumentException("Id cannot be empty", nameof(id));
+            throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
+
         var user = await Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken)
             .ConfigureAwait(false);
@@ -108,12 +110,22 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             .ConfigureAwait(false);
         return user is null ? throw new UserNotFoundException() : user;
 
+
     }
 
     /// <inheritdoc />
     public async Task UpdateUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
+        if (user.Id <= 0)
+            throw new ArgumentException("User id must be greater than zero for update.", nameof(user));
+
+        var exists = await Users.AsNoTracking()
+            .AnyAsync(u => u.Id == user.Id, cancellationToken)
+            .ConfigureAwait(false);
+        if (!exists)
+            throw new UserNotFoundException($"User with id {user.Id} was not found.");
+
         Users.Update(user);
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -122,6 +134,15 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
+        if (user.UserId <= 0)
+            throw new ArgumentException("User id must be greater than zero.", nameof(user));
+
+        var exists = await Users.AsNoTracking()
+            .AnyAsync(u => u.Id == user.UserId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!exists)
+            throw new UserNotFoundException($"User with id {user.UserId} was not found.");
+
         User userEntity = MapToUserEntity(user);
         Users.Remove(userEntity);
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -131,6 +152,10 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task SetNewsAsync(News news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
+        if (news.Id != 0)
+            throw new ArgumentException("Insert requires news id 0; use update for an existing row.", nameof(news));
+
+        await EnsureUserExistsAsync(news.UserId, cancellationToken).ConfigureAwait(false);
         await News.AddAsync(news, cancellationToken).ConfigureAwait(false);
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -139,6 +164,20 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task UpdateNewsAsync(News news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
+        if (news.UserId <= 0)
+            throw new ArgumentException("News.UserId must be greater than zero.", nameof(news));
+        if (news.Id <= 0)
+            throw new NewsNotFoundException("A valid news id is required for update.");
+
+        var existing = await News.AsNoTracking()
+            .FirstOrDefaultAsync(n => n.Id == news.Id, cancellationToken)
+            .ConfigureAwait(false);
+        if (existing is null)
+            throw new NewsNotFoundException($"News with id {news.Id} was not found.");
+        if (existing.UserId != news.UserId)
+            throw new NewsAccessDeniedException("This news entry belongs to another user.");
+
+        await EnsureUserExistsAsync(news.UserId, cancellationToken).ConfigureAwait(false);
         News.Update(news);
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -147,6 +186,17 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task DeleteNewsAsync(News news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
+        if (news.Id <= 0)
+            throw new ArgumentException("News id must be greater than zero.", nameof(news));
+        if (news.UserId <= 0)
+            throw new ArgumentException("News.UserId must be greater than zero.", nameof(news));
+
+        var exists = await News.AsNoTracking()
+            .AnyAsync(n => n.Id == news.Id && n.UserId == news.UserId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!exists)
+            throw new NewsNotFoundException($"News with id {news.Id} was not found for user {news.UserId}.");
+
         News.Remove(news);
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -154,6 +204,11 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     /// <inheritdoc />
     public async Task<List<News>> GetAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
+         if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+
+        await EnsureUserExistsAsync(userId, cancellationToken).ConfigureAwait(false);
+
         List<News> news = await News.AsNoTracking()
             .Where(n => n.UserId == userId)
             .ToListAsync(cancellationToken)
@@ -164,6 +219,9 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     /// <inheritdoc />
     public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
+        if (userId <= 0 || id <= 0)
+            throw new ArgumentOutOfRangeException();
+
         News? news = await News.AsNoTracking()
             .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
@@ -175,7 +233,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
-            throw new ArgumentOutOfRangeException(nameof(userId), "User id must be greater than zero.");
+            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
         return await News.Where(n => n.UserId == userId)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -185,6 +243,10 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(log);
+        if (log.Id != 0)
+            throw new ArgumentException("New notification logs must have id 0 before insert.", nameof(log));
+
+        await EnsureUserExistsAsync(log.UserId, cancellationToken).ConfigureAwait(false);
         await NotificationLogs.AddAsync(log, cancellationToken).ConfigureAwait(false);
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -192,7 +254,13 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     /// <inheritdoc />
     public async Task<NotificationLog?> GetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
     {
-        return await NotificationLogs.FirstOrDefaultAsync(u => u.Id == log.Id, cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(log);
+        if (log.Id <= 0)
+            return null;
+
+        return await NotificationLogs.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == log.Id, cancellationToken)
+            .ConfigureAwait(false);
     }
     
 
@@ -282,4 +350,38 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         Name = scope.Name,
         Email = scope.Email
     };
+
+    private async Task EnsureUserExistsAsync(int userId, CancellationToken cancellationToken)
+    {
+        if (userId <= 0)
+            throw new UserNotFoundException($"No user with id {userId} exists.");
+        var exists = await Users.AsNoTracking()
+            .AnyAsync(u => u.Id == userId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!exists)
+            throw new UserNotFoundException($"No user with id {userId} exists.");
+    }
+
+    /// <inheritdoc />
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException is MySqlException mysql)
+            {
+                // 1452: cannot add/update child row (FK to missing parent)
+                if (mysql.Number == 1452)
+                    throw new UserNotFoundException("A related record was not found (foreign key constraint).");
+                // 1062: duplicate entry (unique index, e.g. email race)
+                if (mysql.Number == 1062)
+                    throw new EmailAlreadyExistsException("A unique constraint was violated.");
+            }
+
+            throw;
+        }
+    }
 }

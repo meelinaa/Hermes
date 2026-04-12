@@ -6,19 +6,12 @@ namespace Hermes.Api.Middleware;
 /// Adds a correlation ID to each request: reads from header (X-Correlation-Id or X-Request-Id) or generates one.
 /// Puts it in <see cref="Microsoft.AspNetCore.Http.HttpContext.Items"/> and response header, and enriches Serilog logs for the request scope.
 /// </summary>
-public class CorrelationIdMiddleware
+/// <remarks>Creates the middleware with the next delegate in the pipeline.</remarks>
+public class CorrelationIdMiddleware(RequestDelegate next)
 {
     public const string CorrelationIdHeaderName = "X-Correlation-Id";
     public const string RequestIdHeaderName = "X-Request-Id";
     public const string HttpContextItemKey = "CorrelationId";
-
-    private readonly RequestDelegate _next;
-
-    /// <summary>Creates the middleware with the next delegate in the pipeline.</summary>
-    public CorrelationIdMiddleware(RequestDelegate next)
-    {
-        _next = next;
-    }
 
     /// <summary>Resolves or generates the correlation ID, adds it to context and response header, and enriches Serilog for the request scope.</summary>
     public async Task InvokeAsync(HttpContext context)
@@ -39,7 +32,7 @@ public class CorrelationIdMiddleware
         using (LogContext.PushProperty("RequestPath", context.Request.Path))
         using (LogContext.PushProperty("RequestMethod", context.Request.Method))
         {
-            await _next(context);
+            await next(context);
         }
     }
 }
