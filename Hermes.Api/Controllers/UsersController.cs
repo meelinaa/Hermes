@@ -65,6 +65,9 @@ public class UsersController(IUserService userService) : ControllerBase
         if (string.IsNullOrEmpty(request.Name))
             return this.BadRequestProblem("Name is required.");
 
+        if (this.WhenCannotAccessUser(request.Id) is { } denied)
+            return denied;
+
         await userService.UpdateUserAsync(request, cancellationToken).ConfigureAwait(false);
         return Ok();
     }
@@ -74,6 +77,9 @@ public class UsersController(IUserService userService) : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteUser(int id, CancellationToken cancellationToken)
     {
+        if (this.WhenCannotAccessUser(id) is { } denied)
+            return denied;
+
         var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (user is null)
             return this.NotFoundProblem();
@@ -85,8 +91,11 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <summary>Get user by id. No body.</summary>
     /// <remarks><b>GET</b> <c>api/v1/users/{id}</c></remarks>
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<User>> GetUserById(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserScope>> GetUserById(int id, CancellationToken cancellationToken)
     {
+        if (this.WhenCannotAccessUser(id) is { } denied)
+            return denied;
+
         var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         return user is null ? this.NotFoundProblem() : Ok(user);
     }
@@ -100,7 +109,12 @@ public class UsersController(IUserService userService) : ControllerBase
             return this.BadRequestProblem("Path segment 'email' is required.");
 
         UserScope? user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            return this.NotFoundProblem();
 
-        return user is null ? this.NotFoundProblem() : Ok(user);
+        if (this.WhenCannotAccessUser(user.UserId) is { } denied)
+            return denied;
+
+        return Ok(user);
     }
 }

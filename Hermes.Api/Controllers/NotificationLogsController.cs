@@ -33,6 +33,9 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     [HttpPost]
     public async Task<ActionResult<NotificationLog>> Post(int userId, [FromBody] NotificationLog log, CancellationToken cancellationToken)
     {
+        if (this.WhenCannotAccessUser(userId) is { } denied)
+            return denied;
+
         if (log.UserId != 0 && log.UserId != userId)
             return this.BadRequestProblem("NotificationLog.UserId must match the route or be 0.");
         log.UserId = userId;

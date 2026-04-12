@@ -3,6 +3,8 @@
   "description": "Overview of Hermes.Api routes. Pair with *.example.json files in this folder for sample bodies.",
   "routes": [
     { "method": "POST", "path": "/api/v1/auth/login", "example": "auth-login.example.json" },
+    { "method": "POST", "path": "/api/v1/auth/refresh", "example": "auth-refresh.example.json" },
+    { "method": "POST", "path": "/api/v1/auth/logout", "example": "auth-logout.example.json" },
     { "method": "POST", "path": "/api/v1/users", "example": "users-post-register.example.json" },
     { "method": "PUT", "path": "/api/v1/users", "example": "users-put-update.example.json" },
     { "method": "DELETE", "path": "/api/v1/users/{id}", "example": "users-delete.example.json" },

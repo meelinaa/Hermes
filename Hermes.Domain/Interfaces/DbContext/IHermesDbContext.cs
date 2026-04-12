@@ -25,6 +25,9 @@ namespace Hermes.Domain.Interfaces.DBContext
         /// </summary>
         DbSet<NotificationLog> NotificationLogs { get; }
 
+        /// <summary>Refresh-token rows (opaque tokens stored as hashes only).</summary>
+        DbSet<RefreshToken> RefreshTokens { get; }
+
         /// <summary>
         /// Inserts a new user and saves changes immediately (single unit of work).
         /// </summary>
@@ -148,5 +151,26 @@ namespace Hermes.Domain.Interfaces.DBContext
         /// <param name="cancellationToken">Token to cancel the operation.</param>
         /// <returns>The number of state entries written.</returns>
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Inserts one refresh-token row and calls <see cref="SaveChangesAsync"/>.</summary>
+        Task AddRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Looks up by SHA-256 hash of the client refresh string. Returns a tracked entity if not revoked and not past <see cref="RefreshToken.ExpiresAt"/>.
+        /// Includes <see cref="RefreshToken.User"/> for rebuilding JWT claims on rotation.
+        /// </summary>
+        Task<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Refresh rotation: marks <paramref name="trackedOld"/> revoked, inserts <paramref name="newToken"/>, saves to obtain new id,
+        /// then sets <see cref="RefreshToken.ReplacedByTokenId"/> on the old row. Uses two saves so the new primary key is known.
+        /// </summary>
+        Task CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default);
+
+        /// <summary>Sets <see cref="RefreshToken.RevokedAt"/> to UTC now on a tracked row and saves.</summary>
+        Task RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default);
+
+        /// <summary>Revokes all refresh tokens for <paramref name="userId"/> that are still active (not revoked, not expired).</summary>
+        Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default);
     }
 }

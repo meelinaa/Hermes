@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Http;
 
-/// <summary>RFC 7807 <c>ProblemDetails</c> helpers for consistent JSON errors (400/401/404).</summary>
+/// <summary>RFC 7807 <c>ProblemDetails</c> helpers for consistent JSON errors (400/401/403/404).</summary>
 public static class ApiProblemResults
 {
     // rfc7231 is the base for HTTP status codes and their semantics, including the "type" URI references for problem details.
@@ -28,4 +28,11 @@ public static class ApiProblemResults
             detail: detail,
             statusCode: StatusCodes.Status401Unauthorized,
             type: $"{Rfc7231}#section-6.5.2");
+
+    public static ActionResult ForbiddenProblem(this ControllerBase controller, string? detail = null) =>
+        controller.Problem(
+            title: "Forbidden",
+            detail: detail,
+            statusCode: StatusCodes.Status403Forbidden,
+            type: $"{Rfc7231}#section-6.5.3");
 }

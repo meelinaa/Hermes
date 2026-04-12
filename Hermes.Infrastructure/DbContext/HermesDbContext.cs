@@ -28,6 +28,9 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public DbSet<NotificationLog> NotificationLogs { get; set; } = null!;
 
     /// <inheritdoc />
+    public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+
+    /// <inheritdoc />
     public async Task SetUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -222,7 +225,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (userId <= 0 || id <= 0)
             throw new ArgumentOutOfRangeException();
 
-        News? news = await News.AsNoTracking()
+        News news = await News.AsNoTracking()
             .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
         return news is null ? throw new NewsNotFoundException() : news;
@@ -233,7 +236,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
-            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+            throw new ArgumentOutOfRangeException(nameof(userId), "User id must be greater than zero.");
         return await News.Where(n => n.UserId == userId)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -262,7 +265,62 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             .FirstOrDefaultAsync(u => u.Id == log.Id, cancellationToken)
             .ConfigureAwait(false);
     }
-    
+
+    /// <inheritdoc />
+    public async Task AddRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        await RefreshTokens.AddAsync(token, cancellationToken).ConfigureAwait(false);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc cref="IHermesDbContext.GetActiveRefreshTokenByHashAsync" />
+    public async Task<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(tokenHash))
+            return null;
+        var utc = DateTime.UtcNow;
+        return await RefreshTokens
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(
+                r => r.TokenHash == tokenHash && r.RevokedAt == null && r.ExpiresAt > utc,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(trackedOld);
+        ArgumentNullException.ThrowIfNull(newToken);
+        trackedOld.RevokedAt = DateTime.UtcNow;
+        await RefreshTokens.AddAsync(newToken, cancellationToken).ConfigureAwait(false);
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        trackedOld.ReplacedByTokenId = newToken.Id;
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc cref="IHermesDbContext.RevokeRefreshTokenAsync" />
+    public async Task RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(trackedToken);
+        trackedToken.RevokedAt = DateTime.UtcNow;
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc cref="IHermesDbContext.RevokeAllRefreshTokensForUserAsync" />
+    public async Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var utc = DateTime.UtcNow;
+        var active = await RefreshTokens
+            .Where(r => r.UserId == userId && r.RevokedAt == null && r.ExpiresAt > utc)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var r in active)
+            r.RevokedAt = utc;
+        if (active.Count > 0)
+            await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -334,6 +392,20 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
             entity.Property(e => e.Status).HasConversion<string>();
             entity.Property(e => e.Channel).HasConversion<string>();
+        });
+
+        // Long-lived sessions: one row per issued refresh token; TokenHash is unique for lookup after client sends plain token.
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("refresh_tokens");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => e.UserId);
+
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

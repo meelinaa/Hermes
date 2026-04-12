@@ -5,5 +5,5 @@
     "nameOrEmail": "max@example.com",
     "password": "your-plain-password"
   },
-  "note": "200 returns accessToken, tokenType Bearer, expiresAt, userId. Send Authorization: Bearer <accessToken> on protected routes (users except POST register, all news, notification-logs)."
+  "note": "200: accessToken (short TTL), refreshToken (longer TTL), expiresAt, refreshTokenExpiresAt, userId. Use Authorization: Bearer accessToken on API calls; renew with POST /auth/refresh using refreshToken."
 }

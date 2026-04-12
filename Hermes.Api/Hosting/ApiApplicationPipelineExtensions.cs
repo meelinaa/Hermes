@@ -126,6 +126,7 @@ public static class ApiApplicationPipelineExtensions
             app.UseCors("FrontendPolicy");
         }
 
+        // Validates JWT on incoming requests (Bearer) before authorization policies run.
         app.UseAuthentication();
         app.UseAuthorization();
 

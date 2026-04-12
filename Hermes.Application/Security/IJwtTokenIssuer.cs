@@ -1,8 +1,14 @@
 namespace Hermes.Application.Security;
 
-/// <summary>Creates signed access tokens for authenticated users (unique payload per user and issuance time).</summary>
+/// <summary>
+/// Application-layer service that creates signed JWT access tokens after the user is authenticated (e.g. password check).
+/// Each call produces a new token with a new <c>jti</c>, so two tokens for the same user are still different strings.
+/// </summary>
 public interface IJwtTokenIssuer
 {
-    /// <summary>Issues a bearer token with user-specific claims and a new <c>jti</c> per call.</summary>
+    /// <summary>
+    /// Creates a JWT containing <c>sub</c>/<c>NameIdentifier</c> (user id), optional email/name, <c>jti</c>, and <c>iat</c>;
+    /// signs it with HS256 using <see cref="JwtOptions.SigningKey"/>.
+    /// </summary>
     JwtAccessTokenResult Issue(int userId, string? email, string? name);
 }

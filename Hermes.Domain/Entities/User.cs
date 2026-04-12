@@ -14,4 +14,6 @@ public class User
     public ICollection<News> News { get; set; } = [];
 
     public ICollection<NotificationLog> NotificationLogs { get; set; } = [];
+
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }

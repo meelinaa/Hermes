@@ -1,5 +1,6 @@
 using FluentValidation;
 using Hermes.Api.Validation;
+using Hermes.Application.Security;
 using Hermes.Application.Services;
 using Hermes.Domain.Interfaces.DBContext;
 using Hermes.Domain.Interfaces.Services;
@@ -35,9 +36,10 @@ public static class ApiServiceCollectionExtensions
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsService, NewsService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
-        Log.Information("Registered application services: UserService, NewsService, NotificationLogService");
+        Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
 
         services.AddControllers()
             .AddJsonOptions(options =>
@@ -45,6 +47,7 @@ public static class ApiServiceCollectionExtensions
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
         services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
+        // JWT bearer validation + symmetric signing options; registers IJwtTokenIssuer for access tokens at login/refresh.
         services.AddHermesJwtAuthentication(configuration);
         services.AddOpenApi();
         Log.Information("Added controllers, JWT authentication, FluentValidation, and OpenAPI services");

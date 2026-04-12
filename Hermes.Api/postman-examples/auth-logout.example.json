@@ -1,0 +1,9 @@
+{
+  "method": "POST",
+  "url": "http://localhost:5165/api/v1/auth/logout",
+  "headers": {
+    "Authorization": "Bearer <accessToken>"
+  },
+  "body": {},
+  "note": "Empty body revokes all refresh tokens for this user. Or { \"refreshToken\": \"...\" } to revoke one session only. 204 No Content."
+}
