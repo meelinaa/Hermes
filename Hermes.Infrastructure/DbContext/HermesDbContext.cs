@@ -1,5 +1,7 @@
+using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.Exceptions;
 using Hermes.Domain.Interfaces.DBContext;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -28,20 +30,74 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task SetUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            var normalized = user.Email.Trim().ToLowerInvariant();
+            user.Email = normalized;
+            var exists = await Users.AsNoTracking()
+                .AnyAsync(u => u.Email == normalized, cancellationToken)
+                .ConfigureAwait(false);
+            if (exists)
+                throw new EmailAlreadyExistsException();
+        }
+
         await Users.AddAsync(user, cancellationToken).ConfigureAwait(false);
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<User?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
-        return await Users.FirstOrDefaultAsync(u => u.Name == name, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+        var user = await Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Name == name, cancellationToken)
+            .ConfigureAwait(false);
+        return user is null ? null : MapToUserScope(user);
     }
 
     /// <inheritdoc />
-    public async Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        return await Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+        var normalized = email.Trim().ToLowerInvariant();
+        var user = await Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
+            .ConfigureAwait(false);
+        return user is null ? null : MapToUserScope(user);
+    }
+
+    /// <inheritdoc />
+    public async Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        if (id <= 0)
+            return null;
+        var user = await Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        return user is null ? null : MapToUserScope(user);
+    }
+
+    /// <inheritdoc />
+    public async Task<User?> GetUserEntityForAuthenticationByNameAsync(string name, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+        return await Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Name == name, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<User?> GetUserEntityForAuthenticationByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+        var normalized = email.Trim().ToLowerInvariant();
+        return await Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -53,10 +109,11 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     }
 
     /// <inheritdoc />
-    public async Task DeleteUserAsync(User user, CancellationToken cancellationToken = default)
+    public async Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
-        Users.Remove(user);
+        User userEntity = MapToUserEntity(user);
+        Users.Remove(userEntity);
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -142,7 +199,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UserId);
 
-            entity.HasOne(n => n.User)
+            entity.HasOne<User>()
                 .WithMany(u => u.News)
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
@@ -199,5 +256,17 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         });
     }
 
-    
+    private static UserScope MapToUserScope(User user) => new()
+    {
+        UserId = user.Id,
+        Name = user.Name ?? string.Empty,
+        Email = user.Email ?? string.Empty
+    };
+
+    private static User MapToUserEntity(UserScope scope) => new()
+    {
+        Id = scope.UserId,
+        Name = scope.Name,
+        Email = scope.Email
+    };
 }

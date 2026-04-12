@@ -11,7 +11,7 @@ public class User
     public DateTime? TwoFactorExpiry { get; set; } // wann läuft der Code ab
 
     /// <summary>News subscription/configuration rows owned by this user (one-to-many).</summary>
-    public ICollection<News> News { get; set; } = new List<News>();
+    public ICollection<News> News { get; set; } = [];
 
-    public ICollection<NotificationLog> NotificationLogs { get; set; } = new List<NotificationLog>();
+    public ICollection<NotificationLog> NotificationLogs { get; set; } = [];
 }

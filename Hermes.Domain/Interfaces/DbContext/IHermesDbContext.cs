@@ -1,3 +1,4 @@
+using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -38,7 +39,15 @@ namespace Hermes.Domain.Interfaces.DBContext
         /// <param name="name">Name value to match.</param>
         /// <param name="cancellationToken">Token to cancel the operation.</param>
         /// <returns>The matching user, or <c>null</c>.</returns>
-        Task<User?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default);
+        Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Returns the user with the given email (trimmed), or <c>null</c> if not found.
+        /// </summary>
+        /// <param name="email">Email address to match.</param>
+        /// <param name="cancellationToken">Token to cancel the operation.</param>
+        /// <returns>The matching user, or <c>null</c>.</returns>
+        Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns the user with the given primary key, or <c>null</c> if not found.
@@ -46,7 +55,17 @@ namespace Hermes.Domain.Interfaces.DBContext
         /// <param name="id">User identifier.</param>
         /// <param name="cancellationToken">Token to cancel the operation.</param>
         /// <returns>The user, or <c>null</c>.</returns>
-        Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
+        Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Loads the full user entity for credential verification (includes password hash). Do not expose in API responses.
+        /// </summary>
+        Task<User?> GetUserEntityForAuthenticationByNameAsync(string name, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Loads the full user entity for credential verification (includes password hash). Do not expose in API responses.
+        /// </summary>
+        Task<User?> GetUserEntityForAuthenticationByEmailAsync(string email, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Marks the user as modified and saves changes immediately.
@@ -60,7 +79,7 @@ namespace Hermes.Domain.Interfaces.DBContext
         /// </summary>
         /// <param name="user">The user entity to delete (must be tracked or known to the context).</param>
         /// <param name="cancellationToken">Token to cancel the operation.</param>
-        Task DeleteUserAsync(User user, CancellationToken cancellationToken = default);
+        Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Inserts a news settings row and saves changes immediately.

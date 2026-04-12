@@ -5,10 +5,11 @@ namespace Hermes.Application.Services;
 
 public sealed class NewsService(IHermesDbContext db) : INewsService
 {
-    public async Task SetNewsAsync(News news, CancellationToken cancellationToken = default)
+    public async Task<int> SetNewsAsync(News news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         await db.SetNewsAsync(news, cancellationToken).ConfigureAwait(false);
+        return news.Id;
     }
 
     public async Task UpdateNewsAsync(News news, CancellationToken cancellationToken = default)

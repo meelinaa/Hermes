@@ -4,7 +4,7 @@ namespace Hermes.Application.Services;
 
 public interface INewsService
 {
-    Task SetNewsAsync(News news, CancellationToken cancellationToken = default);
+    Task<int> SetNewsAsync(News news, CancellationToken cancellationToken = default); // returns the news id
     Task UpdateNewsAsync(News news, CancellationToken cancellationToken = default);
     Task DeleteNewsAsync(News news, CancellationToken cancellationToken = default);
     Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default);

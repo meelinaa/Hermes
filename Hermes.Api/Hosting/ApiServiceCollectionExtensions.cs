@@ -1,5 +1,6 @@
 using Hermes.Application.Services;
 using Hermes.Domain.Interfaces.DBContext;
+using Hermes.Domain.Interfaces.Services;
 using Hermes.Infrastructure.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;

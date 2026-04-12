@@ -1,4 +1,5 @@
 using Hermes.Api.Middleware;
+using Hermes.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
@@ -41,10 +42,29 @@ public static class ApiApplicationPipelineExtensions
             {
                 var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
                 var exceptionHandlerFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
-                if (exceptionHandlerFeature?.Error != null)
+                if (exceptionHandlerFeature?.Error is { } error)
                 {
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                     context.Response.ContentType = "application/problem+json";
+
+                    if (error is EmailAlreadyExistsException duplicateEmail)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status409Conflict;
+                        await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                        {
+                            HttpContext = context,
+                            ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                            {
+                                Title = "E-Mail bereits registriert",
+                                Status = StatusCodes.Status409Conflict,
+                                Detail = duplicateEmail.Message,
+                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8",
+                                Instance = $"{context.Request.Method} {context.Request.Path}"
+                            }
+                        });
+                        return;
+                    }
+
+                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                     await problemDetailsService.WriteAsync(new ProblemDetailsContext
                     {
                         HttpContext = context,
@@ -52,7 +72,7 @@ public static class ApiApplicationPipelineExtensions
                         {
                             Title = "An error occurred",
                             Status = StatusCodes.Status500InternalServerError,
-                            Detail = app.Environment.IsDevelopment() ? exceptionHandlerFeature.Error.Message : null,
+                            Detail = app.Environment.IsDevelopment() ? error.Message : null,
                             Instance = $"{context.Request.Method} {context.Request.Path}"
                         }
                     });
