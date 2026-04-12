@@ -1,0 +1,6 @@
+{
+  "method": "GET",
+  "url": "http://localhost:5165/api/v1/users/by-email/max%40example.com",
+  "body": null,
+  "note": "Encode @ as %40 in the path."
+}

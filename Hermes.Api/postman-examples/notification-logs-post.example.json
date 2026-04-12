@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "url": "http://localhost:5165/api/v1/users/1/notification-logs",
+  "body": {
+    "id": 0,
+    "userId": 0,
+    "sentAt": "2026-03-29T13:00:00Z",
+    "status": "Pending",
+    "channel": "Email",
+    "errorMessage": null,
+    "retryCount": 0,
+    "nextRetryAt": null
+  },
+  "note": "Replace user id in URL. Route overwrites UserId; body userId can be 0. Enum as string if JsonStringEnumConverter is enabled."
+}

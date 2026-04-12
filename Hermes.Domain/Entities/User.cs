@@ -10,6 +10,10 @@ public class User
     public string? TwoFactorCode { get; set; }  // temporärer 2FA Code
     public DateTime? TwoFactorExpiry { get; set; } // wann läuft der Code ab
 
-    public News? NewsSettings { get; set; }
-    public ICollection<NotificationLog> NotificationLogs { get; set; } = new List<NotificationLog>();
+    /// <summary>News subscription/configuration rows owned by this user (one-to-many).</summary>
+    public ICollection<News> News { get; set; } = [];
+
+    public ICollection<NotificationLog> NotificationLogs { get; set; } = [];
+
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }

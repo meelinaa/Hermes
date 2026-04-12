@@ -1,0 +1,8 @@
+{
+  "method": "POST",
+  "url": "http://localhost:5165/api/v1/auth/refresh",
+  "body": {
+    "refreshToken": "<paste refreshToken from login response>"
+  },
+  "note": "No Bearer header required. Returns new accessToken + refreshToken (old refresh is revoked — rotation)."
+}

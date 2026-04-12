@@ -1,0 +1,9 @@
+{
+  "method": "POST",
+  "url": "http://localhost:5165/api/v1/auth/login",
+  "body": {
+    "nameOrEmail": "max@example.com",
+    "password": "your-plain-password"
+  },
+  "note": "200: accessToken (short TTL), refreshToken (longer TTL), expiresAt, refreshTokenExpiresAt, userId. Use Authorization: Bearer accessToken on API calls; renew with POST /auth/refresh using refreshToken."
+}

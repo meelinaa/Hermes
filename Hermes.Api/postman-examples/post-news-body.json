@@ -1,0 +1,9 @@
+{
+  "userId": 1,
+  "keywords": ["ai", "climate"],
+  "category": [1, 12],
+  "languages": [15, 20],
+  "countries": [14, 2],
+  "sendOnWeekdays": [0, 2],
+  "sendAtTimes": ["08:00:00", "18:30:00"]
+}

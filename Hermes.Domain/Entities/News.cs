@@ -8,8 +8,6 @@ public class News
 
     public int UserId { get; set; }
 
-    public User User { get; set; } = null!;
-
     public List<string>? Keywords { get; set; }
 
     public List<NewsCategory>? Category { get; set; }

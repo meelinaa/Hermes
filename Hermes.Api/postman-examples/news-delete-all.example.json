@@ -1,0 +1,5 @@
+{
+  "method": "DELETE",
+  "url": "http://localhost:5165/api/v1/users/news/userId=1/delete/all",
+  "note": "No body. Deletes all news for the given userId."
+}

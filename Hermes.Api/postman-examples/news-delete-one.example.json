@@ -1,0 +1,5 @@
+{
+  "method": "DELETE",
+  "url": "http://localhost:5165/api/v1/users/news/userId=1/newsId=5",
+  "note": "No body. Same composite segments as GET one news; 404 if not found."
+}

@@ -1,0 +1,6 @@
+{
+  "method": "GET",
+  "url": "http://localhost:5165/api/v1/users/1",
+  "body": null,
+  "note": "Replace 1 with user id. No body."
+}

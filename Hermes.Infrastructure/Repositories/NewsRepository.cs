@@ -15,9 +15,13 @@ public sealed class NewsRepository(IHermesDbContext db) : INewsRepository
 {
 
     /// <inheritdoc />
-    public async Task<News?> GetNewsByUserIdAsync(int userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<News>> GetNewsByUserIdAsync(int userId, CancellationToken ct = default)
     {
-        return await db.News.AsNoTracking().FirstOrDefaultAsync(n => n.UserId == userId, ct).ConfigureAwait(false);
+        return await db.News.AsNoTracking()
+            .Where(n => n.UserId == userId)
+            .OrderBy(n => n.Id)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
     }
 
     /// <inheritdoc />

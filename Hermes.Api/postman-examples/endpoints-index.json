@@ -1,0 +1,22 @@
+{
+  "baseUrl": "http://localhost:5165",
+  "description": "Overview of Hermes.Api routes. Pair with *.example.json files in this folder for sample bodies.",
+  "routes": [
+    { "method": "POST", "path": "/api/v1/auth/login", "example": "auth-login.example.json" },
+    { "method": "POST", "path": "/api/v1/auth/refresh", "example": "auth-refresh.example.json" },
+    { "method": "POST", "path": "/api/v1/auth/logout", "example": "auth-logout.example.json" },
+    { "method": "POST", "path": "/api/v1/users", "example": "users-post-register.example.json" },
+    { "method": "PUT", "path": "/api/v1/users", "example": "users-put-update.example.json" },
+    { "method": "DELETE", "path": "/api/v1/users/{id}", "example": "users-delete.example.json" },
+    { "method": "GET", "path": "/api/v1/users/{id}", "example": "users-get-by-id.example.json" },
+    { "method": "GET", "path": "/api/v1/users/by-email/{email}", "example": "users-get-by-email.example.json" },
+    { "method": "POST", "path": "/api/v1/add/user", "example": "users-add-user-compat.example.json" },
+    { "method": "GET", "path": "/api/v1/users/news/{userId}/list", "example": "news-get-list.example.json" },
+    { "method": "GET", "path": "/api/v1/users/news/userId={userId}/newsId={newsId}", "example": "news-get-one.example.json" },
+    { "method": "POST", "path": "/api/v1/users/news", "example": "news-post-create.example.json" },
+    { "method": "PUT", "path": "/api/v1/users/news", "example": "news-put-update.example.json" },
+    { "method": "DELETE", "path": "/api/v1/users/news/userId={userId}/delete/all", "example": "news-delete-all.example.json" },
+    { "method": "DELETE", "path": "/api/v1/users/news/userId={userId}/newsId={newsId}", "example": "news-delete-one.example.json" },
+    { "method": "POST", "path": "/api/v1/users/{userId}/notification-logs", "example": "notification-logs-post.example.json" }
+  ]
+}
