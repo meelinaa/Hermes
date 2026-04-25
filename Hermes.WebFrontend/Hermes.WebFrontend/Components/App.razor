@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -16,6 +16,8 @@
 
 <body>
     <Routes />
+    <Hermes.WebFrontend.Client.Components.GlobalAuthGuard @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
+    <script src="_content/Hermes.WebFrontend.Client/hermes-auth.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 

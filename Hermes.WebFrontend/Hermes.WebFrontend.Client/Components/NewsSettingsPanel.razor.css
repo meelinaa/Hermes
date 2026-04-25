@@ -1,0 +1,154 @@
+.news-settings-panel {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.news-settings-toolbar {
+    margin-bottom: 1.25rem;
+}
+
+.news-settings-add {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid #d9d6d2;
+    background: #fff;
+    font-size: 1.5rem;
+    line-height: 1;
+    font-weight: 600;
+    color: #1a1a1a;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.news-settings-add:hover {
+    background: #fafaf9;
+    border-color: #b8b6b3;
+}
+
+.news-settings-muted {
+    color: #6b6862;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.news-settings-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.news-settings-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #eceae7;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    padding: 1.1rem 1.25rem 1rem;
+}
+
+.news-settings-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #f0eeeb;
+}
+
+.news-settings-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+    line-height: 1.35;
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+}
+
+.news-settings-card-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.news-settings-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #e0ded9;
+    background: #f5f4f2;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+}
+
+.news-settings-icon:hover:not(:disabled) {
+    background: #ebe9e6;
+}
+
+.news-settings-icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.news-settings-icon--danger {
+    background: #fdecea;
+    border-color: #f5c6c2;
+    color: #c62828;
+}
+
+.news-settings-icon--danger:hover:not(:disabled) {
+    background: #fad7d4;
+}
+
+.news-settings-icon--primary {
+    background: #e3f2fd;
+    border-color: #90caf9;
+    color: #1565c0;
+}
+
+.news-settings-icon--primary:hover {
+    background: #bbdefb;
+}
+
+.news-settings-dl {
+    margin: 0;
+    display: grid;
+    gap: 0.45rem;
+    font-size: 0.88rem;
+}
+
+.news-settings-dl > div {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 0.5rem;
+    align-items: start;
+}
+
+.news-settings-dl dt {
+    margin: 0;
+    font-weight: 600;
+    color: #555;
+}
+
+.news-settings-dl dd {
+    margin: 0;
+    color: #333;
+    word-break: break-word;
+}
+
+@media (max-width: 520px) {
+    .news-settings-dl > div {
+        grid-template-columns: 1fr;
+    }
+}

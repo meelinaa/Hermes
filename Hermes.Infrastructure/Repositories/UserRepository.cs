@@ -41,11 +41,10 @@ public sealed class UserRepository(IHermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task UpdateUserAsync(User user, CancellationToken ct = default)
+    public Task UpdateUserAsync(User user, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(user);
-        db.Users.Update(user);
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return db.UpdateUserAsync(user, ct);
     }
 
     /// <inheritdoc />

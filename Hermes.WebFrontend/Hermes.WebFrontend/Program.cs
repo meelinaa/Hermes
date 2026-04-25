@@ -1,4 +1,3 @@
-using Hermes.WebFrontend.Client.Pages;
 using Hermes.WebFrontend.Components;
 
 var builder = WebApplication.CreateBuilder(args);

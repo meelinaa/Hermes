@@ -1,0 +1,12 @@
+<div class="hermes-brand @CssClass">
+    <svg class="hermes-brand-icon" viewBox="0 0 24 32" aria-hidden="true" focusable="false">
+        <rect x="11" y="3" width="2" height="26" rx="1" fill="#b8860b" />
+        <circle cx="12" cy="3" r="2.5" fill="#b8860b" />
+        <path fill="none" stroke="#b8860b" stroke-width="1.4" d="M6 11c2-3 5-4 6-4s4 1 6 4c-2 3-5 4-6 4s-4-1-6-4zm0 8c2-3 5-4 6-4s4 1 6 4c-2 3-5 4-6 4s-4-1-6-4z" />
+    </svg>
+    <span class="hermes-brand-text">Hermes</span>
+</div>
+
+@code {
+    [Parameter] public string CssClass { get; set; } = string.Empty;
+}

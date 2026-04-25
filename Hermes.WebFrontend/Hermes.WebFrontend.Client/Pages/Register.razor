@@ -1,0 +1,108 @@
+@page "/register"
+@layout AuthLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager Nav
+@inject AuthTokenStore TokenStore
+
+<PageTitle>Registrieren — Hermes</PageTitle>
+
+<div class="hermes-auth-card">
+    <div class="hermes-auth-brand-row">
+        <HermesBrand />
+    </div>
+    <h1 class="hermes-auth-title">Konto anlegen</h1>
+
+    <div class="hermes-auth-fields">
+        <div class="hermes-auth-field">
+            <label class="hermes-auth-label" for="reg-username">Benutzername</label>
+            <input id="reg-username" class="hermes-auth-input" type="text" autocomplete="username"
+                   placeholder="Benutzername" @bind="username" @bind:event="oninput" />
+        </div>
+        <div class="hermes-auth-field">
+            <label class="hermes-auth-label" for="reg-email">E-Mail</label>
+            <input id="reg-email" class="hermes-auth-input" type="email" autocomplete="email"
+                   placeholder="name@beispiel.de" @bind="email" @bind:event="oninput" />
+            @if (ShowEmailFormatError)
+            {
+                <p class="hermes-reg-hint hermes-reg-hint--error" role="status">Bitte eine gültige E-Mail-Adresse eingeben.</p>
+            }
+        </div>
+        <div class="hermes-auth-field">
+            <label class="hermes-auth-label" for="reg-password">Passwort</label>
+            <input id="reg-password" class="hermes-auth-input" type="password" autocomplete="new-password"
+                   placeholder="Passwort" @bind="password" @bind:event="oninput" />
+            @if (password.Length > 0)
+            {
+                <ul class="hermes-reg-rules" aria-label="Passwortanforderungen">
+                    <li class="@RuleClass(PasswordLenOk)">mind. 8 Zeichen</li>
+                    <li class="@RuleClass(PasswordCaseOk)">Groß- und Kleinbuchstaben</li>
+                    <li class="@RuleClass(PasswordDigitOk)">mindestens eine Zahl</li>
+                    <li class="@RuleClass(PasswordSymbolOk)">mindestens ein Symbol</li>
+                </ul>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(registerError))
+    {
+        <p class="hermes-auth-error" role="alert">@registerError</p>
+    }
+
+    <button type="button" class="hermes-auth-submit" disabled="@(!CanRegister)" @onclick="OnRegister">Registrieren</button>
+
+    <p class="hermes-auth-footer mt-4 mb-0">
+        <a href="/login">Zurück zur Anmeldung</a>
+    </p>
+</div>
+
+@code {
+    private static readonly EmailAddressAttribute EmailValidator = new();
+
+    private string username = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string? registerError;
+
+    private bool PasswordLenOk => password.Length >= 8;
+
+    private bool PasswordCaseOk =>
+        password.Any(char.IsUpper) && password.Any(char.IsLower);
+
+    private bool PasswordDigitOk => password.Any(char.IsDigit);
+
+    private bool PasswordSymbolOk =>
+        password.Any(static c => char.IsPunctuation(c) || char.IsSymbol(c));
+
+    private bool EmailFormatOk =>
+        !string.IsNullOrWhiteSpace(email) && EmailValidator.IsValid(email.Trim());
+
+    private bool ShowEmailFormatError =>
+        !string.IsNullOrWhiteSpace(email) && !EmailFormatOk;
+
+    private bool CanRegister =>
+        !string.IsNullOrWhiteSpace(username)
+        && EmailFormatOk
+        && PasswordLenOk
+        && PasswordCaseOk
+        && PasswordDigitOk
+        && PasswordSymbolOk;
+
+    private static string RuleClass(bool ok) =>
+        ok ? "hermes-reg-rule hermes-reg-rule--ok" : "hermes-reg-rule";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TokenStore.EnsureLoadedFromStorageAsync();
+        if (!string.IsNullOrEmpty(TokenStore.AccessToken))
+            Nav.NavigateTo("/home", forceLoad: false, replace: true);
+    }
+
+    private void OnRegister()
+    {
+        registerError = null;
+        if (!CanRegister)
+            return;
+        // Hier später: API-Registrierung, Navigation
+    }
+}

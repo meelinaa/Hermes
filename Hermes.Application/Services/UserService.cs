@@ -1,6 +1,7 @@
 using Hermes.Application.Models;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Exceptions;
 using Hermes.Domain.Interfaces.DBContext;
 using Hermes.Domain.Interfaces.Services;
 
@@ -63,11 +64,47 @@ public sealed class UserService(IHermesDbContext db) : IUserService
         return new LoginResult(true, null, user.Id, user.Email, user.Name);
     }
 
-    public async Task UpdateUserAsync(User user, CancellationToken cancellationToken = default)
+    public async Task UpdateUserAsync(User user, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         if (string.IsNullOrEmpty(user.Name))
             throw new ArgumentException("Name is required.", nameof(user));
+        if (string.IsNullOrEmpty(user.Email))
+            throw new ArgumentException("Email is required.", nameof(user));
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            user.Email = user.Email.Trim().ToLowerInvariant();
+
+        var newPlain = user.PasswordHash;
+        string? hashedForDb = null;
+        if (!string.IsNullOrWhiteSpace(newPlain))
+        {
+            if (string.IsNullOrWhiteSpace(currentPasswordPlain))
+                throw new ArgumentException("Current password is required when setting a new password.", nameof(currentPasswordPlain));
+
+            var existing = await db.GetUserEntityByIdAsync(user.Id, cancellationToken).ConfigureAwait(false);
+            if (existing is null)
+                throw new UserNotFoundException($"User with id {user.Id} was not found.");
+            if (string.IsNullOrEmpty(existing.PasswordHash))
+                throw new InvalidOperationException("Cannot change password: no password is set for this account.");
+
+            bool valid;
+            try
+            {
+                valid = BCrypt.Net.BCrypt.Verify(currentPasswordPlain.Trim(), existing.PasswordHash);
+            }
+            catch
+            {
+                valid = false;
+            }
+
+            if (!valid)
+                throw new WrongCurrentPasswordException();
+
+            hashedForDb = BCrypt.Net.BCrypt.HashPassword(newPlain.Trim());
+        }
+
+        user.PasswordHash = hashedForDb;
         await db.UpdateUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 

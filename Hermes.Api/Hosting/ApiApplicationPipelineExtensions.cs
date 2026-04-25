@@ -104,6 +104,17 @@ public static class ApiApplicationPipelineExtensions
                     return;
                 }
 
+                if (error is WrongCurrentPasswordException wcp)
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = CreateMinimalProblem(wcp.Message, StatusCodes.Status401Unauthorized)
+                    });
+                    return;
+                }
+
                 Log.Error(error, "Unhandled exception");
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 await problemDetailsService.WriteAsync(new ProblemDetailsContext
@@ -117,14 +128,14 @@ public static class ApiApplicationPipelineExtensions
         if (app.Environment.IsDevelopment())
         {
             app.MapOpenApi();
-            // Permissive CORS for local frontend tooling; production uses FrontendPolicy below.
-            app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
         }
         else
         {
             app.UseHttpsRedirection();
-            app.UseCors("FrontendPolicy");
         }
+
+        // Origins from configuration (Cors:AllowedOrigins), e.g. Hermes.WebFrontend (Blazor) URLs.
+        app.UseCors("FrontendPolicy");
 
         // Validates JWT on incoming requests (Bearer) before authorization policies run.
         app.UseAuthentication();
