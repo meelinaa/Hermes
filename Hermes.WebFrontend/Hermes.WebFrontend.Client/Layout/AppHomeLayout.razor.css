@@ -1,4 +1,4 @@
 .app-home-root {
     min-height: 100vh;
-    background: #f4f3f1;
+    background: var(--primary-white, #fff);
 }

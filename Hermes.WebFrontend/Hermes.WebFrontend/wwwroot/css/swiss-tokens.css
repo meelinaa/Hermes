@@ -1,0 +1,159 @@
+:root {
+  --primary-black: #000000;
+  --primary-white: #ffffff;
+  --swiss-red: #ff0000;
+  --accent-orange: #ff6b00;
+  --grid-gray: #e5e5e5;
+  --text-dark: #1a1a1a;
+  --text-medium: #666666;
+  --border-color: #000000;
+
+  --font-primary: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --heading-xl: 72px;
+  --heading-l: 48px;
+  --heading-m: 32px;
+  --heading-s: 24px;
+  --body-l: 18px;
+  --body-m: 16px;
+  --body-s: 14px;
+
+  --weight-bold: 700;
+  --weight-semibold: 600;
+  --weight-regular: 400;
+
+  --space-xs: 8px;
+  --space-s: 16px;
+  --space-m: 24px;
+  --space-l: 48px;
+  --space-xl: 72px;
+
+  --grid-gap: 24px;
+  --container-max: 1440px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-primary);
+  font-size: var(--body-m);
+  font-weight: var(--weight-regular);
+  color: var(--text-dark);
+  background: var(--primary-white);
+  line-height: 1.5;
+}
+
+.heading-xl {
+  font-size: var(--heading-xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.1;
+}
+.heading-l {
+  font-size: var(--heading-l);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+}
+.heading-m {
+  font-size: var(--heading-m);
+  font-weight: var(--weight-bold);
+  line-height: 1.3;
+}
+.heading-s {
+  font-size: var(--heading-s);
+  font-weight: var(--weight-semibold);
+  line-height: 1.4;
+}
+.body-l {
+  font-size: var(--body-l);
+  font-weight: var(--weight-regular);
+}
+.body-m {
+  font-size: var(--body-m);
+  font-weight: var(--weight-regular);
+}
+.body-s {
+  font-size: var(--body-s);
+  font-weight: var(--weight-regular);
+}
+
+.swiss-grid-bg {
+  background-image:
+    linear-gradient(var(--grid-gray) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-gray) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: -1px -1px;
+}
+
+.swiss-input {
+  width: 100%;
+  padding: var(--space-s);
+  font-size: var(--body-m);
+  font-family: var(--font-primary);
+  border: 1px solid var(--border-color);
+  background: var(--primary-white);
+  transition: border-width 0.2s, border-color 0.2s;
+}
+
+.swiss-input:focus {
+  outline: none;
+  border-width: 2px;
+  border-color: var(--accent-orange);
+}
+
+.swiss-btn-primary {
+  width: 100%;
+  padding: 16px 32px;
+  font-size: var(--body-m);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-primary);
+  letter-spacing: 0.5px;
+  color: var(--primary-white);
+  background: var(--primary-black);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.swiss-btn-primary:hover {
+  background: var(--swiss-red);
+}
+
+.swiss-btn-secondary {
+  padding: 14px 30px;
+  font-size: var(--body-m);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-primary);
+  color: var(--primary-black);
+  background: transparent;
+  border: 2px solid var(--primary-black);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.swiss-btn-secondary:hover {
+  border-color: var(--swiss-red);
+  color: var(--swiss-red);
+}
+
+.swiss-card {
+  background: var(--primary-white);
+  border: 2px solid var(--primary-black);
+  padding: var(--space-l);
+  margin-bottom: var(--space-m);
+}
+
+.swiss-link {
+  color: var(--accent-orange);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.swiss-link:hover {
+  border-bottom-color: var(--accent-orange);
+}

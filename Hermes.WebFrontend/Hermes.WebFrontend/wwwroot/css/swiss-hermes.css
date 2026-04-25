@@ -1,0 +1,50 @@
+/* Auth pages: split layout (Login / Register) */
+.auth-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.auth-split__left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-l);
+  background: var(--primary-white);
+}
+
+.auth-split__right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  position: relative;
+}
+
+.auth-split__tagline {
+  font-family: var(--font-primary);
+  font-size: var(--body-l);
+  font-weight: var(--weight-semibold);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: var(--text-medium);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .auth-split {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-split__right {
+    display: none;
+  }
+
+  .auth-split__left {
+    padding: var(--space-m);
+    min-height: 100vh;
+  }
+}

@@ -15,19 +15,22 @@ main {
 }
 
 .hermes-main-brand {
-    font-weight: 600;
-    color: inherit;
+    font-weight: var(--weight-bold, 700);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dark, inherit);
     text-decoration: none;
+    font-family: var(--font-primary, inherit);
 }
 
     .hermes-main-brand:hover {
-        color: inherit;
-        text-decoration: underline;
+        color: var(--swiss-red, #f00);
+        text-decoration: none;
     }
 
 .top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
+    background-color: var(--primary-white, #fff);
+    border-bottom: 2px solid var(--border-color, #000);
     justify-content: space-between;
     height: 3.5rem;
     display: flex;

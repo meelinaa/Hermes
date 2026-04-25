@@ -2,14 +2,30 @@
     margin-bottom: 0.75rem;
 }
 
+.news-sub-back .btn-outline-secondary {
+    border-radius: 0;
+    border: 2px solid var(--border-color, #000);
+    color: var(--text-dark, #1a1a1a);
+    font-weight: var(--weight-semibold, 600);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: var(--body-s, 0.875rem);
+}
+
+.news-sub-back .btn-outline-secondary:hover {
+    background: var(--primary-black, #000);
+    border-color: var(--primary-black, #000);
+    color: var(--primary-white, #fff);
+}
+
 .news-sub {
     max-width: 640px;
     margin: 0 auto;
     padding: 1.75rem 1.75rem 1.5rem;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-    border: 1px solid #eceae7;
+    background: var(--primary-white, #fff);
+    border-radius: 0;
+    box-shadow: none;
+    border: 2px solid var(--border-color, #000);
 }
 
 .news-sub-head {
@@ -20,10 +36,13 @@
 }
 
 .news-sub-title {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #1a1a1a;
+    font-size: var(--body-l, 1.15rem);
+    font-weight: var(--weight-bold, 700);
+    color: var(--text-dark, #1a1a1a);
     margin: 0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-family: var(--font-primary, inherit);
 }
 
 .news-sub-field {
@@ -32,16 +51,18 @@
 
 .news-sub-label {
     display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #2d2d2d;
+    font-size: var(--body-s, 0.875rem);
+    font-weight: var(--weight-semibold, 600);
+    color: var(--text-dark, #1a1a1a);
     margin-bottom: 0.45rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .news-sub-input,
 .news-sub-time {
-    border-radius: 8px;
-    border: 1px solid #d9d6d2;
+    border-radius: 0;
+    border: 1px solid var(--border-color, #000);
 }
 
 .news-sub-hint {
@@ -51,9 +72,9 @@
 }
 
 .news-ms {
-    border: 1px solid #d9d6d2;
-    border-radius: 8px;
-    background: #fff;
+    border: 1px solid var(--border-color, #000);
+    border-radius: 0;
+    background: var(--primary-white, #fff);
 }
 
 .news-ms-summary {
@@ -179,7 +200,7 @@
     right: 0;
     width: 8px;
     height: 8px;
-    background: #b8860b;
+    background: var(--swiss-red, #f00);
     border-radius: 50%;
-    border: 2px solid #fff;
+    border: 2px solid var(--primary-white, #fff);
 }

@@ -1,5 +1,5 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: var(--font-primary, "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif);
 }
 
 a, .btn-link {
@@ -59,28 +59,40 @@ h1:focus {
     text-align: start;
 }
 
-/* Shared auth card (Login + Register, WASM) */
+/* Shared auth card (Login + Register, WASM) — Swiss graphic style */
 .hermes-auth-card {
     width: 100%;
-    max-width: 400px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    max-width: 440px;
+    background: var(--primary-white, #fff);
+    border: 2px solid var(--border-color, #000);
+    border-radius: 0;
+    box-shadow: none;
     padding: 2.25rem 2rem 2rem;
 }
 
 .hermes-auth-brand-row {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     margin-bottom: 1.25rem;
 }
 
 .hermes-auth-title {
-    font-size: 1.35rem;
-    font-weight: 600;
-    text-align: center;
-    color: #1a1a1a;
+    font-size: clamp(1.5rem, 4vw, var(--heading-s, 1.5rem));
+    font-weight: var(--weight-bold, 700);
+    text-align: left;
+    color: var(--text-dark, #1a1a1a);
+    margin: 0 0 0.35rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.15;
+}
+
+.hermes-auth-subtitle {
+    font-size: var(--body-s, 0.875rem);
+    font-weight: var(--weight-regular, 400);
+    color: var(--text-medium, #666);
     margin: 0 0 1.75rem;
+    text-align: left;
 }
 
 .hermes-auth-fields {
@@ -96,13 +108,15 @@ h1:focus {
 }
 
 .hermes-auth-label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #3d3d3d;
+    font-size: var(--body-s, 0.8125rem);
+    font-weight: var(--weight-semibold, 600);
+    color: var(--text-dark, #1a1a1a);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .hermes-auth-error {
-    color: #b3261e;
+    color: var(--swiss-red, #c00);
     font-size: 0.875rem;
     text-align: center;
     margin: 1rem 0 0;
@@ -167,36 +181,41 @@ h1:focus {
 
 .hermes-auth-input {
     width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid #d9d6d2;
-    border-radius: 8px;
-    font-size: 1rem;
-    background: #fff;
-    color: #1a1a1a;
+    padding: var(--space-s, 1rem);
+    border: 1px solid var(--border-color, #000);
+    border-radius: 0;
+    font-size: var(--body-m, 1rem);
+    font-family: var(--font-primary, inherit);
+    background: var(--primary-white, #fff);
+    color: var(--text-dark, #1a1a1a);
+    transition: border-width 0.15s ease, border-color 0.15s ease;
 }
 
 .hermes-auth-input::placeholder {
-    color: #9a9690;
+    color: var(--text-medium, #666);
+    opacity: 0.75;
 }
 
 .hermes-auth-input:focus {
     outline: none;
-    border-color: #1a1a1a;
-    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.08);
+    border-width: 2px;
+    border-color: var(--accent-orange, #ff6b00);
+    box-shadow: none;
 }
 
 .hermes-auth-input-wrap {
     display: flex;
     align-items: stretch;
-    border: 1px solid #d9d6d2;
-    border-radius: 8px;
+    border: 1px solid var(--border-color, #000);
+    border-radius: 0;
     overflow: hidden;
-    background: #fff;
+    background: var(--primary-white, #fff);
 }
 
 .hermes-auth-input-wrap:focus-within {
-    border-color: #1a1a1a;
-    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.08);
+    border-width: 2px;
+    border-color: var(--accent-orange, #ff6b00);
+    box-shadow: none;
 }
 
 .hermes-auth-input.hermes-auth-input--in-wrap {
@@ -221,14 +240,14 @@ h1:focus {
     border: none;
     padding: 0;
     margin: 0;
-    background: #f3f2f0;
-    color: #6b6862;
+    background: var(--grid-gray, #e5e5e5);
+    color: var(--text-dark, #1a1a1a);
     cursor: pointer;
 }
 
 .hermes-auth-input-reveal:hover {
-    background: #e8e6e3;
-    color: #3a3a3a;
+    background: #d8d8d8;
+    color: var(--swiss-red, #f00);
 }
 
 .hermes-auth-input-reveal:focus {
@@ -244,16 +263,20 @@ h1:focus {
     margin-top: 1.35rem;
     padding: 0.85rem 1rem;
     border: none;
-    border-radius: 8px;
-    background: #1a1a1a;
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 600;
+    border-radius: 0;
+    background: var(--primary-black, #000);
+    color: var(--primary-white, #fff);
+    font-size: var(--body-m, 1rem);
+    font-weight: var(--weight-semibold, 600);
+    font-family: var(--font-primary, inherit);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     cursor: pointer;
+    transition: background 0.2s ease;
 }
 
-.hermes-auth-submit:hover {
-    background: #333;
+.hermes-auth-submit:hover:not(:disabled) {
+    background: var(--swiss-red, #f00);
 }
 
 .hermes-auth-footer {
@@ -265,13 +288,15 @@ h1:focus {
 }
 
 .hermes-auth-footer a {
-    color: #b8860b;
-    font-weight: 600;
+    color: var(--accent-orange, #ff6b00);
+    font-weight: var(--weight-semibold, 600);
     text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease;
 }
 
 .hermes-auth-footer a:hover {
-    text-decoration: underline;
+    border-bottom-color: var(--accent-orange, #ff6b00);
 }
 
 .hermes-visually-hidden {
