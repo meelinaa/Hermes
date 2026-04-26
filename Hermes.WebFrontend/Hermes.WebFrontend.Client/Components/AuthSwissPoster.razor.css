@@ -1,0 +1,147 @@
+/* Swiss-style poster panel (reference: asymmetric bars + lowercase type) */
+
+/* Panel-Hintergrund wie Poster: Rot → Orange → Gelb → Orange → Rot */
+@keyframes auth-poster-bg-accent-cycle {
+    0%,
+    100% {
+        background-color: var(--poster-accent, #e03616);
+    }
+    25% {
+        background-color: var(--accent-orange, #ff6b00);
+    }
+    50% {
+        background-color: var(--auth-poster-sun, #f3a81e);
+    }
+    75% {
+        background-color: var(--accent-orange, #ff6b00);
+    }
+}
+
+.auth-poster {
+    position: relative;
+    min-height: 100vh;
+    height: 100%;
+    background-color: var(--poster-accent, #e03616);
+    animation: auth-poster-bg-accent-cycle 7s ease-in-out infinite;
+    color: var(--auth-poster-ink, #333);
+    font-family: var(--font-primary, "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif);
+/*    text-transform: lowercase;
+*/    overflow: hidden;
+}
+
+.auth-poster__bar--left {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 18%;
+    max-width: 7.5rem;
+    align-self:center;
+    height: 72%;
+    background: var(--auth-poster-stone, #e1e4d8);
+}
+
+.auth-poster__bar--corner {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 14%;
+    max-width: 5.5rem;
+    height: 32%;
+    background: var(--auth-poster-stone, #e1e4d8);
+}
+
+.auth-poster__content {
+    position: relative;
+    z-index: 1;
+    padding: clamp(2.5rem, 8vh, 4.5rem) clamp(1.5rem, 4vw, 3rem) 3rem;
+    padding-left: clamp(22%, 26vw, 32%);
+    max-width: 42rem;
+    text-align: left;
+}
+
+.auth-poster__title {
+    margin: 0 0 1.75rem;
+    font-size: clamp(6rem, 3.8vw, 2.85rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--auth-poster-ink, #333);
+}
+
+.auth-poster__subtitle {
+    margin: 0 0 1.25rem;
+    font-size: clamp(0.5rem, 2vw, 1.2rem);
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--primary-white, #333);
+}
+
+.auth-poster__date {
+    margin: 0 0 1.75rem;
+    font-size: clamp(1rem, 2vw, 1.15rem);
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--auth-poster-ink, #333);
+    opacity: 0.92;
+}
+
+.auth-poster__body {
+    margin: 0 0 2.25rem;
+    font-size: clamp(0.9rem, 1.6vw, 1.05rem);
+    font-weight: 400;
+    line-height: 1.65;
+    max-width: 36rem;
+    color: var(--auth-poster-ink, #333);
+}
+
+.auth-poster__meta {
+    margin: 0 0 0.65rem;
+    font-size: clamp(0.88rem, 1.5vw, 1rem);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--auth-poster-ink, #333);
+}
+
+.auth-poster__meta:last-child {
+    margin-bottom: 0;
+}
+
+.auth-poster__meta-label {
+    font-weight: 600;
+    margin-right: 0.35rem;
+}
+
+.auth-poster__link {
+    color: var(--auth-poster-ink, #333);
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+    font-weight: 600;
+}
+
+.auth-poster__link:hover {
+    border-bottom-width: 2px;
+}
+
+@media (max-width: 768px) {
+    .auth-poster__content {
+        padding-left: clamp(1.25rem, 5vw, 2rem);
+        padding-top: 2.5rem;
+    }
+
+    .auth-poster__bar--left {
+        width: 14%;
+        height: 40%;
+    }
+
+    .auth-poster__bar--corner {
+        width: 22%;
+        height: 22%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-poster {
+        animation: none;
+        background-color: var(--auth-poster-sun, #f3a81e);
+    }
+}

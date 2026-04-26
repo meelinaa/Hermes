@@ -4,8 +4,8 @@
 
 .news-sub-back .btn-outline-secondary {
     border-radius: 0;
-    border: 2px solid var(--border-color, #000);
-    color: var(--text-dark, #1a1a1a);
+    border: 2px solid var(--poster-ink, #0d0d0d);
+    color: var(--poster-ink, #0d0d0d);
     font-weight: var(--weight-semibold, 600);
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -13,9 +13,9 @@
 }
 
 .news-sub-back .btn-outline-secondary:hover {
-    background: var(--primary-black, #000);
-    border-color: var(--primary-black, #000);
-    color: var(--primary-white, #fff);
+    background: var(--poster-ink, #0d0d0d);
+    border-color: var(--poster-ink, #0d0d0d);
+    color: var(--poster-beige, #f2efe8);
 }
 
 .news-sub {
@@ -25,7 +25,7 @@
     background: var(--primary-white, #fff);
     border-radius: 0;
     box-shadow: none;
-    border: 2px solid var(--border-color, #000);
+    border: 2px solid var(--poster-ink, #0d0d0d);
 }
 
 .news-sub-head {
@@ -53,7 +53,7 @@
     display: block;
     font-size: var(--body-s, 0.875rem);
     font-weight: var(--weight-semibold, 600);
-    color: var(--text-dark, #1a1a1a);
+    color: var(--poster-ink, #0d0d0d);
     margin-bottom: 0.45rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -62,7 +62,7 @@
 .news-sub-input,
 .news-sub-time {
     border-radius: 0;
-    border: 1px solid var(--border-color, #000);
+    border: 1px solid var(--poster-ink, #0d0d0d);
 }
 
 .news-sub-hint {
@@ -72,7 +72,7 @@
 }
 
 .news-ms {
-    border: 1px solid var(--border-color, #000);
+    border: 1px solid var(--poster-ink, #0d0d0d);
     border-radius: 0;
     background: var(--primary-white, #fff);
 }
@@ -200,7 +200,7 @@
     right: 0;
     width: 8px;
     height: 8px;
-    background: var(--swiss-red, #f00);
+    background: var(--poster-accent, #e03616);
     border-radius: 50%;
     border: 2px solid var(--primary-white, #fff);
 }

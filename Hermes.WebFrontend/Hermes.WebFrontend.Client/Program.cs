@@ -12,6 +12,7 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<AuthTokenStore>();
 builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<AuthLogoutService>();
+builder.Services.AddSingleton<UserProfileRefreshNotifier>();
 builder.Services.AddScoped<NewsSubscriptionListCache>();
 
 // Anonymous client for auth/refresh only (no Bearer). Named client avoids handler pooling issues on the authorized pipeline.

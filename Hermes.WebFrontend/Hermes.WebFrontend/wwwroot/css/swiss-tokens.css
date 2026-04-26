@@ -2,6 +2,7 @@
   --primary-black: #000000;
   --primary-white: #ffffff;
   --swiss-red: #ff0000;
+  --swiss-black: #1a1a1a;
   --accent-orange: #ff6b00;
   --grid-gray: #e5e5e5;
   --text-dark: #1a1a1a;
@@ -27,9 +28,21 @@
   --space-m: 24px;
   --space-l: 48px;
   --space-xl: 72px;
+  --space-xxl: 96px;
 
   --grid-gap: 24px;
+  --top-nav-height: 80px;
   --container-max: 1440px;
+
+  /* Auth poster (login/register right panel) */
+  --auth-poster-sun: #f3a81e;
+  --auth-poster-stone: #e1e4d8;
+  --auth-poster-ink: #333333;
+
+  /* Swiss poster palette (home + app chrome) */
+  --poster-beige: #f2efe8;
+  --poster-ink: #0d0d0d;
+  --poster-accent: #e03616;
 }
 
 *,
@@ -43,8 +56,8 @@ body {
   font-family: var(--font-primary);
   font-size: var(--body-m);
   font-weight: var(--weight-regular);
-  color: var(--text-dark);
-  background: var(--primary-white);
+  color: var(--poster-ink, var(--text-dark));
+  background: var(--poster-beige, #f2efe8);
   line-height: 1.5;
 }
 
@@ -156,4 +169,77 @@ body {
 
 .swiss-link:hover {
   border-bottom-color: var(--accent-orange);
+}
+
+/* Default links: no blue underline; use .swiss-link or .underline-link where needed */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.underline-link {
+  border-bottom: 1px solid currentColor;
+}
+
+.underline-link:hover {
+  border-bottom-width: 2px;
+}
+
+/* Swiss red panel (e.g. landing hero) */
+.swiss-bg-red {
+  background: var(--swiss-red);
+  color: var(--primary-white);
+}
+
+.swiss-bg-black {
+    background: var(--swiss-black);
+    color: var(--primary-white);
+}
+
+.swiss-bg-red h1,
+.swiss-bg-red h2,
+.swiss-bg-red h3,
+.swiss-bg-red p,
+.swiss-bg-red .heading-xl,
+.swiss-bg-red .heading-l,
+.swiss-bg-red .heading-m,
+.swiss-bg-red .heading-s,
+.swiss-bg-red .body-l,
+.swiss-bg-red .body-m,
+.swiss-bg-red .body-s {
+  color: var(--primary-white);
+}
+
+/* Light grid overlay on dark/red surfaces */
+.show-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 60px 60px;
+  background-position: -1px -1px;
+}
+
+.feature-block {
+  border: 2px solid var(--primary-white);
+  padding: var(--space-l);
+}
+
+.feature-label {
+  font-size: var(--heading-s);
+  font-weight: var(--weight-bold);
+  letter-spacing: 1px;
+  margin-bottom: var(--space-s);
+  text-transform: uppercase;
+}
+
+.feature-description {
+  font-size: var(--body-m);
+  font-weight: var(--weight-regular);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.swiss-bg-red .feature-label,
+.swiss-bg-red .feature-description {
+  color: var(--primary-white);
 }

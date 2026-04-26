@@ -69,6 +69,8 @@
 </div>
 
 @code {
+    [Parameter] public bool StartInCreateMode { get; set; }
+
     private List<News> items = new();
     private bool showForm;
     private News? editModel;
@@ -76,7 +78,12 @@
     private string? loadError;
     private int? deletingId;
 
-    protected override async Task OnInitializedAsync() => await LoadListAsync(forceReload: false).ConfigureAwait(false);
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadListAsync(forceReload: false).ConfigureAwait(false);
+        if (StartInCreateMode)
+            StartCreate();
+    }
 
     private async Task LoadListAsync(bool forceReload)
     {

@@ -26,9 +26,9 @@
 }
 
 .news-settings-add:hover {
-    background: var(--primary-black, #000);
-    border-color: var(--primary-black, #000);
-    color: var(--primary-white, #fff);
+    background: var(--poster-ink, #0d0d0d);
+    border-color: var(--poster-ink, #0d0d0d);
+    color: var(--poster-beige, #f2efe8);
 }
 
 .news-settings-muted {
@@ -67,7 +67,7 @@
 .news-settings-card-title {
     font-size: var(--body-m, 1.05rem);
     font-weight: var(--weight-bold, 700);
-    color: var(--text-dark, #1a1a1a);
+    color: var(--poster-ink, #0d0d0d);
     margin: 0;
     line-height: 1.35;
     flex: 1;
@@ -109,23 +109,23 @@
 
 .news-settings-icon--danger {
     background: var(--primary-white, #fff);
-    border-color: var(--swiss-red, #f00);
-    color: var(--swiss-red, #f00);
+    border-color: var(--poster-accent, #e03616);
+    color: var(--poster-accent, #e03616);
 }
 
 .news-settings-icon--danger:hover:not(:disabled) {
-    background: var(--swiss-red, #f00);
+    background: var(--poster-accent, #e03616);
     color: var(--primary-white, #fff);
 }
 
 .news-settings-icon--primary {
     background: var(--primary-white, #fff);
-    border-color: var(--accent-orange, #ff6b00);
-    color: var(--accent-orange, #ff6b00);
+    border-color: var(--poster-accent, #e03616);
+    color: var(--poster-accent, #e03616);
 }
 
 .news-settings-icon--primary:hover {
-    background: var(--accent-orange, #ff6b00);
+    background: var(--poster-accent, #e03616);
     color: var(--primary-white, #fff);
 }
 

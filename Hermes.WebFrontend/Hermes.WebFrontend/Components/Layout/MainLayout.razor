@@ -1,20 +1,19 @@
 @inherits LayoutComponentBase
 
-<div class="page page-fullwidth">
-    <main>
-        <div class="top-row px-4">
-            <a class="hermes-main-brand" href="/">Hermes</a>
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank" rel="noopener noreferrer">About</a>
+<div class="mainlayout-root">
+    <div class="mainlayout-poster" aria-hidden="true">
+        <div class="mainlayout-poster__stack">
+            <span class="mainlayout-poster__t mainlayout-poster__t--1">hermes</span>
+            <span class="mainlayout-poster__t mainlayout-poster__t--2">hermes</span>
+            <span class="mainlayout-poster__t mainlayout-poster__t--3">hermes</span>
         </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
-
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    </div>
+    <div class="mainlayout-content">
+        @Body
+    </div>
+    <div id="blazor-error-ui" data-nosnippet>
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
 </div>

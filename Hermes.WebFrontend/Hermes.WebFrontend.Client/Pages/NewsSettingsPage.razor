@@ -1,0 +1,41 @@
+@page "/news-settings"
+@page "/news-settings/new"
+@layout AppHomeLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@implements IDisposable
+@inject NavigationManager Navigation
+
+<PageTitle>News-Einstellungen — Hermes</PageTitle>
+
+<div class="home-content">
+    <h2 class="home-welcome">News</h2>
+    <NewsSettingsPanel @key="panelKey" StartInCreateMode="createMode" />
+</div>
+
+@code {
+    private bool createMode;
+    private string panelKey = "news-list";
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        RefreshRouteState();
+    }
+
+    public void Dispose() =>
+        Navigation.LocationChanged -= OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        InvokeAsync(() =>
+        {
+            RefreshRouteState();
+            StateHasChanged();
+        });
+
+    private void RefreshRouteState()
+    {
+        var path = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/').ToLowerInvariant();
+        createMode = path.EndsWith("/news-settings/new", StringComparison.Ordinal);
+        panelKey = createMode ? "news-new" : "news-list";
+    }
+}
