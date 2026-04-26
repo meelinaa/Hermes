@@ -1,4 +1,4 @@
-namespace Hermes.WebFrontend.Client.Services;
+namespace Hermes.WebFrontend.Client.Services.User;
 
 /// <summary>
 /// Benachrichtigt Abonnenten (z. B. Home), wenn das Profil per API geändert wurde, damit UI und HTTP-Daten neu geladen werden.

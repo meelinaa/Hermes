@@ -1,6 +1,6 @@
 using Hermes.Domain.Enums;
 
-namespace Hermes.WebFrontend.Client;
+namespace Hermes.WebFrontend.Client.Enums;
 
 /// <summary>
 /// German UI labels for domain enums (search + summary use the same strings).

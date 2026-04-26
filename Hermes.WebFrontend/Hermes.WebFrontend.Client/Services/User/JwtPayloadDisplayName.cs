@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
-namespace Hermes.WebFrontend.Client.Services;
+namespace Hermes.WebFrontend.Client.Services.User;
 
 /// <summary>
 /// Reads claims from JWT payload (signed token; no validation — client display / routing only).

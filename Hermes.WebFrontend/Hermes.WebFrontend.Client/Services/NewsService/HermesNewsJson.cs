@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Hermes.WebFrontend.Client.Services;
+namespace Hermes.WebFrontend.Client.Services.NewsService;
 
 public static class HermesNewsJson
 {

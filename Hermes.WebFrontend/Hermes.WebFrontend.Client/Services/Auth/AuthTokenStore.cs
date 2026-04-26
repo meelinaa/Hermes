@@ -1,24 +1,20 @@
 using System.Globalization;
 using Blazored.LocalStorage;
 
-namespace Hermes.WebFrontend.Client.Services;
+namespace Hermes.WebFrontend.Client.Services.Auth;
 
 /// <summary>
 /// Persists JWT access + refresh tokens in browser local storage for API calls.
 /// </summary>
-public sealed class AuthTokenStore
+public sealed class AuthTokenStore(ILocalStorageService localStorage)
 {
     private const string AccessKey = "hermes.auth.accessToken";
     private const string RefreshKey = "hermes.auth.refreshToken";
     private const string LastActivityKey = "hermes.auth.lastActivityUtc";
-
-    private readonly ILocalStorageService _localStorage;
     private bool _loaded;
     private string? _accessToken;
     private string? _refreshToken;
     private DateTimeOffset? _lastActivityUtc;
-
-    public AuthTokenStore(ILocalStorageService localStorage) => _localStorage = localStorage;
 
     public string? AccessToken => _accessToken;
     public string? RefreshToken => _refreshToken;
@@ -32,9 +28,9 @@ public sealed class AuthTokenStore
             return;
         _loaded = true;
         cancellationToken.ThrowIfCancellationRequested();
-        _accessToken = await _localStorage.GetItemAsync<string>(AccessKey).ConfigureAwait(false);
-        _refreshToken = await _localStorage.GetItemAsync<string>(RefreshKey).ConfigureAwait(false);
-        var activityRaw = await _localStorage.GetItemAsync<string>(LastActivityKey).ConfigureAwait(false);
+        _accessToken = await localStorage.GetItemAsync<string>(AccessKey, cancellationToken).ConfigureAwait(false);
+        _refreshToken = await localStorage.GetItemAsync<string>(RefreshKey, cancellationToken).ConfigureAwait(false);
+        var activityRaw = await localStorage.GetItemAsync<string>(LastActivityKey, cancellationToken).ConfigureAwait(false);
         _lastActivityUtc = ParseActivity(activityRaw);
     }
 
@@ -42,7 +38,7 @@ public sealed class AuthTokenStore
     {
         cancellationToken.ThrowIfCancellationRequested();
         _lastActivityUtc = DateTimeOffset.UtcNow;
-        await _localStorage.SetItemAsync(LastActivityKey, _lastActivityUtc.Value.ToString("O", CultureInfo.InvariantCulture))
+        await localStorage.SetItemAsync(LastActivityKey, _lastActivityUtc.Value.ToString("O", CultureInfo.InvariantCulture), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -52,8 +48,8 @@ public sealed class AuthTokenStore
         _accessToken = accessToken;
         _refreshToken = refreshToken;
         _loaded = true;
-        await _localStorage.SetItemAsync(AccessKey, accessToken).ConfigureAwait(false);
-        await _localStorage.SetItemAsync(RefreshKey, refreshToken).ConfigureAwait(false);
+        await localStorage.SetItemAsync(AccessKey, accessToken, cancellationToken).ConfigureAwait(false);
+        await localStorage.SetItemAsync(RefreshKey, refreshToken, cancellationToken).ConfigureAwait(false);
         await TouchActivityAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -64,9 +60,9 @@ public sealed class AuthTokenStore
         _refreshToken = null;
         _lastActivityUtc = null;
         _loaded = false;
-        await _localStorage.RemoveItemAsync(AccessKey).ConfigureAwait(false);
-        await _localStorage.RemoveItemAsync(RefreshKey).ConfigureAwait(false);
-        await _localStorage.RemoveItemAsync(LastActivityKey).ConfigureAwait(false);
+        await localStorage.RemoveItemAsync(AccessKey, cancellationToken).ConfigureAwait(false);
+        await localStorage.RemoveItemAsync(RefreshKey, cancellationToken).ConfigureAwait(false);
+        await localStorage.RemoveItemAsync(LastActivityKey, cancellationToken).ConfigureAwait(false);
     }
 
     private static DateTimeOffset? ParseActivity(string? raw)

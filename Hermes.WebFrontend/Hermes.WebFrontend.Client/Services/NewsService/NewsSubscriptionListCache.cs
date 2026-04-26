@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Hermes.Domain.Entities;
 
-namespace Hermes.WebFrontend.Client.Services;
+namespace Hermes.WebFrontend.Client.Services.NewsService;
 
 /// <summary>
 /// Holds the news subscription list per user session so switching tabs does not repeat GET /list.
@@ -11,13 +11,13 @@ namespace Hermes.WebFrontend.Client.Services;
 public sealed class NewsSubscriptionListCache
 {
     private int? _freshUserId;
-    private List<News> _items = new();
+    private List<News> _items = [];
     private string? _lastError;
 
     public void Invalidate()
     {
         _freshUserId = null;
-        _items = new List<News>();
+        _items = [];
         _lastError = null;
     }
 
@@ -48,7 +48,7 @@ public sealed class NewsSubscriptionListCache
             var list = await response.Content
                 .ReadFromJsonAsync<List<News>>(HermesNewsJson.Options, cancellationToken)
                 .ConfigureAwait(false);
-            _items = list ?? new List<News>();
+            _items = list ?? [];
             _lastError = null;
             _freshUserId = userId;
             return (_items, null);
@@ -62,7 +62,7 @@ public sealed class NewsSubscriptionListCache
         }
     }
 
-    private List<News> Snapshot() => _items.Count == 0 ? new List<News>() : new List<News>(_items);
+    private List<News> Snapshot() => _items.Count == 0 ? [] : new List<News>(_items);
 
     private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
     {

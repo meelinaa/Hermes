@@ -1,4 +1,4 @@
-namespace Hermes.WebFrontend.Client.Services;
+namespace Hermes.WebFrontend.Client.Model;
 
 /// <summary>JSON body for successful POST /api/v1/auth/login.</summary>
 public sealed class AuthLoginResponse

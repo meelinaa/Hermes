@@ -2,6 +2,14 @@
 @layout AuthLayout
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Json
+@using System.Text.Json
+@using Hermes.Application.Models
+@using Hermes.Domain.Entities
+@using Hermes.WebFrontend.Client.Components.Auth
+@using Hermes.WebFrontend.Client.Model
+@using Hermes.WebFrontend.Client.Services.Auth
+@inject HttpClient Http
 @inject NavigationManager Nav
 @inject AuthTokenStore TokenStore
 
@@ -52,7 +60,7 @@
                 <p class="hermes-auth-error" role="alert">@registerError</p>
             }
 
-            <button type="button" class="hermes-auth-submit" disabled="@(!CanRegister)" @onclick="OnRegister">Registrieren</button>
+            <button type="button" class="hermes-auth-submit" disabled="@(!CanRegister || isBusy)" @onclick="RegisterAsync">Registrieren</button>
 
             <p class="hermes-auth-footer mt-4 mb-0">
                 <a href="/login">Zurück zur Anmeldung</a>
@@ -69,6 +77,7 @@
     private string email = string.Empty;
     private string password = string.Empty;
     private string? registerError;
+    private bool isBusy;
 
     private bool PasswordLenOk => password.Length >= 8;
 
@@ -104,11 +113,90 @@
             Nav.NavigateTo("/home", forceLoad: false, replace: true);
     }
 
-    private void OnRegister()
+    private async Task RegisterAsync()
     {
         registerError = null;
-        if (!CanRegister)
+        if (!CanRegister || isBusy)
             return;
-        // Hier später: API-Registrierung, Navigation
+
+        isBusy = true;
+        try
+        {
+            var newUser = new User
+            {
+                Id = 0,
+                Name = username.Trim(),
+                Email = email.Trim(),
+                PasswordHash = password,
+                IsEmailVerified = false
+            };
+
+            var regResponse = await Http.PostAsJsonAsync("api/v1/users", newUser, JsonSerializerOptions.Web).ConfigureAwait(false);
+            if (!regResponse.IsSuccessStatusCode)
+            {
+                registerError = await ReadApiErrorAsync(regResponse).ConfigureAwait(false);
+                return;
+            }
+
+            var loginResponse = await Http.PostAsJsonAsync(
+                    "api/v1/auth/login",
+                    new LoginRequest { NameOrEmail = email.Trim(), Password = password },
+                    JsonSerializerOptions.Web)
+                .ConfigureAwait(false);
+
+            if (!loginResponse.IsSuccessStatusCode)
+            {
+                registerError = await ReadApiErrorAsync(loginResponse).ConfigureAwait(false)
+                    ?? "Konto wurde angelegt; automatische Anmeldung ist fehlgeschlagen. Bitte auf der Anmeldeseite einloggen.";
+                return;
+            }
+
+            var authBody = await loginResponse.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonSerializerOptions.Web).ConfigureAwait(false);
+            if (authBody is null || string.IsNullOrEmpty(authBody.AccessToken) || string.IsNullOrEmpty(authBody.RefreshToken))
+            {
+                registerError = "Konto angelegt; unerwartete Antwort beim Anmelden.";
+                return;
+            }
+
+            await TokenStore.PersistAsync(authBody.AccessToken, authBody.RefreshToken).ConfigureAwait(false);
+            Nav.NavigateTo("/home");
+        }
+        catch (HttpRequestException ex)
+        {
+            registerError = $"Verbindung zur API fehlgeschlagen. Läuft die API und stimmt ApiBaseUrl? ({ex.Message})";
+        }
+        catch (Exception ex)
+        {
+            registerError = $"Registrierung fehlgeschlagen: {ex.Message}";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private static async Task<string?> ReadApiErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+                return d.GetString();
+            if (doc.RootElement.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
+                return t.GetString();
+        }
+        catch
+        {
+            // ignore parse errors
+        }
+
+        return response.StatusCode switch
+        {
+            System.Net.HttpStatusCode.Conflict => "Diese E-Mail ist bereits registriert.",
+            System.Net.HttpStatusCode.BadRequest => "Ungültige Daten.",
+            System.Net.HttpStatusCode.Unauthorized => "Anmeldung nach Registrierung fehlgeschlagen.",
+            _ => $"Anfrage fehlgeschlagen ({(int)response.StatusCode}).",
+        };
     }
 }

@@ -1,5 +1,7 @@
 using Blazored.LocalStorage;
-using Hermes.WebFrontend.Client.Services;
+using Hermes.WebFrontend.Client.Services.Auth;
+using Hermes.WebFrontend.Client.Services.NewsService;
+using Hermes.WebFrontend.Client.Services.User;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 
@@ -22,7 +24,7 @@ builder.Services.AddHttpClient(AuthSessionService.AnonymousHttpClientName, (sp, 
 builder.Services.AddScoped(sp =>
 {
     var store = sp.GetRequiredService<AuthTokenStore>();
-    var pipeline = new HermesAuthMessageHandler(store) { InnerHandler = new HttpClientHandler() };
+    var pipeline = new AuthMessageHandler(store) { InnerHandler = new HttpClientHandler() };
     var client = new HttpClient(pipeline);
     HermesApiHttp.ConfigureBaseAddress(client, sp);
     return client;

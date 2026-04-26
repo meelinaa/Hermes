@@ -1,33 +1,23 @@
+using Hermes.WebFrontend.Client.Model;
+using Hermes.WebFrontend.Client.Services.User;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace Hermes.WebFrontend.Client.Services;
+namespace Hermes.WebFrontend.Client.Services.Auth;
 
 /// <summary>
 /// Validates sliding idle timeout, JWT access <c>exp</c>, and refreshes tokens via the API.
 /// </summary>
-public sealed class AuthSessionService
+public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory httpFactory, IConfiguration config)
 {
     public const string AnonymousHttpClientName = "HermesApiAnonymous";
 
     private static readonly JsonSerializerOptions JsonWeb = JsonSerializerOptions.Web;
     private static readonly TimeSpan ExpirationClockSkew = TimeSpan.FromMinutes(2);
-
-    private readonly AuthTokenStore _tokens;
-    private readonly IHttpClientFactory _httpFactory;
-    private readonly IConfiguration _config;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public AuthSessionService(
-        AuthTokenStore tokens,
-        IHttpClientFactory httpFactory,
-        IConfiguration config)
-    {
-        _tokens = tokens;
-        _httpFactory = httpFactory;
-        _config = config;
-    }
+    private sealed record RefreshTokenRequestBody(string RefreshToken);
 
     /// <summary>
     /// Ensures tokens reflect a valid session: applies idle timeout, renews expired access via refresh, updates activity when authenticated.
@@ -38,37 +28,37 @@ public sealed class AuthSessionService
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await _tokens.EnsureLoadedFromStorageAsync(cancellationToken).ConfigureAwait(false);
+            await tokens.EnsureLoadedFromStorageAsync(cancellationToken).ConfigureAwait(false);
 
-            var hasAccess = !string.IsNullOrEmpty(_tokens.AccessToken);
-            var hasRefresh = !string.IsNullOrEmpty(_tokens.RefreshToken);
+            var hasAccess = !string.IsNullOrEmpty(tokens.AccessToken);
+            var hasRefresh = !string.IsNullOrEmpty(tokens.RefreshToken);
             if (!hasAccess && !hasRefresh)
                 return false;
 
             var idleDays = GetIdleTimeoutDays();
-            var last = _tokens.LastActivityUtc;
+            var last = tokens.LastActivityUtc;
             if (last.HasValue && DateTimeOffset.UtcNow - last.Value > TimeSpan.FromDays(idleDays))
             {
-                await _tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
+                await tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
                 return false;
             }
 
-            if (hasAccess && IsAccessTokenAlive(_tokens.AccessToken))
+            if (hasAccess && IsAccessTokenAlive(tokens.AccessToken))
             {
-                await _tokens.TouchActivityAsync(cancellationToken).ConfigureAwait(false);
+                await tokens.TouchActivityAsync(cancellationToken).ConfigureAwait(false);
                 return true;
             }
 
             if (!hasRefresh)
             {
-                await _tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
+                await tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
                 return false;
             }
 
             var refreshed = await TryRefreshAsync(cancellationToken).ConfigureAwait(false);
             if (!refreshed)
             {
-                await _tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
+                await tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
                 return false;
             }
 
@@ -81,7 +71,7 @@ public sealed class AuthSessionService
         }
     }
 
-    private bool IsAccessTokenAlive(string? accessToken)
+    private static bool IsAccessTokenAlive(string? accessToken)
     {
         var exp = JwtPayloadDisplayName.TryGetExpiresAtUtc(accessToken);
         if (!exp.HasValue)
@@ -91,7 +81,7 @@ public sealed class AuthSessionService
 
     private int GetIdleTimeoutDays()
     {
-        var s = _config["Session:IdleTimeoutDays"];
+        var s = config["Session:IdleTimeoutDays"];
         if (int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) && d > 0)
             return d;
         return 7;
@@ -99,13 +89,13 @@ public sealed class AuthSessionService
 
     private async Task<bool> TryRefreshAsync(CancellationToken cancellationToken)
     {
-        var refresh = _tokens.RefreshToken;
+        var refresh = tokens.RefreshToken;
         if (string.IsNullOrWhiteSpace(refresh))
             return false;
 
         try
         {
-            var client = _httpFactory.CreateClient(AnonymousHttpClientName);
+            var client = httpFactory.CreateClient(AnonymousHttpClientName);
             using var response = await client
                 .PostAsJsonAsync("api/v1/auth/refresh", new RefreshTokenRequestBody(refresh.Trim()), JsonWeb, cancellationToken)
                 .ConfigureAwait(false);
@@ -116,7 +106,7 @@ public sealed class AuthSessionService
             if (body is null || string.IsNullOrEmpty(body.AccessToken) || string.IsNullOrEmpty(body.RefreshToken))
                 return false;
 
-            await _tokens.PersistAsync(body.AccessToken, body.RefreshToken, cancellationToken).ConfigureAwait(false);
+            await tokens.PersistAsync(body.AccessToken, body.RefreshToken, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch
@@ -124,6 +114,4 @@ public sealed class AuthSessionService
             return false;
         }
     }
-
-    private sealed record RefreshTokenRequestBody(string RefreshToken);
 }
