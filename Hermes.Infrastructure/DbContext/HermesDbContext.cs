@@ -117,19 +117,33 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     }
 
     /// <inheritdoc />
+    public async Task<User?> GetUserEntityByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        if (id <= 0)
+            return null;
+        return await Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async Task UpdateUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         if (user.Id <= 0)
             throw new ArgumentException("User id must be greater than zero for update.", nameof(user));
 
-        var exists = await Users.AsNoTracking()
-            .AnyAsync(u => u.Id == user.Id, cancellationToken)
-            .ConfigureAwait(false);
-        if (!exists)
+        var entity = await Users.FirstOrDefaultAsync(u => u.Id == user.Id, cancellationToken).ConfigureAwait(false);
+        if (entity is null)
             throw new UserNotFoundException($"User with id {user.Id} was not found.");
 
-        Users.Update(user);
+        entity.Name = user.Name;
+        entity.Email = user.Email;
+        // IsEmailVerified / 2FA fields are not changed via profile PUT (separate flows).
+
+        if (!string.IsNullOrWhiteSpace(user.PasswordHash))
+            entity.PasswordHash = user.PasswordHash;
+
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

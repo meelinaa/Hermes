@@ -1,0 +1,142 @@
+.hermes-top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--top-nav-height, 80px);
+    background: var(--poster-beige, #f2efe8);
+    border-bottom: 2px solid var(--poster-ink, #0d0d0d);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-xl, 72px);
+    z-index: 1000;
+}
+
+.hermes-top-nav__brand {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+}
+
+.hermes-top-nav__brand:hover {
+    opacity: 0.9;
+}
+
+.hermes-top-nav__menu {
+    --nav-pad-y: 0.85rem;
+    --nav-pad-x: 1rem;
+    --nav-gap: 0.5rem;
+    --nav-item-width: 9.5rem;
+    display: flex;
+    align-items: center;
+    gap: var(--nav-gap);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Items: früherer Abmelden-Stil — Rahmen; gleiche Außen-Höhe wie Logout dank border-box + calc */
+.hermes-top-nav__menu ::deep a.hermes-top-nav__item {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--nav-item-width);
+    flex: 0 0 var(--nav-item-width);
+    margin: 0;
+    text-align: center;
+    padding: calc(var(--nav-pad-y) - 2px) var(--nav-pad-x);
+    border: 2px solid var(--poster-ink, #0d0d0d);
+    border-radius: 0;
+    font-size: var(--body-m, 16px);
+    font-weight: var(--weight-semibold, 600);
+    font-family: var(--font-primary, inherit);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-decoration: none;
+    background: transparent;
+    color: var(--poster-ink, #0d0d0d);
+    transition: background 0.15s ease, color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hermes-top-nav__menu ::deep a.hermes-top-nav__item:link,
+.hermes-top-nav__menu ::deep a.hermes-top-nav__item:visited,
+.hermes-top-nav__menu ::deep a.hermes-top-nav__item:active {
+    color: var(--poster-ink, #0d0d0d);
+}
+
+.hermes-top-nav__menu ::deep a.hermes-top-nav__item:hover {
+    background: var(--poster-ink, #0d0d0d);
+    color: var(--poster-beige, #f2efe8);
+}
+
+.hermes-top-nav__menu ::deep a.hermes-top-nav__item.active {
+    background: transparent;
+    color: var(--poster-ink, #0d0d0d);
+    font-weight: var(--weight-bold, 700);
+}
+
+.hermes-top-nav__menu ::deep a.hermes-top-nav__item.active:hover {
+    background: var(--poster-ink, #0d0d0d);
+    color: var(--poster-beige, #f2efe8);
+}
+
+.hermes-top-nav__menu ::deep a.hermes-top-nav__item:focus-visible {
+    outline: 2px solid var(--poster-ink, #0d0d0d);
+    outline-offset: 2px;
+}
+
+/* Abmelden: früherer Item-Stil — schwarz gefüllt, weißer Text, Hover rot */
+.hermes-top-nav__logout {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--body-m, 16px);
+    font-weight: var(--weight-semibold, 600);
+    font-family: var(--font-primary, inherit);
+    color: var(--primary-white, #fff);
+    background: var(--primary-black, #000);
+    border: none;
+    padding: var(--nav-pad-y) var(--nav-pad-x);
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.hermes-top-nav__logout:hover:not(:disabled) {
+    background: var(--swiss-red, #c00);
+    color: var(--primary-white, #fff);
+}
+
+.hermes-top-nav__logout:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.hermes-top-nav__logout:disabled:hover {
+    background: var(--primary-black, #000);
+    color: var(--primary-white, #fff);
+}
+
+@media (max-width: 768px) {
+    .hermes-top-nav {
+        padding: 0 var(--space-m, 24px);
+        height: auto;
+        min-height: var(--top-nav-height, 80px);
+        flex-wrap: wrap;
+        gap: var(--space-s, 16px);
+        padding-top: var(--space-s, 16px);
+        padding-bottom: var(--space-s, 16px);
+    }
+
+    .hermes-top-nav__menu {
+        --nav-item-width: min(9.5rem, 100%);
+        gap: var(--nav-gap);
+        width: 100%;
+        justify-content: flex-start;
+    }
+}

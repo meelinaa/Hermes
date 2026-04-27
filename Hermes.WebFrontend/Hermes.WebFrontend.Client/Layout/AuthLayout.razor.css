@@ -1,0 +1,7 @@
+.auth-layout-root {
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    display: block;
+    background: var(--poster-beige, #f2efe8);
+}

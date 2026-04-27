@@ -1,0 +1,21 @@
+.hermes-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--swiss-red, #f00);
+    font-weight: var(--weight-bold, 700);
+    font-size: 1.25rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.hermes-brand-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+}
+
+.hermes-brand-text {
+    color: var(--text-dark, #1a1a1a);
+    font-weight: var(--weight-bold, 700);
+}

@@ -1,0 +1,206 @@
+.news-sub-back {
+    margin-bottom: 0.75rem;
+}
+
+.news-sub-back .btn-outline-secondary {
+    border-radius: 0;
+    border: 2px solid var(--poster-ink, #0d0d0d);
+    color: var(--poster-ink, #0d0d0d);
+    font-weight: var(--weight-semibold, 600);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: var(--body-s, 0.875rem);
+}
+
+.news-sub-back .btn-outline-secondary:hover {
+    background: var(--poster-ink, #0d0d0d);
+    border-color: var(--poster-ink, #0d0d0d);
+    color: var(--poster-beige, #f2efe8);
+}
+
+.news-sub {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 1.75rem 1.75rem 1.5rem;
+    background: var(--primary-white, #fff);
+    border-radius: 0;
+    box-shadow: none;
+    border: 2px solid var(--poster-ink, #0d0d0d);
+}
+
+.news-sub-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+.news-sub-title {
+    font-size: var(--body-l, 1.15rem);
+    font-weight: var(--weight-bold, 700);
+    color: var(--text-dark, #1a1a1a);
+    margin: 0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-family: var(--font-primary, inherit);
+}
+
+.news-sub-field {
+    margin-bottom: 1.35rem;
+}
+
+.news-sub-label {
+    display: block;
+    font-size: var(--body-s, 0.875rem);
+    font-weight: var(--weight-semibold, 600);
+    color: var(--poster-ink, #0d0d0d);
+    margin-bottom: 0.45rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.news-sub-input,
+.news-sub-time {
+    border-radius: 0;
+    border: 1px solid var(--poster-ink, #0d0d0d);
+}
+
+.news-sub-hint {
+    font-size: 0.8rem;
+    color: #8a8680;
+    margin: 0.35rem 0 0;
+}
+
+.news-ms {
+    border: 1px solid var(--poster-ink, #0d0d0d);
+    border-radius: 0;
+    background: var(--primary-white, #fff);
+}
+
+.news-ms-summary {
+    padding: 0.65rem 0.85rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #444;
+    list-style: none;
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.news-ms-summary::-webkit-details-marker {
+    display: none;
+}
+
+.news-ms-body {
+    max-height: 280px;
+    overflow-y: auto;
+    border-top: 1px solid #eee;
+    padding: 0.35rem 0;
+}
+
+.news-ms-search {
+    padding: 0.35rem 0.65rem 0.5rem;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.news-ms-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem;
+    margin: 0;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.news-ms-row:hover {
+    background: #f8f8f7;
+}
+
+.news-ms-row input {
+    flex-shrink: 0;
+}
+
+.news-dow-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.news-dow-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid #d4d2cf;
+    background: #f3f2f0;
+    color: #555;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.news-dow-pill.active {
+    background: #e4e6e9;
+    border-color: #b8b6b3;
+    color: #1a1a1a;
+}
+
+.news-dow-ico {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.news-sub-sync {
+    padding: 0.5rem 0;
+}
+
+.news-day-block {
+    border: 1px solid #e8e6e3;
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    margin-top: 0.75rem;
+    background: #fafaf9;
+}
+
+.news-day-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.news-time-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.news-time-row .news-sub-time {
+    max-width: 9rem;
+}
+
+.home-bell-wrap {
+    position: relative;
+    display: flex;
+    color: #5c5a57;
+}
+
+.home-bell-dot {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 8px;
+    background: var(--poster-accent, #e03616);
+    border-radius: 50%;
+    border: 2px solid var(--primary-white, #fff);
+}

@@ -1,0 +1,471 @@
+@using System.Globalization
+@using System.Net.Http.Json
+@using System.Text.Json
+@using Hermes.Domain.DTOs
+@using Hermes.Domain.Entities
+@using Hermes.Domain.Enums
+@using Hermes.WebFrontend.Client.Enums
+@using Hermes.WebFrontend.Client.Services
+@using Hermes.WebFrontend.Client.Services.Auth
+@using Hermes.WebFrontend.Client.Services.NewsService
+@using Hermes.WebFrontend.Client.Services.User
+@inject HttpClient Http
+@inject AuthTokenStore AuthTokens
+
+<section class="news-sub">
+    @if (ShowBackButton)
+    {
+        <div class="news-sub-back">
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="BackToList">← Zurück zur Übersicht</button>
+        </div>
+    }
+    <div class="news-sub-head">
+        <h3 class="news-sub-title">@(EditingLabel)</h3>
+        <span class="home-bell-wrap" aria-hidden="true">
+            <svg class="home-bell" viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2Zm6-6V11a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2Z"/></svg>
+            <span class="home-bell-dot"></span>
+        </span>
+    </div>
+
+    <div class="news-sub-field">
+        <label class="news-sub-label" for="ns-keywords">Schlagworte</label>
+        <input id="ns-keywords" class="form-control news-sub-input" type="text"
+               placeholder="z. B. Klima, Tech, Politik" @bind="keywordsRaw" @bind:event="oninput" />
+        <p class="news-sub-hint">Mehrere Begriffe durch <strong>Komma</strong> trennen.</p>
+    </div>
+
+    <div class="news-sub-field">
+        <span class="news-sub-label">Nachrichten-Kategorien</span>
+        <details class="news-ms">
+            <summary class="news-ms-summary">@CategorySummaryText</summary>
+            <div class="news-ms-body">
+                <div class="news-ms-search">
+                    <input type="search" class="form-control form-control-sm" placeholder="Kategorien durchsuchen…"
+                           aria-label="Kategorien durchsuchen" @bind="categorySearch" @bind:event="oninput" />
+                </div>
+                @foreach (var c in VisibleCategories)
+                {
+                    <label class="news-ms-row">
+                        <input type="checkbox" checked="@selectedCategories.Contains(c)"
+                               @onchange="e => ToggleCategory(c, (bool)e.Value!)" />
+                        <span>@NewsEnumGermanDisplay.CategoryDe(c)</span>
+                    </label>
+                }
+            </div>
+        </details>
+    </div>
+
+    <div class="news-sub-field">
+        <span class="news-sub-label">Sprachen</span>
+        <details class="news-ms">
+            <summary class="news-ms-summary">@LanguageSummaryText</summary>
+            <div class="news-ms-body">
+                <div class="news-ms-search">
+                    <input type="search" class="form-control form-control-sm" placeholder="Sprachen durchsuchen…"
+                           aria-label="Sprachen durchsuchen" @bind="languageSearch" @bind:event="oninput" />
+                </div>
+                @foreach (var lang in VisibleLanguages)
+                {
+                    <label class="news-ms-row">
+                        <input type="checkbox" checked="@selectedLanguages.Contains(lang)"
+                               @onchange="e => ToggleLanguage(lang, (bool)e.Value!)" />
+                        <span>@NewsEnumGermanDisplay.LanguageDe(lang)</span>
+                    </label>
+                }
+            </div>
+        </details>
+    </div>
+
+    <div class="news-sub-field">
+        <span class="news-sub-label">Länder</span>
+        <details class="news-ms">
+            <summary class="news-ms-summary">@CountrySummaryText</summary>
+            <div class="news-ms-body">
+                <div class="news-ms-search">
+                    <input type="search" class="form-control form-control-sm" placeholder="Länder durchsuchen…"
+                           aria-label="Länder durchsuchen" @bind="countrySearch" @bind:event="oninput" />
+                </div>
+                @foreach (var country in VisibleCountries)
+                {
+                    <label class="news-ms-row">
+                        <input type="checkbox" checked="@selectedCountries.Contains(country)"
+                               @onchange="e => ToggleCountry(country, (bool)e.Value!)" />
+                        <span>@NewsEnumGermanDisplay.CountryDe(country)</span>
+                    </label>
+                }
+            </div>
+        </details>
+    </div>
+
+    <div class="news-sub-field">
+        <span class="news-sub-label">Sende-Tage</span>
+        <p class="news-sub-hint mb-2">Tage auswählen, an denen Benachrichtigungen gesendet werden sollen.</p>
+        <div class="news-dow-row" role="group" aria-label="Wochentage">
+            @foreach (var d in AllWeekdays)
+            {
+                <button type="button" class="news-dow-pill @(dayActive[d] ? "active" : "")"
+                        @onclick="() => ToggleDay(d)" aria-pressed="@dayActive[d]">
+                    @if (dayActive[d])
+                    {
+                        <svg class="news-dow-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 7.28a.75.75 0 1 1 1.06-1.06l2.72 2.72 6.72-6.72a.75.75 0 0 1 1.06 0z"/></svg>
+                    }
+                    else
+                    {
+                        <svg class="news-dow-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                    }
+                    <span>@ShortWeekdayLabel(d)</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="news-sub-field">
+        <p class="news-sub-hint mb-2">Die folgenden Zeiten gelten für <strong>alle aktiven</strong> Sende-Tage. Du kannst mehrere Uhrzeiten hinzufügen.</p>
+        @for (var i = 0; i < sharedTimes.Count; i++)
+        {
+            var index = i;
+            <div class="news-time-row">
+                <input class="form-control news-sub-time" type="time" step="60"
+                       value="@sharedTimes[index]"
+                       @onchange="e => SetSharedTime(index, e.Value?.ToString())" />
+                @if (sharedTimes.Count > 1)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            @onclick="() => RemoveSharedTimeSlot(index)">Entfernen</button>
+                }
+            </div>
+        }
+        <button type="button" class="btn btn-sm btn-outline-primary mt-1" @onclick="AddSharedTimeSlot">
+            + weitere Zeit
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(newsFeedback))
+    {
+        <p class="user-profile-feedback" role="status">@newsFeedback</p>
+    }
+
+    <div class="user-profile-actions">
+        <button type="button" class="user-profile-submit" disabled="@isSaving" @onclick="SaveNewsConfiguration">News-Konfiguration speichern</button>
+    </div>
+</section>
+
+@code {
+    [Parameter] public News? InitialModel { get; set; }
+
+    [Parameter] public bool ShowBackButton { get; set; }
+
+    /// <summary>Invoked when leaving the form. <paramref name="listChanged"/> is true after a successful POST/PUT.</summary>
+    [Parameter] public EventCallback<bool> OnReturnToList { get; set; }
+
+    private string EditingLabel => InitialModel is { Id: > 0 } ? "News-Einstellungen bearbeiten" : "Neue News-Einstellung";
+
+    private int _editingId;
+
+    private static readonly NewsCategory[] AllNewsCategories = Enum.GetValues<NewsCategory>().ToArray();
+    private static readonly Language[] AllLanguages = Enum.GetValues<Language>().ToArray();
+    private static readonly Country[] AllCountries = Enum.GetValues<Country>().ToArray();
+    private static readonly Weekdays[] AllWeekdays = Enum.GetValues<Weekdays>().ToArray();
+
+    private string keywordsRaw = string.Empty;
+    private string categorySearch = string.Empty;
+    private string languageSearch = string.Empty;
+    private string countrySearch = string.Empty;
+
+    private IEnumerable<NewsCategory> VisibleCategories =>
+        AllNewsCategories.Where(c => MatchesSearch(categorySearch, c.ToString(), NewsEnumGermanDisplay.CategoryDe(c)));
+
+    private IEnumerable<Language> VisibleLanguages =>
+        AllLanguages.Where(l => MatchesSearch(languageSearch, l.ToString(), NewsEnumGermanDisplay.LanguageDe(l)));
+
+    private IEnumerable<Country> VisibleCountries =>
+        AllCountries.Where(c => MatchesSearch(countrySearch, c.ToString(), NewsEnumGermanDisplay.CountryDe(c)));
+
+    private string CategorySummaryText => SelectionSummary(
+        selectedCategories,
+        NewsEnumGermanDisplay.CategoryDe,
+        "Noch keine Kategorie gewählt");
+
+    private string LanguageSummaryText => SelectionSummary(
+        selectedLanguages,
+        NewsEnumGermanDisplay.LanguageDe,
+        "Noch keine Sprache gewählt");
+
+    private string CountrySummaryText => SelectionSummary(
+        selectedCountries,
+        NewsEnumGermanDisplay.CountryDe,
+        "Noch kein Land gewählt");
+
+    private static bool MatchesSearch(string query, string enumName, string labelDe)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return true;
+        var q = query.Trim();
+        return labelDe.Contains(q, StringComparison.CurrentCultureIgnoreCase)
+               || enumName.Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string SelectionSummary<T>(HashSet<T> selected, Func<T, string> labelDe, string emptyText)
+    {
+        if (selected.Count == 0)
+            return emptyText;
+        return string.Join(", ", selected.OrderBy(labelDe).Select(labelDe));
+    }
+
+    private readonly HashSet<NewsCategory> selectedCategories = new();
+    private readonly HashSet<Language> selectedLanguages = new();
+    private readonly HashSet<Country> selectedCountries = new();
+
+    private readonly Dictionary<Weekdays, bool> dayActive = AllWeekdays.ToDictionary(d => d, _ => false);
+
+    private readonly List<string> sharedTimes = new() { "10:00" };
+
+    private string? newsFeedback;
+    private bool isSaving;
+
+    protected override void OnParametersSet() => ApplyInitialModel();
+
+    private void ApplyInitialModel()
+    {
+        newsFeedback = null;
+        if (InitialModel is null)
+        {
+            _editingId = 0;
+            ResetEmptyForm();
+            return;
+        }
+
+        _editingId = InitialModel.Id;
+        keywordsRaw = InitialModel.Keywords is { Count: > 0 } ? string.Join(", ", InitialModel.Keywords) : string.Empty;
+
+        selectedCategories.Clear();
+        if (InitialModel.Category is not null)
+        {
+            foreach (var c in InitialModel.Category)
+                selectedCategories.Add(c);
+        }
+
+        selectedLanguages.Clear();
+        if (InitialModel.Languages is not null)
+        {
+            foreach (var l in InitialModel.Languages)
+                selectedLanguages.Add(l);
+        }
+
+        selectedCountries.Clear();
+        if (InitialModel.Countries is not null)
+        {
+            foreach (var c in InitialModel.Countries)
+                selectedCountries.Add(c);
+        }
+
+        foreach (var d in AllWeekdays)
+            dayActive[d] = false;
+        foreach (var d in InitialModel.SendOnWeekdays)
+            dayActive[d] = true;
+
+        sharedTimes.Clear();
+        if (InitialModel.SendAtTimes.Count > 0)
+        {
+            foreach (var t in InitialModel.SendAtTimes.OrderBy(x => x))
+                sharedTimes.Add(t.ToString("HH:mm"));
+        }
+        else
+        {
+            sharedTimes.Add("10:00");
+        }
+    }
+
+    private void ResetEmptyForm()
+    {
+        keywordsRaw = string.Empty;
+        categorySearch = string.Empty;
+        languageSearch = string.Empty;
+        countrySearch = string.Empty;
+        selectedCategories.Clear();
+        selectedLanguages.Clear();
+        selectedCountries.Clear();
+        foreach (var d in AllWeekdays)
+            dayActive[d] = false;
+        sharedTimes.Clear();
+        sharedTimes.Add("10:00");
+    }
+
+    private async Task BackToList()
+    {
+        if (OnReturnToList.HasDelegate)
+            await OnReturnToList.InvokeAsync(false).ConfigureAwait(false);
+    }
+
+    private static string ShortWeekdayLabel(Weekdays d) => d switch
+    {
+        Weekdays.Monday => "Mo",
+        Weekdays.Tuesday => "Di",
+        Weekdays.Wednesday => "Mi",
+        Weekdays.Thursday => "Do",
+        Weekdays.Friday => "Fr",
+        Weekdays.Saturday => "Sa",
+        Weekdays.Sunday => "So",
+        _ => d.ToString()
+    };
+
+    private void ToggleCategory(NewsCategory c, bool on)
+    {
+        if (on) selectedCategories.Add(c);
+        else selectedCategories.Remove(c);
+    }
+
+    private void ToggleLanguage(Language lang, bool on)
+    {
+        if (on) selectedLanguages.Add(lang);
+        else selectedLanguages.Remove(lang);
+    }
+
+    private void ToggleCountry(Country country, bool on)
+    {
+        if (on) selectedCountries.Add(country);
+        else selectedCountries.Remove(country);
+    }
+
+    private void ToggleDay(Weekdays d) => dayActive[d] = !dayActive[d];
+
+    private void SetSharedTime(int index, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+        if (index < 0 || index >= sharedTimes.Count)
+            return;
+        sharedTimes[index] = NormalizeTime(value);
+    }
+
+    private void AddSharedTimeSlot()
+    {
+        var template = sharedTimes.Count > 0 ? sharedTimes[^1] : "10:00";
+        sharedTimes.Add(NormalizeTime(template));
+    }
+
+    private void RemoveSharedTimeSlot(int index)
+    {
+        if (sharedTimes.Count <= 1 || index < 0 || index >= sharedTimes.Count)
+            return;
+        sharedTimes.RemoveAt(index);
+    }
+
+    private static string NormalizeTime(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return "10:00";
+        var s = raw.Trim();
+        return s.Length >= 5 ? s[..5] : s;
+    }
+
+    private async Task SaveNewsConfiguration()
+    {
+        newsFeedback = null;
+        await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
+        var userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        if (userId is null)
+        {
+            newsFeedback = "Bitte erneut anmelden.";
+            return;
+        }
+
+        var keywords = keywordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => s.Length > 0).ToList();
+
+        var weekdays = dayActive.Where(kv => kv.Value).Select(kv => kv.Key).OrderBy(d => (int)d).ToList();
+        if (weekdays.Count == 0)
+        {
+            newsFeedback = "Bitte mindestens einen Sendetag wählen.";
+            return;
+        }
+
+        if (sharedTimes.Count == 0)
+        {
+            newsFeedback = "Bitte mindestens eine Sendezeit angeben.";
+            return;
+        }
+
+        var times = sharedTimes
+            .Select(t => TimeOnly.ParseExact(NormalizeTime(t), "HH:mm", CultureInfo.InvariantCulture))
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        var news = new News
+        {
+            Id = _editingId,
+            UserId = userId.Value,
+            Keywords = keywords.Count > 0 ? keywords : null,
+            Category = selectedCategories.Count > 0 ? selectedCategories.ToList() : null,
+            Languages = selectedLanguages.Count > 0 ? selectedLanguages.ToList() : null,
+            Countries = selectedCountries.Count > 0 ? selectedCountries.ToList() : null,
+            SendOnWeekdays = weekdays,
+            SendAtTimes = times
+        };
+
+        isSaving = true;
+        try
+        {
+            HttpResponseMessage response;
+            if (_editingId <= 0)
+            {
+                response = await Http.PostAsJsonAsync("api/v1/users/news", news, HermesNewsJson.Options).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    newsFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                    return;
+                }
+
+                if (OnReturnToList.HasDelegate)
+                    await OnReturnToList.InvokeAsync(true).ConfigureAwait(false);
+                else
+                {
+                    var scope = await response.Content.ReadFromJsonAsync<NewsScope>(HermesNewsJson.Options).ConfigureAwait(false);
+                    newsFeedback = scope != null
+                        ? $"Gespeichert (News-Konfiguration #{scope.NewsId})."
+                        : "Gespeichert.";
+                }
+            }
+            else
+            {
+                response = await Http.PutAsJsonAsync("api/v1/users/news", news, HermesNewsJson.Options).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    newsFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                    return;
+                }
+
+                if (OnReturnToList.HasDelegate)
+                    await OnReturnToList.InvokeAsync(true).ConfigureAwait(false);
+                else
+                    newsFeedback = "Änderungen gespeichert.";
+            }
+        }
+        catch (Exception ex)
+        {
+            newsFeedback = $"Speichern fehlgeschlagen: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+                return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return $"Anfrage fehlgeschlagen ({(int)response.StatusCode}).";
+    }
+}

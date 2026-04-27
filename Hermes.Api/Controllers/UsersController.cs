@@ -1,4 +1,5 @@
 using Hermes.Api.Http;
+using Hermes.Application.Models;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Interfaces.Services;
@@ -42,33 +43,52 @@ public class UsersController(IUserService userService) : ControllerBase
         return Ok(userScope);
     }
 
-    /// <summary>Update an existing user.</summary>
+    /// <summary>Update profile (name, e-mail, optional password change).</summary>
     /// <remarks>
-    /// <b>PUT</b> <c>api/v1/users</c> — Body:
+    /// <b>PUT</b> <c>api/v1/users</c> — Body (camelCase):
     /// <code>
     /// {
     ///   "id": 1,
     ///   "name": "Max Mustermann",
     ///   "email": "max@example.com",
-    ///   "passwordHash": "only-if-you-change-password-otherwise-omit-or-send-current-hash",
-    ///   "isEmailVerified": true,
-    ///   "twoFactorCode": null,
-    ///   "twoFactorExpiry": null
+    ///   "newPassword": "omit-or-empty-to-keep",
+    ///   "currentPassword": "required-when-newPassword-is-set"
     /// }
     /// </code>
     /// </remarks>
     [HttpPut]
-    public async Task<ActionResult> UpdateUser([FromBody] User request, CancellationToken cancellationToken)
+    public async Task<ActionResult> UpdateUser([FromBody] UserProfileUpdateRequest request, CancellationToken cancellationToken)
     {
         if (request.Id <= 0)
             return this.BadRequestProblem("User Id is required for update.");
         if (string.IsNullOrEmpty(request.Name))
             return this.BadRequestProblem("Name is required.");
+        if (string.IsNullOrEmpty(request.Email))
+            return this.BadRequestProblem("Email is required.");
+
+        if (!string.IsNullOrWhiteSpace(request.NewPassword) && string.IsNullOrWhiteSpace(request.CurrentPassword))
+            return this.BadRequestProblem("Current password is required when setting a new password.");
 
         if (this.WhenCannotAccessUser(request.Id) is { } denied)
             return denied;
 
-        await userService.UpdateUserAsync(request, cancellationToken).ConfigureAwait(false);
+        var user = new User
+        {
+            Id = request.Id,
+            Name = request.Name,
+            Email = request.Email,
+            PasswordHash = request.NewPassword
+        };
+
+        try
+        {
+            await userService.UpdateUserAsync(user, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ArgumentException ex)
+        {
+            return this.BadRequestProblem(ex.Message);
+        }
+
         return Ok();
     }
 

@@ -1,0 +1,44 @@
+@using Hermes.WebFrontend.Client.Services.Auth
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject NavigationManager Navigation
+@inject AuthLogoutService Logout
+
+<header class="hermes-top-nav">
+    <NavLink href="/home" class="hermes-top-nav__brand" Match="NavLinkMatch.All" aria-label="Zur Startseite">
+        <HermesBrand />
+    </NavLink>
+
+    <nav class="hermes-top-nav__menu" aria-label="Hauptmenü">
+        <NavLink href="/home" class="hermes-top-nav__item" Match="NavLinkMatch.All">
+            Home
+        </NavLink>
+        <NavLink href="/user-settings" class="hermes-top-nav__item" Match="NavLinkMatch.Prefix">
+            Benutzer
+        </NavLink>
+        <NavLink href="/news-settings" class="hermes-top-nav__item" Match="NavLinkMatch.Prefix">
+            News
+        </NavLink>
+        <button type="button" class="hermes-top-nav__logout" @onclick="OnLogoutAsync" disabled="@logoutBusy">
+            @(logoutBusy ? "…" : "Abmelden")
+        </button>
+    </nav>
+</header>
+
+@code {
+    private bool logoutBusy;
+
+    private async Task OnLogoutAsync()
+    {
+        if (logoutBusy)
+            return;
+        logoutBusy = true;
+        try
+        {
+            await Logout.SignOutAndReloadAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            logoutBusy = false;
+        }
+    }
+}

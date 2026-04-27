@@ -70,8 +70,12 @@ namespace Hermes.Domain.Interfaces.DBContext
         /// </summary>
         Task<User?> GetUserEntityForAuthenticationByEmailAsync(string email, CancellationToken cancellationToken = default);
 
+        /// <summary>Loads the user row by id (including password hash), no tracking.</summary>
+        Task<User?> GetUserEntityByIdAsync(int id, CancellationToken cancellationToken = default);
+
         /// <summary>
-        /// Marks the user as modified and saves changes immediately.
+        /// Updates scalar fields on the user row and saves. When <see cref="User.PasswordHash"/> is null or whitespace,
+        /// the stored password hash is left unchanged (caller passes a new BCrypt hash only when the password should change).
         /// </summary>
         /// <param name="user">The user entity to update.</param>
         /// <param name="cancellationToken">Token to cancel the operation.</param>

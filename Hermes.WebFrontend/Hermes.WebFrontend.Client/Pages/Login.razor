@@ -1,0 +1,147 @@
+@page "/login"
+@layout AuthLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Net.Http.Json
+@using System.Text.Json
+@using Hermes.Application.Models
+@using Hermes.WebFrontend.Client.Components.Auth
+@using Hermes.WebFrontend.Client.Model
+@using Hermes.WebFrontend.Client.Services
+@using Hermes.WebFrontend.Client.Services.Auth
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject AuthTokenStore TokenStore
+
+<PageTitle>Anmelden — Hermes</PageTitle>
+
+<div class="auth-split">
+    <div class="auth-split__left">
+        <div class="hermes-auth-card">
+            <div class="hermes-auth-brand-row">
+                <HermesBrand />
+            </div>
+            <h1 class="hermes-auth-title">Anmelden</h1>
+            <p class="hermes-auth-subtitle">Hermes — personalisierte News.</p>
+
+            <div class="hermes-auth-fields">
+                <label class="hermes-visually-hidden" for="login-user">Benutzername oder E-Mail</label>
+                <input id="login-user" class="hermes-auth-input" type="text" autocomplete="username"
+                       placeholder="Benutzername / E-Mail" @bind="userName" @bind:event="oninput" />
+
+                <label class="hermes-visually-hidden" for="login-pass">Passwort</label>
+                <div class="hermes-auth-input-wrap">
+                    <input id="login-pass" class="hermes-auth-input hermes-auth-input--in-wrap" type="@(showLoginPassword ? "text" : "password")" autocomplete="current-password"
+                           placeholder="Passwort" @bind="password" @bind:event="oninput" />
+                    <button type="button" class="hermes-auth-input-reveal"
+                            @onclick="() => showLoginPassword = !showLoginPassword"
+                            aria-pressed="@(showLoginPassword ? "true" : "false")"
+                            aria-label="@(showLoginPassword ? "Passwort verbergen" : "Passwort anzeigen")">
+                        @if (showLoginPassword)
+                        {
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(loginError))
+            {
+                <p class="hermes-auth-error" role="alert">@loginError</p>
+            }
+
+            <button type="button" class="hermes-auth-submit" disabled="@isBusy" @onclick="LoginAsync">Anmelden</button>
+
+            <p class="hermes-auth-footer">
+                Noch kein Account? <a href="/register">Jetzt registrieren</a>
+            </p>
+        </div>
+    </div>
+    <AuthSwissPoster />
+</div>
+
+@code {
+    private string userName = string.Empty;
+    private string password = string.Empty;
+    private bool showLoginPassword;
+    private string? loginError;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TokenStore.EnsureLoadedFromStorageAsync();
+        if (!string.IsNullOrEmpty(TokenStore.AccessToken))
+            Nav.NavigateTo("/home", forceLoad: false, replace: true);
+    }
+
+    private async Task LoginAsync()
+    {
+        loginError = null;
+        if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(password))
+        {
+            loginError = "Bitte Benutzername und Passwort eingeben.";
+            return;
+        }
+
+        isBusy = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                "api/v1/auth/login",
+                new LoginRequest { NameOrEmail = userName.Trim(), Password = password },
+                JsonSerializerOptions.Web);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                loginError = await ReadProblemDetailAsync(response).ConfigureAwait(false);
+                return;
+            }
+
+            var body = await response.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonSerializerOptions.Web).ConfigureAwait(false);
+            if (body is null || string.IsNullOrEmpty(body.AccessToken) || string.IsNullOrEmpty(body.RefreshToken))
+            {
+                loginError = "Unerwartete Antwort vom Server.";
+                return;
+            }
+
+            await TokenStore.PersistAsync(body.AccessToken, body.RefreshToken).ConfigureAwait(false);
+            Nav.NavigateTo("/home");
+        }
+        catch (HttpRequestException ex)
+        {
+            loginError = $"Verbindung zur API fehlgeschlagen. Läuft die API und stimmt ApiBaseUrl? ({ex.Message})";
+        }
+        catch (Exception ex)
+        {
+            loginError = $"Anmeldung fehlgeschlagen: {ex.Message}";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private static async Task<string?> ReadProblemDetailAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out var d))
+                return d.GetString();
+        }
+        catch
+        {
+            // ignore parse errors
+        }
+
+        return response.StatusCode switch
+        {
+            System.Net.HttpStatusCode.Unauthorized => "Benutzername oder Passwort ist falsch.",
+            _ => $"Anmeldung fehlgeschlagen ({(int)response.StatusCode}).",
+        };
+    }
+}

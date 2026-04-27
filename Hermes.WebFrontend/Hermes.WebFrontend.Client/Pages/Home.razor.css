@@ -1,0 +1,238 @@
+/* Swiss poster home: black rail + vertical type, cream content panel */
+
+/* Gleicher Farbzyklus wie MainLayout-Poster (nur part1/part2) */
+@keyframes poster-home-accent-cycle {
+    0%,
+    100% {
+        color: var(--poster-accent, #e03616);
+    }
+    25% {
+        color: var(--accent-orange, #ff6b00);
+    }
+    50% {
+        color: var(--auth-poster-sun, #f3a81e);
+    }
+    75% {
+        color: var(--accent-orange, #ff6b00);
+    }
+}
+
+.poster-home {
+    display: grid;
+    grid-template-columns: minmax(10rem, 34%) 1fr;
+    align-items: stretch;
+    min-height: calc(100vh - var(--top-nav-height, 80px));
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-primary, "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif);
+    /*text-transform: lowercase;*/
+    color: var(--poster-ink, #0d0d0d);
+}
+
+.poster-home__rail {
+    container-type: size;
+    container-name: poster-rail;
+    background: var(--poster-ink, #0d0d0d);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: clamp(0.35rem, 1.2vh, 0.75rem) clamp(0.5rem, 1.5vw, 1rem);
+    position: relative;
+    overflow: hidden;
+    align-self: stretch;
+    min-height: 0;
+}
+
+.poster-home__rail::after {
+    content: "";
+    position: absolute;
+    top: 0.75rem;
+    right: 0;
+    bottom: 0.75rem;
+    width: 1px;
+    background: var(--poster-beige, #f2efe8);
+    opacity: 0.35;
+}
+
+/* Layered vertical type: grid stack + rotate; two reds offset, beige on top */
+.poster-home__vertical-wrapper {
+    flex: 1 1 auto;
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    transform: rotate(-90deg);
+    transform-origin: center center;
+}
+
+.poster-home__vertical {
+    grid-area: 1 / 1;
+    margin: 0;
+    font-size: clamp(3.25rem, min(11vw, 42vmin), 7.5rem);
+    font-size: clamp(3.25rem, min(22.5cqh, 70cqi), 10rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+    user-select: none;
+    font-family: var(--font-primary, "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif);
+}
+
+.poster-home__vertical--part1 {
+    z-index: 3;
+    opacity: 80%;
+    color: var(--poster-accent, #e03616);
+    transform: translate(-0.1em, 0.2em);
+    animation: poster-home-accent-cycle 7s ease-in-out infinite;
+}
+
+.poster-home__vertical--part2 {
+    z-index: 1;
+    color: var(--poster-accent, #e03616);
+    transform: translate(0.1em, -0.2em);
+    animation: poster-home-accent-cycle 7s ease-in-out infinite;
+    animation-delay: -1.4s;
+}
+
+.poster-home__vertical--part3 {
+    z-index: 2;
+    color: #f5f2eb;
+    transform: none;
+}
+
+.poster-home__main {
+    background: var(--poster-beige, #f2efe8);
+    padding: clamp(2rem, 5vw, 4rem) clamp(1.5rem, 4vw, 3.5rem) 3rem;
+    max-width: 52rem;
+    text-align: left;
+    align-self:center;
+    border-left: 1px solid rgba(13, 13, 13, 0.08);
+}
+
+.poster-home__kicker {
+    margin: 0 0 1.25rem;
+    font-size: clamp(0.95rem, 1.8vw, 1.1rem);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--poster-accent, #e03616);
+}
+
+.poster-home__title {
+    margin: 0 0 1rem;
+    font-size: clamp(1.85rem, 4.2vw, 3rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--poster-ink, #0d0d0d);
+}
+
+.poster-home__subtitle {
+    margin: 0 0 1.75rem;
+    font-size: clamp(1.05rem, 2vw, 1.35rem);
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--poster-ink, #0d0d0d);
+}
+
+.poster-home__body {
+    margin: 0 0 1.25rem;
+    font-size: clamp(0.92rem, 1.5vw, 1.05rem);
+    font-weight: 400;
+    line-height: 1.65;
+    max-width: 40rem;
+    color: var(--poster-ink, #0d0d0d);
+}
+
+.poster-home__body:last-of-type {
+    margin-bottom: 2rem;
+}
+
+.poster-home__body strong {
+    font-weight: 700;
+}
+
+.poster-home__hairline {
+    height: 1px;
+    background: var(--poster-ink, #0d0d0d);
+    opacity: 0.2;
+    margin: 2rem 0 1.25rem;
+    max-width: 12rem;
+}
+
+.poster-home__footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 2rem;
+}
+
+.poster-home__footer-link {
+    display: inline-block;
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--poster-ink, #0d0d0d);
+    text-decoration: none;
+    border-bottom: 2px solid var(--poster-accent, #e03616);
+    padding-bottom: 2px;
+    width: fit-content;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.poster-home__footer-link:hover {
+    color: var(--poster-accent, #e03616);
+    border-bottom-color: var(--poster-ink, #0d0d0d);
+}
+
+
+@media (max-width: 768px) {
+    .poster-home {
+        grid-template-columns: 1fr;
+    }
+
+    .poster-home__rail {
+        container-type: normal;
+        min-height: auto;
+        padding: 1rem 1rem 1.25rem;
+        align-items: center;
+    }
+
+    .poster-home__rail::after {
+        display: none;
+    }
+
+    .poster-home__vertical-wrapper {
+        flex: 0 0 auto;
+    }
+
+    .poster-home__vertical {
+        font-size: clamp(2.5rem, 14vw, 4.25rem);
+    }
+
+    .poster-home__vertical--part1 {
+        transform: translate(0.1em, 0.2em);
+    }
+
+    .poster-home__vertical--part2 {
+        transform: translate(0.1em, -0.2em);
+    }
+
+    .poster-home__vertical--part3 {
+        transform: none;
+    }
+
+    .poster-home__main {
+        border-left: none;
+        border-top: 2px solid var(--poster-ink, #0d0d0d);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .poster-home__vertical--part1,
+    .poster-home__vertical--part2 {
+        animation: none;
+    }
+}

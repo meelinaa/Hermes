@@ -1,0 +1,118 @@
+@page "/home"
+@layout AppHomeLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Net.Http.Json
+@using System.Text.Json
+@using Hermes.Domain.DTOs
+@using Hermes.WebFrontend.Client.Services
+@using Hermes.WebFrontend.Client.Services.Auth
+@using Hermes.WebFrontend.Client.Services.User
+@implements IDisposable
+@inject AuthTokenStore AuthTokens
+@inject HttpClient Http
+@inject UserProfileRefreshNotifier ProfileRefresh
+
+<PageTitle>Home — Hermes</PageTitle>
+
+<div class="poster-home">
+    <div class="poster-home__rail" aria-hidden="true">
+        <div class="poster-home__vertical-wrapper">
+            <span class="poster-home__vertical poster-home__vertical--part1">hermes</span>
+            <span class="poster-home__vertical poster-home__vertical--part2">hermes</span>
+            <span class="poster-home__vertical poster-home__vertical--part3">hermes</span>
+        </div>
+    </div>
+
+    <div class="poster-home__main">
+        <p class="poster-home__kicker">personalisierter news service</p>
+
+        @if (!string.IsNullOrWhiteSpace(welcomeLine))
+        {
+            <h1 class="poster-home__title">@welcomeLine</h1>
+        }
+
+        <p class="poster-home__subtitle">Eigenes Fullstack-Projekt zur Personalisierung von News-Inhalten</p>
+
+        <p class="poster-home__body">
+            Hermes aggregiert und filtert Nachrichten basierend auf individuellen Präferenzen.
+            Themen, Kategorien, Sprachen und Regionen lassen sich gezielt konfigurieren.
+            Die Zustellung erfolgt zeitgesteuert als kompakter, strukturierter News-Feed per E-Mail.
+        </p>
+
+        <p class="poster-home__body">
+            Technisch basiert die Anwendung auf einem Blazor WebAssembly-Frontend mit Authentifizierung sowie einer ASP.NET Web API.
+            Die Architektur folgt einer klaren Trennung von Domain, Application und Infrastructure (inkl. Entity Framework Core) und ist auf Erweiterbarkeit ausgelegt.
+        </p>
+
+        <div class="poster-home__hairline" aria-hidden="true"></div>
+
+        <footer class="poster-home__footer">
+            <a class="poster-home__footer-link" href="https://www.linkedin.com/in/melina-kiefer-079370239/" target="_blank" rel="noopener noreferrer">linkedin</a>
+            <a class="poster-home__footer-link" href="https://github.com/meelinaa" target="_blank" rel="noopener noreferrer">github</a>
+        </footer>
+    </div>
+</div>
+
+@code {
+    private string? welcomeLine;
+    private Func<Task>? _profileChangedHandler;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _profileChangedHandler = OnProfileChangedAsync;
+        ProfileRefresh.Subscribe(_profileChangedHandler);
+        await LoadWelcomeAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnProfileChangedAsync()
+    {
+        await LoadWelcomeAsync().ConfigureAwait(false);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadWelcomeAsync()
+    {
+        await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
+        var userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        if (userId is null)
+        {
+            welcomeLine = ApplyWelcomeFromJwt();
+            return;
+        }
+
+        try
+        {
+            var response = await Http.GetAsync($"api/v1/users/{userId.Value}").ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                var scope = await response.Content.ReadFromJsonAsync<UserScope>(JsonSerializerOptions.Web).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(scope?.Name))
+                {
+                    welcomeLine = $"Willkommen {scope.Name.Trim()}.";
+                    return;
+                }
+            }
+        }
+        catch
+        {
+            // JWT-Fallback unten
+        }
+
+        welcomeLine = ApplyWelcomeFromJwt();
+    }
+
+    private string? ApplyWelcomeFromJwt()
+    {
+        var name = JwtPayloadDisplayName.TryGet(AuthTokens.AccessToken);
+        return string.IsNullOrWhiteSpace(name) ? null : $"Willkommen {name.Trim()}.";
+    }
+
+    public void Dispose()
+    {
+        if (_profileChangedHandler is not null)
+        {
+            ProfileRefresh.Unsubscribe(_profileChangedHandler);
+            _profileChangedHandler = null;
+        }
+    }
+}
