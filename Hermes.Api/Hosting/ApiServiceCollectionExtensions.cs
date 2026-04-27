@@ -1,8 +1,12 @@
 using FluentValidation;
+using Hangfire;
+using Hangfire.MySql;
+using Hermes.Api.Hangfire;
 using Hermes.Api.Validation;
+using Hermes.Application.Scheduling;
 using Hermes.Application.Security;
 using Hermes.Application.Services;
-using Hermes.Domain.Interfaces.DBContext;
+using Hermes.Application.Ports;
 using Hermes.Domain.Interfaces.Services;
 using Hermes.Infrastructure.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -32,7 +36,7 @@ public static class ApiServiceCollectionExtensions
 
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
-        services.AddScoped<IHermesDbContext>(sp => sp.GetRequiredService<HermesDbContext>());
+        services.AddScoped<IHermesDataStore>(sp => sp.GetRequiredService<HermesDbContext>());
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();
@@ -40,6 +44,10 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<INewsService, NewsService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
+
+        services.AddSingleton(_ => CreateHangfireJobStorage(configuration));
+        services.AddSingleton<INewsletterSchedulerRunTrigger, HangfireNewsletterSchedulerRunTrigger>();
+        Log.Information("Registered Hangfire JobStorage (MySQL) for newsletter scheduler triggers (same DB as Hermes.Worker).");
 
         services.AddControllers()
             .AddJsonOptions(options =>
@@ -92,6 +100,21 @@ public static class ApiServiceCollectionExtensions
                     });
                 }
             };
+        });
+    }
+
+    private static JobStorage CreateHangfireJobStorage(IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? configuration["CONNECTION_STRING"]
+            ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
+        var hangfireConnectionRaw = configuration.GetConnectionString("Hangfire");
+        var hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
+            ? connectionString
+            : hangfireConnectionRaw;
+        return new MySqlStorage(hangfireConnection, new MySqlStorageOptions
+        {
+            TablesPrefix = "Hangfire"
         });
     }
 

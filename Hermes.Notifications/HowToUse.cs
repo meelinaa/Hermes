@@ -24,7 +24,7 @@
 //        DefaultReplyToName: "No Reply",
 //        XMailer: "Hermes/1.0");
 
-//    private readonly MailHogSettings _mailHog = new(BaseUrl: "http://localhost:8025");
+//    private readonly MailHogSettings _mailHog = new() { BaseUrl = "http://localhost:8025" };
 
 //    /// <summary>
 //    /// Sends a single test message to MailHog (SMTP).

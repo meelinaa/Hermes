@@ -1,9 +1,9 @@
 using Hermes.Domain.Entities;
-using Hermes.Domain.Interfaces.DBContext;
+using Hermes.Application.Ports;
 
 namespace Hermes.Application.Services;
 
-public sealed class NotificationLogService(IHermesDbContext db) : INotificationLogService
+public sealed class NotificationLogService(IHermesDataStore db) : INotificationLogService
 {
     public async Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
     {

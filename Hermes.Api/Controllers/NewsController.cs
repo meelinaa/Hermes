@@ -1,6 +1,7 @@
 using FluentValidation;
 using Hermes.Api.Http;
 using Hermes.Api.Validation;
+using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
@@ -13,7 +14,9 @@ namespace Hermes.Api.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/v1/users/news")]
-public class NewsController(INewsService newsService) : ControllerBase
+public class NewsController(
+    INewsService newsService,
+    INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger) : ControllerBase
 {
     /// <remarks><b>GET</b> <c>api/v1/users/news/{userId}/list</c> — no body.</remarks>
     [HttpGet("{userId}/list")]
@@ -56,6 +59,7 @@ public class NewsController(INewsService newsService) : ControllerBase
             return this.ForbiddenProblem("Body userId must match the authenticated user (or omit/zero to use your account).");
 
         int newsId = await newsService.SetNewsAsync(news, cancellationToken).ConfigureAwait(false);
+        newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         NewsScope scope = new() { UserId = news.UserId, NewsId = newsId };
         return Ok(scope);
     }
@@ -80,6 +84,7 @@ public class NewsController(INewsService newsService) : ControllerBase
             return fv.ToValidationProblem(this);
 
         await newsService.UpdateNewsAsync(news, cancellationToken).ConfigureAwait(false);
+        newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         return Ok();
     }
 
@@ -108,6 +113,7 @@ public class NewsController(INewsService newsService) : ControllerBase
             return this.NotFoundProblem();
 
         await newsService.DeleteNewsAsync(deleteNews, cancellationToken).ConfigureAwait(false);
+        newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         return Ok();
     }
 }

@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using Hermes.Application.Options;
+using Hermes.Application.Ports;
 using Hermes.Domain.Entities;
-using Hermes.Domain.Interfaces.DBContext;
 using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Security;
@@ -10,7 +10,7 @@ namespace Hermes.Application.Security;
 /// Implements refresh-token persistence and rotation on top of <see cref="IJwtTokenIssuer"/> for access tokens.
 /// </summary>
 public sealed class AuthTokenService(
-    IHermesDbContext db,
+    IHermesDataStore db,
     IJwtTokenIssuer jwt,
     IOptions<JwtOptions> options) : IAuthTokenService
 {

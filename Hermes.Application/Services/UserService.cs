@@ -1,13 +1,13 @@
 using Hermes.Application.Models;
+using Hermes.Application.Ports;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
-using Hermes.Domain.Interfaces.DBContext;
 using Hermes.Domain.Interfaces.Services;
 
 namespace Hermes.Application.Services;
 
-public sealed class UserService(IHermesDbContext db) : IUserService
+public sealed class UserService(IHermesDataStore db) : IUserService
 {
     public async Task<UserScope> RegisterUserAsync(User user, CancellationToken cancellationToken = default)
     {

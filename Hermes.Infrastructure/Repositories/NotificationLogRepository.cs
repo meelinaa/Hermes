@@ -1,7 +1,7 @@
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
-using Hermes.Domain.Interfaces.DBContext;
 using Hermes.Domain.Interfaces.Repositories;
+using Hermes.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Infrastructure.Repositories;
@@ -12,7 +12,7 @@ namespace Hermes.Infrastructure.Repositories;
 /// <remarks>
 /// Initializes a new instance of <see cref="NotificationLogRepository"/>.
 /// </remarks>
-public sealed class NotificationLogRepository(IHermesDbContext db) : INotificationLogRepository
+public sealed class NotificationLogRepository(HermesDbContext db) : INotificationLogRepository
 {
 
     /// <inheritdoc />
