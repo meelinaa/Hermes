@@ -1,17 +1,14 @@
 using System.Text.Json.Serialization;
 
-namespace Hermes.NewsClient.DTOs;
+namespace Hermes.Infrastructure.NewsDataIo;
 
-/// <summary>
-/// Top-level JSON response from the NewsData.io latest-news API.
-/// </summary>
-public class NewsDataIoDto
+public sealed class NewsDataIoDto
 {
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
     [JsonPropertyName("totalResults")]
-    public int TotalResults { get; set; } = 0;
+    public int TotalResults { get; set; }
 
     [JsonPropertyName("results")]
     public IEnumerable<ResultsDto>? Results { get; set; }

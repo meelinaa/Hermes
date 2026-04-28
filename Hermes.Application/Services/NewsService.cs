@@ -1,9 +1,9 @@
 using Hermes.Domain.Entities;
-using Hermes.Domain.Interfaces.DBContext;
+using Hermes.Application.Ports;
 
 namespace Hermes.Application.Services;
 
-public sealed class NewsService(IHermesDbContext db) : INewsService
+public sealed class NewsService(IHermesDataStore db) : INewsService
 {
     public async Task<int> SetNewsAsync(News news, CancellationToken cancellationToken = default)
     {

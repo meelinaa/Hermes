@@ -1,8 +1,8 @@
 # Hermes
 
-Hermes is a **personal news digest service**. The idea is that you configure **who you are** and **what news you care about** once—through a **Blazor web frontend** (interactive UI wired to the API)—and the system persists that configuration in a database via a **REST API**. On a **schedule** you define (weekdays and times), a **background component** fetches matching articles from a **third-party news API** (**[NewsData.io](https://newsdata.io/)** — already integrated via `**Hermes.NewsClient`**), composes an **HTML email** using a dedicated layout, and sends it so you receive **regular, predictable** news by mail. Hermes does not own the news corpus; it **calls NewsData.io’s HTTP API** (e.g. the **latest** endpoint) using your API key and the filters derived from each user’s saved profile.
+Hermes is a **personal news digest service**. The idea is that you configure **who you are** and **what news you care about** once—through a **Blazor web frontend** (interactive UI wired to the API)—and the system persists that configuration in a database via a **REST API**. On a **schedule** you define (weekdays and times), the **`Hermes.Worker`** background host (Hangfire + MySQL job storage) fetches matching articles from a **third-party news API** (**[NewsData.io](https://newsdata.io/)** — HTTP integration in **`Hermes.Infrastructure`**, with a standalone **`Hermes.NewsClient`** library still in the repo for reference/experiments), composes an **HTML email** using a dedicated layout, and sends it so you receive **regular, predictable** news by mail. Hermes does not own the news corpus; it **calls NewsData.io’s HTTP API** (e.g. the **latest** endpoint) using your API key and the filters derived from each user’s saved profile.
 
-The codebase is intentionally structured for **clarity and maintainability**: layered architecture, explicit domain models, validation at the API boundary, and separate libraries for **news retrieval** and **email delivery**. **Automated tests** are planned as the surface area stabilizes. **Docker** is the intended packaging and deployment story for running the API, database, frontend, and future worker process together.
+The codebase is intentionally structured for **clarity and maintainability**: layered architecture, explicit domain models, validation at the API boundary, and separate libraries for **news HTTP access** and **email delivery**. **Automated tests** are planned as the surface area stabilizes. **Docker** is the intended packaging and deployment story for running the API, database, frontend, and **worker** together.
 
 For **HTTP route details, request/response examples, and OpenAPI notes**, see `[Hermes.Api/README.md](Hermes.Api/README.md)`.
 
@@ -12,9 +12,9 @@ For **HTTP route details, request/response examples, and OpenAPI notes**, see `[
 
 1. **Web UI**: Sign in, manage account basics, and edit one or more **news profiles** per user (keywords, categories, languages, countries, send days, send times).
 2. **API + database**: The UI talks to **Hermes.Api**; settings are validated and stored as structured entities (not ad hoc JSON blobs where avoidable).
-3. **Scheduled delivery**: A **server-side scheduler** (see note below on naming) runs periodically, determines which users/profiles are due, calls **NewsData.io** (through `**Hermes.NewsClient`**) for fresh articles, fills the **HTML newsletter templates**, sends email via **SMTP**, and records outcomes in **notification logs**.
+3. **Scheduled delivery**: **`Hermes.Worker`** runs as an **always-on .NET Worker Service** with **Hangfire** (MySQL storage). It runs a **minutely** recurring job that resolves due profiles, enqueues per-profile digest jobs, calls **NewsData.io** via **`Hermes.Infrastructure`**, fills the **HTML newsletter templates** (`**Hermes.Notifications**`), sends email via **SMTP**, and records outcomes in **notification logs**. The API can **trigger** the same Hangfire recurring job after news mutations when worker and API share job storage.
 
-This is **not** a browser “Service Worker” in the PWA sense. Service workers run in the client and cannot reliably replace a server cron or a .NET **hosted service / worker** that has access to your database, API keys, and SMTP credentials. Hermes will use an **always-on backend process** (or separate worker host) for scheduling and sending.
+This is **not** a browser “Service Worker” in the PWA sense. Service workers run in the client and cannot replace a server-side worker with database access, API keys, and SMTP credentials.
 
 ---
 
@@ -31,8 +31,9 @@ The solution is organized into focused projects:
 | **Hermes.Api**                                         | **ASP.NET Core** host: controllers, **JWT** authentication, **FluentValidation**, global exception handling mapped to **Problem Details**, **health** endpoints (live/ready), **CORS** and DI composition. OpenAPI is available in **Development**.                                                                                                                                  |
 | **Hermes.NewsClient**                                  | Typed **HTTP client** for the external **[NewsData.io](https://newsdata.io/)** REST API (**latest** news): URL construction (`NewsDataIoUrlBuilder`), query parameters (`ApiUrlParts` — API key, countries, languages, categories, timezone, sort, optional flags), deserialization DTOs, `NewsDataIoClient.GetLatestAsync`. This is the **live news source** Hermes talks to today. |
 | **Hermes.Notifications**                               | **Email sending** (`IEmailSender`, `SmtpEmailSender` using `System.Net.Mail.SmtpClient`), configuration models, and **HTML newsletter composition** (`NewsletterHtmlComposer`) from **embedded** partial templates (header, repeating item row, footer).                                                                                                                             |
+| **Hermes.Worker**                                      | **.NET Worker Service** hosting **Hangfire** (MySQL): minutely **newsletter scheduler**, background **digest jobs**, shared application services with the API. Configuration for DB, NewsData.io, SMTP, optional MailHog test mail. See `[Hermes.Worker/README.md](Hermes.Worker/README.md)`.                                                                                         |
 | **Hermes.WebFrontend** / **Hermes.WebFrontend.Client** | **Blazor Web App** (.NET 10) with **Interactive WebAssembly**: authentication (login, register + auto-login), JWT/refresh via `HttpClient`, home, user profile, and CRUD UI for **news digest profiles**. See `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.                                                                                                        |
-| **Hermes**                                             | Small **console** executable referencing **NewsClient** and **Notifications**—useful as an **integration playground** or local experiments (e.g. send a composed mail in dev). It is not the production scheduler.                                                                                                                                                                   |
+| **Hermes**                                             | Small **console** executable (currently oriented around **Notifications**)—useful as a **local playground**. It is **not** the production scheduler; use **`Hermes.Worker`** for scheduled digests.                                                                                                                                                                                    |
 
 
 ```mermaid
@@ -40,14 +41,14 @@ flowchart LR
   subgraph client [Client]
     FE[Blazor WebFrontend]
   end
-  subgraph backend [Backend today]
+  subgraph backend [Backend]
     API[Hermes.Api]
+    WRK[Hermes.Worker]
     APP[Hermes.Application]
     INF[Hermes.Infrastructure]
     DB[(MySQL)]
   end
   subgraph libs [Libraries]
-    NC[Hermes.NewsClient]
     NT[Hermes.Notifications]
   end
   subgraph external [External]
@@ -55,12 +56,12 @@ flowchart LR
   end
   FE -->|REST + JWT| API
   API --> APP
+  WRK --> APP
   APP --> INF
   INF --> DB
-  Worker[Future: hosted worker] -.->|read schedules| INF
-  Worker -.-> NC
-  NC -.->|HTTPS latest| NDI
-  Worker -.-> NT
+  WRK --> INF
+  INF -->|NewsDataIoClient| NDI
+  WRK --> NT
 ```
 
 
@@ -80,7 +81,7 @@ flowchart LR
 Each row represents a **digest profile** for a user, including:
 
 - **Keywords**, **categories**, **languages**, **countries** (aligned with domain enums and API JSON as string enums where applicable).
-- **SendOnWeekdays** and **SendAtTimes** — the data model already captures *when* a digest should run; the **orchestration** that reads these fields and triggers sends is the main piece still to wire up.
+- **SendOnWeekdays** and **SendAtTimes** — the data model captures *when* a digest should run; **`Hermes.Worker`** (via `INewsletterScheduleService` / `INewsletterDigestService`) evaluates due rows and sends mail (see `[Hermes.Worker/README.md](Hermes.Worker/README.md)`).
 
 The API exposes **list**, **get by id**, **create**, **update**, and **delete** (including delete-all for a user) under versioned routes. Authorization ensures callers can only access their own user’s data where applicable.
 
@@ -97,7 +98,7 @@ Hermes already integrates with **[NewsData.io](https://newsdata.io/)** as the **
 - `**ApiUrlParts`** carries everything needed for that request: **API key** (required), optional **countries**, **languages**, **categories**, **timezone**, **sort**, image / dedupe flags, and **field exclusion** defaults tuned for lighter payloads.
 - `**NewsDataIoClient.GetLatestAsync`** executes the request and deserializes the JSON into DTOs (`NewsDataIoDto` / result rows).
 
-The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, categories, languages, countries, schedule). The **worker** (not yet wired) will translate those rows into `ApiUrlParts`, call NewsData.io, map articles into `**NewsletterItemContent`**, and hand off to the mail composer. Until then, `**Hermes.NewsClient**` is fully usable from code (including the small `**Hermes**` console playground) for manual or experimental fetches.
+The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, categories, languages, countries, schedule). **`Hermes.Worker`** translates due rows into NewsData.io requests (via **`Hermes.Infrastructure`**), maps articles into **`NewsletterItemContent`**, and hands off to the mail composer. The standalone **`Hermes.NewsClient`** project remains available for experiments; the running pipeline uses the infrastructure client.
 
 ### Web frontend (`Hermes.WebFrontend`)
 
@@ -111,7 +112,13 @@ The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, c
 
 - **SMTP** delivery is abstracted behind `IEmailSender` with a concrete `SmtpEmailSender` taking **host, port, SSL, credentials, from/reply-to**, etc.
 - **NewsletterHtmlComposer** loads **embedded** HTML fragments (`NewsletterHeader.html`, `NewsletterItem.html`, `NewsletterFooter.html`), substitutes placeholders, repeats the item template per article, and returns a **single HTML document** suitable for `IsBodyHtml` email.
-- Together, this is the **presentation layer** for the digest email; the missing link is feeding it **live article data** from the news client on a schedule.
+- Together, this is the **presentation layer** for the digest email; **`Hermes.Worker`** feeds it **live article data** on the configured schedule.
+
+### Scheduled delivery (`Hermes.Worker`)
+
+- **Hangfire** recurring job (minutely by default in code) loads due digest profiles and enqueues **one background job per matching `(userId, newsId)`** (multiple profiles for the same user at the same time produce **separate** emails).
+- **Shared MySQL** is used for Hermes data and (by default) Hangfire storage so **`Hermes.Api`** can trigger the scheduler after news CRUD for faster local feedback.
+- **SMTP** configuration matches **`Hermes.Notifications`**; local dev often uses **MailHog** (see `[Hermes.Worker/README.md](Hermes.Worker/README.md)`).
 
 ### API quality and operations
 
@@ -123,16 +130,16 @@ The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, c
 
 ## What is not implemented yet (by design)
 
-- **No production scheduler**: Nothing in the solution yet continuously evaluates `SendOnWeekdays` / `SendAtTimes` and triggers sends. That will be a **.NET hosted service**, **Quartz.NET**, or a **separate worker process**—invoking **Hermes.Application** / repositories for due rows, **Hermes.NewsClient** for content, **Hermes.Notifications** for HTML + SMTP, and **notification logs** for outcomes.
+- **Production hardening of scheduling**: The worker uses a **minutely** Hangfire tick; production may want tuned cron, explicit **per-user time zones**, back-pressure, and stronger **idempotency** / dead-letter handling beyond the current design.
 - **Email verification flow**: Not fully productized end-to-end in the UI (API/domain may already expose related fields).
-- **Tests**: **unit tests** for services and **integration tests** for API + database are natural next steps once behaviors stabilize.
+- **Tests**: **Unit tests** for schedule/digest logic and **integration tests** for API + database + worker paths are still open; the solution has **no test projects** committed yet.
 
 ---
 
 ## Roadmap (high level)
 
 1. **Frontend polish**: Hardening (tests, a11y), optional session/refresh-token cleanup UX, and any remaining flows (e.g. email verification). Details: `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.
-2. **Worker / scheduler**: New host or extension of the API host—read due profiles, respect time zones if needed, call NewsData.io, map results into `NewsletterItemContent`, compose HTML, send mail, write/update logs, handle retries.
+2. **Worker / scheduler polish**: Time-zone strategy, production cron/scale-out story, retries and alerting; optional **Dockerfile** for `Hermes.Worker` alongside the API.
 3. **Configuration & secrets**: SMTP settings, NewsData API key, connection strings, JWT keys—standardized for **Development** vs **Production**, all overrideable via environment variables.
 4. **Testing**: Unit tests for composition and scheduling logic; integration tests for API and persistence; optional contract tests against OpenAPI.
 5. **Docker**: `Dockerfile`(s) for API, worker, and static/Blazor hosting; **docker-compose** with MySQL, optional **MailHog** (or similar) for local SMTP capture, and documented ports/volumes.
@@ -146,7 +153,7 @@ The target runtime is **containerized**:
 - **Hermes.Api** as one (or more) API container(s) behind a reverse proxy if needed.
 - **MySQL** (or compatible) as a database container with persisted volume.
 - **Hermes.WebFrontend** served from its container or static hosting, configured with the API base URL.
-- A future **worker** container with the same configuration surface (connection string, SMTP, news API key) but without public HTTP, or with only health/metrics if desired.
+- A **worker** container (`Hermes.Worker`) with the same configuration surface (connection string, SMTP, news API key) but without public HTTP, or with only health/metrics if desired.
 
 Exact compose files and images are **not** committed yet; this README states the **direction** so new work (CI, compose, K8s manifests) stays consistent.
 
@@ -154,7 +161,7 @@ Exact compose files and images are **not** committed yet; this README states the
 
 ## Quality bar
 
-The author aims to keep Hermes at a **solid engineering level**: clear boundaries between layers, typed APIs, validation and error contracts suitable for a real client, and reusable libraries for **news** and **mail** so the scheduler remains thin. Documentation (this file, `[Hermes.Api/README.md](Hermes.Api/README.md)`) should stay close to what the code actually does.
+The author aims to keep Hermes at a **solid engineering level**: clear boundaries between layers, typed APIs, validation and error contracts suitable for a real client, and reusable libraries for **news** and **mail** so the scheduler remains thin. Documentation (this file, `[Hermes.Api/README.md](Hermes.Api/README.md)`, `[Hermes.Worker/README.md](Hermes.Worker/README.md)`) should stay close to what the code actually does.
 
 ---
 
@@ -169,3 +176,5 @@ dotnet build Hermes.slnx
 Run the API from the `Hermes.Api` project directory (set `ASPNETCORE_ENVIRONMENT=Development` for OpenAPI). See `[Hermes.Api/README.md](Hermes.Api/README.md)` for endpoint summaries and `GET /openapi/v1.json` in Development.
 
 Run the Blazor app from `Hermes.WebFrontend/Hermes.WebFrontend` (`dotnet run`). Configure `ApiBaseUrl` and CORS as described in `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.
+
+Run the worker from `Hermes.Worker` (`dotnet run`) with MySQL, NewsData.io, and SMTP (or MailHog) configured—details in `[Hermes.Worker/README.md](Hermes.Worker/README.md)`.

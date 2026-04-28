@@ -2,7 +2,7 @@ namespace Hermes.Notifications.Sending.Models;
 
 /// <summary>
 /// An attachment to include with an outgoing e-mail. The caller owns <see cref="Content"/> until send completes;
-/// after <see cref="IEmailSender.SendAsync"/>, streams may be disposed by the mail implementation.
+/// after the mail sender's send operation, streams may be disposed by the mail implementation.
 /// </summary>
 /// <param name="FileName">File name shown to recipients.</param>
 /// <param name="Content">Attachment payload.</param>

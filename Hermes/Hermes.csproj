@@ -8,7 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hermes.NewsClient\Hermes.NewsClient.csproj" />
     <ProjectReference Include="..\Hermes.Notifications\Hermes.Notifications.csproj" />
   </ItemGroup>
 

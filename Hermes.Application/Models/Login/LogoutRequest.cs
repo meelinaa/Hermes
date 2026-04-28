@@ -1,4 +1,4 @@
-namespace Hermes.Application.Models;
+namespace Hermes.Application.Models.Login;
 
 /// <summary>
 /// Optional body for <c>POST /auth/logout</c> (requires a valid JWT).

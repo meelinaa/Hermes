@@ -75,6 +75,9 @@ namespace Hermes.Infrastructure.Migrations
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("longtext");
 
+                    b.Property<int?>("NewsId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("NextRetryAt")
                         .HasColumnType("datetime(6)");
 

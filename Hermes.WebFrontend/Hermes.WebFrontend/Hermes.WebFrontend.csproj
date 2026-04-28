@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hermes.WebFrontend.Client\Hermes.WebFrontend.Client.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.7" />
   </ItemGroup>
 
 </Project>

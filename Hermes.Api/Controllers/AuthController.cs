@@ -2,6 +2,7 @@ using FluentValidation;
 using Hermes.Api.Http;
 using Hermes.Api.Validation;
 using Hermes.Application.Models;
+using Hermes.Application.Models.Login;
 using Hermes.Application.Security;
 using Hermes.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;

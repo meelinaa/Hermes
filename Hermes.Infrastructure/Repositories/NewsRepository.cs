@@ -1,6 +1,6 @@
 using Hermes.Domain.Entities;
-using Hermes.Domain.Interfaces.DBContext;
 using Hermes.Domain.Interfaces.Repositories;
+using Hermes.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Infrastructure.Repositories;
@@ -11,7 +11,7 @@ namespace Hermes.Infrastructure.Repositories;
 /// <remarks>
 /// Initializes a new instance of <see cref="NewsRepository"/>.
 /// </remarks>
-public sealed class NewsRepository(IHermesDbContext db) : INewsRepository
+public sealed class NewsRepository(HermesDbContext db) : INewsRepository
 {
 
     /// <inheritdoc />

@@ -2,7 +2,7 @@ using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Domain.Exceptions;
-using Hermes.Domain.Interfaces.DBContext;
+using Hermes.Application.Ports;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using System.Text.Json;
@@ -12,7 +12,7 @@ namespace Hermes.Infrastructure.Data;
 /// <summary>
 /// EF Core database context for Hermes (MySQL via Pomelo).
 /// </summary>
-public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbContext(options), IHermesDbContext
+public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbContext(options), IHermesDataStore
 {
     // TODO: Use this in Programm.cs
     //var connectionString = builder.Configuration.GetConnectionString("Hermes")!;
@@ -234,12 +234,21 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     }
 
     /// <inheritdoc />
+    public async Task<List<NewsScheduleRow>> GetNewsScheduleRowsAsync(CancellationToken cancellationToken = default)
+    {
+        return await News.AsNoTracking()
+            .Select(n => new NewsScheduleRow(n.Id, n.UserId, n.SendOnWeekdays, n.SendAtTimes))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
         if (userId <= 0 || id <= 0)
             throw new ArgumentOutOfRangeException();
 
-        News news = await News.AsNoTracking()
+        var news = await News.AsNoTracking()
             .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
         return news is null ? throw new NewsNotFoundException() : news;
@@ -288,7 +297,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc cref="IHermesDbContext.GetActiveRefreshTokenByHashAsync" />
+    /// <inheritdoc cref="IHermesDataStore.GetActiveRefreshTokenByHashAsync" />
     public async Task<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(tokenHash))
@@ -314,7 +323,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc cref="IHermesDbContext.RevokeRefreshTokenAsync" />
+    /// <inheritdoc cref="IHermesDataStore.RevokeRefreshTokenAsync" />
     public async Task RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(trackedToken);
@@ -322,7 +331,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc cref="IHermesDbContext.RevokeAllRefreshTokensForUserAsync" />
+    /// <inheritdoc cref="IHermesDataStore.RevokeAllRefreshTokensForUserAsync" />
     public async Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         var utc = DateTime.UtcNow;
@@ -334,6 +343,25 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             r.RevokedAt = utc;
         if (active.Count > 0)
             await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> ExistsSentNotificationInWindowAsync(
+        int userId,
+        int newsId,
+        DateTime windowStartUtc,
+        DateTime windowEndUtc,
+        CancellationToken cancellationToken = default)
+    {
+        return await NotificationLogs.AsNoTracking()
+            .AnyAsync(
+                l => l.UserId == userId
+                     && l.NewsId == newsId
+                     && l.Channel == DeliveryChannel.Email
+                     && l.Status == NotificationStatus.Sent
+                     && l.SentAt >= windowStartUtc
+                     && l.SentAt < windowEndUtc,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -404,6 +432,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            entity.Property(e => e.NewsId);
             entity.Property(e => e.Status).HasConversion<string>();
             entity.Property(e => e.Channel).HasConversion<string>();
         });
