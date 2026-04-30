@@ -3,6 +3,7 @@ using Hangfire;
 using Hangfire.MySql;
 using Hermes.Api.Hangfire;
 using Hermes.Api.Validation;
+using Hermes.Application.Options;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Security;
 using Hermes.Application.Services;
@@ -43,6 +44,8 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsService, NewsService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
+        services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SectionName));
+        services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
 
         services.AddSingleton(_ => CreateHangfireJobStorage(configuration));

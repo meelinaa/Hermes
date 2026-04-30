@@ -41,8 +41,9 @@
             </div>
         </div>
 
-        <button type="button" class="user-profile-verify-btn" @onclick="OnRequestEmailVerification">
-            E-Mail verifizieren
+        <button type="button" class="user-profile-verify-btn" @onclick="OnRequestEmailVerification"
+                disabled="@(verifyBusy || string.IsNullOrWhiteSpace(profileEmail))">
+            @(verifyBusy ? "E-Mail wird angefordert…" : "E-Mail verifizieren")
         </button>
 
         <div class="user-profile-field user-profile-field--after-verify">
@@ -117,6 +118,7 @@
     private bool showNewPassword;
     private bool oldPasswordReadonly = true;
     private bool profileBusy;
+    private bool verifyBusy;
     private string? profileFeedback;
     private int? profileUserId;
 
@@ -187,9 +189,48 @@
         oldPasswordReadonly = false;
     }
 
-    private void OnRequestEmailVerification()
+    private async Task OnRequestEmailVerification()
     {
-        profileFeedback = "Verifizierung: hier später Aufruf deiner API (z. B. Bestätigungsmail senden).";
+        profileFeedback = null;
+        if (profileUserId is null)
+        {
+            profileFeedback = "Benutzer konnte nicht ermittelt werden. Bitte erneut anmelden.";
+            return;
+        }
+
+        var email = profileEmail.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            profileFeedback = "Bitte zuerst eine E-Mail-Adresse eintragen.";
+            return;
+        }
+
+        verifyBusy = true;
+        try
+        {
+            var encoded = Uri.EscapeDataString(email); // Da die API den E-Mail-Parameter in der URL erwartet, muss er korrekt URL-kodiert werden (z.B. "user@example.com" -> "user%40example.com")
+            var response = await Http.GetAsync($"api/v1/users/verify/{encoded}").ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                profileFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                return;
+            }
+
+            profileFeedback =
+                "Verifizierungs-E-Mail wurde angefordert. Bitte Posteingang prüfen (Versand läuft über den Hermes-Worker).";
+        }
+        catch (HttpRequestException ex)
+        {
+            profileFeedback = $"Verbindung fehlgeschlagen: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            profileFeedback = $"Verifizierung konnte nicht angefordert werden: {ex.Message}";
+        }
+        finally
+        {
+            verifyBusy = false;
+        }
     }
 
     private async Task OnUpdateProfile()

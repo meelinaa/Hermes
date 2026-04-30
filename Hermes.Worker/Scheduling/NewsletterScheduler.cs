@@ -1,9 +1,9 @@
 using Hangfire;
+using Hermes.Application.Jobs;
 using Hermes.Application.Models.Email;
 using Hermes.Application.Ports;
 using Hermes.Application.Services;
 using Hermes.Notifications.Receiving.Models;
-using Hermes.Worker.Jobs;
 using Hermes.Worker.MailHog;
 using Microsoft.Extensions.Options;
 

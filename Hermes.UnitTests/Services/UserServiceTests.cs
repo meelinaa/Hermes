@@ -1,5 +1,6 @@
 using Hermes.Application.Models;
 using Hermes.Application.Ports;
+using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
@@ -15,6 +16,9 @@ namespace Hermes.UnitTests.Services;
 /// </summary>
 public sealed class UserServiceTests
 {
+    private static UserService CreateUserService(IHermesDataStore db) =>
+        new(db, Mock.Of<IVerificationMailJobTrigger>());
+
     /// <summary>
     /// Registration trims/normalizes email to lowercase, hashes plaintext password with BCrypt, assigns id from store callback.
     /// </summary>
@@ -27,7 +31,7 @@ public sealed class UserServiceTests
             .Callback<User, CancellationToken>((u, _) => u.Id = 100)
             .Returns(Task.CompletedTask);
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
         User user = new()
         {
             Name = "Tester",
@@ -55,7 +59,7 @@ public sealed class UserServiceTests
             .Callback<User, CancellationToken>((u, _) => u.Id = 5)
             .Returns(Task.CompletedTask);
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
         User user = new() { Name = "   ", Email = "ok@test.dev", PasswordHash = "pw", Id = 0 };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
@@ -71,7 +75,7 @@ public sealed class UserServiceTests
         Mock<IHermesDataStore> db = new();
         db.Setup(x => x.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
         User user = new() { Name = "A", Email = "a@b.c", PasswordHash = "x", Id = 0 };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
@@ -83,7 +87,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenIdentifierBlank()
     {
-        UserService sut = new(Mock.Of<IHermesDataStore>());
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
 
         LoginResult r = await sut.LoginAsync("   ", "pw");
 
@@ -97,7 +101,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenPasswordBlank()
     {
-        UserService sut = new(Mock.Of<IHermesDataStore>());
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
 
         LoginResult r = await sut.LoginAsync("user", "");
 
@@ -116,7 +120,7 @@ public sealed class UserServiceTests
         db.Setup(x => x.GetUserEntityForAuthenticationByEmailAsync("me@test.dev", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 3, Email = "me@test.dev", PasswordHash = hash, Name = "Me" });
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
 
         LoginResult r = await sut.LoginAsync(" me@test.dev ", "good");
 
@@ -136,7 +140,7 @@ public sealed class UserServiceTests
         db.Setup(x => x.GetUserEntityForAuthenticationByNameAsync("alice", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 2, Email = "a@b.c", PasswordHash = hash, Name = "alice" });
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
 
         LoginResult r = await sut.LoginAsync("alice", "pw");
 
@@ -155,7 +159,7 @@ public sealed class UserServiceTests
         db.Setup(x => x.GetUserEntityForAuthenticationByNameAsync("bob", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, PasswordHash = hash, Name = "bob", Email = "b@c.d" });
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
 
         LoginResult r = await sut.LoginAsync("bob", "wrong");
 
@@ -175,7 +179,7 @@ public sealed class UserServiceTests
             .ReturnsAsync(new User { Id = 5, Email = "x@y.z", Name = "X", PasswordHash = existingHash });
         db.Setup(x => x.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
         User patch = new() { Id = 5, Email = "x@y.z", Name = "X", PasswordHash = "new-secret" };
 
         await sut.UpdateUserAsync(patch, currentPasswordPlain: "oldpw");
@@ -190,7 +194,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task UpdateUserAsync_Should_RequireCurrentPassword_WhenChangingPassword()
     {
-        UserService sut = new(Mock.Of<IHermesDataStore>());
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
         User patch = new() { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = "new" };
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -207,7 +211,7 @@ public sealed class UserServiceTests
         db.Setup(x => x.GetUserEntityByIdAsync(9, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 9, Email = "e@f.g", Name = "E", PasswordHash = BCrypt.Net.BCrypt.HashPassword("real") });
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
         User patch = new() { Id = 9, Email = "e@f.g", Name = "E", PasswordHash = "hacker" };
 
         await Assert.ThrowsAsync<WrongCurrentPasswordException>(() =>
@@ -222,7 +226,7 @@ public sealed class UserServiceTests
     [InlineData(-1)]
     public async Task GetUserByIdAsync_Should_RejectNonPositiveId(int invalidId)
     {
-        UserService sut = new(Mock.Of<IHermesDataStore>());
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByIdAsync(invalidId));
     }
@@ -233,7 +237,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task GetUserByEmailAsync_Should_RejectBlankEmail()
     {
-        UserService sut = new(Mock.Of<IHermesDataStore>());
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByEmailAsync("  "));
     }
@@ -248,7 +252,7 @@ public sealed class UserServiceTests
         UserScope scope = new() { UserId = 1, Email = "a@b", Name = "A" };
         db.Setup(x => x.DeleteUserAsync(scope, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        UserService sut = new(db.Object);
+        UserService sut = CreateUserService(db.Object);
         await sut.DeleteUserAsync(scope);
 
         db.Verify(x => x.DeleteUserAsync(scope, It.IsAny<CancellationToken>()), Times.Once);

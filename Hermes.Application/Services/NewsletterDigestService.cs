@@ -7,6 +7,7 @@ using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Domain.Mapping;
 using Hermes.Notifications.Sending.HtmlLayout;
+using Hermes.Notifications.Sending.HtmlLayout.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

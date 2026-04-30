@@ -1,5 +1,5 @@
+using Hermes.Notifications.Sending.HtmlLayout.Models;
 using System.Net;
-using System.Reflection;
 using System.Text;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;
@@ -29,9 +29,9 @@ public sealed class NewsletterHtmlComposer
 
         var assembly = typeof(NewsletterHtmlComposer).Assembly;
 
-        var headerTpl = await ReadEmbeddedTemplateAsync(assembly, "NewsletterHeader.html", cancellationToken).ConfigureAwait(false);
-        var itemTpl = await ReadEmbeddedTemplateAsync(assembly, "NewsletterItem.html", cancellationToken).ConfigureAwait(false);
-        var footerTpl = await ReadEmbeddedTemplateAsync(assembly, "NewsletterFooter.html", cancellationToken).ConfigureAwait(false);
+        var headerTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "NewsletterHeader.html", cancellationToken).ConfigureAwait(false);
+        var itemTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "NewsletterItem.html", cancellationToken).ConfigureAwait(false);
+        var footerTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "NewsletterFooter.html", cancellationToken).ConfigureAwait(false);
 
         var headerHtml = headerTpl
             .Replace("{{HEADER}}", WebUtility.HtmlEncode(header.Header), StringComparison.Ordinal)
@@ -60,30 +60,5 @@ public sealed class NewsletterHtmlComposer
             .Replace("{{SETTINGSFOOTER}}", WebUtility.HtmlEncode(footer.SettingsUrl), StringComparison.Ordinal);
 
         return string.Concat(headerHtml, itemsBuilder.ToString(), footerHtml);
-    }
-
-    private static async Task<string> ReadEmbeddedTemplateAsync( 
-        Assembly assembly,
-        string fileName,
-        CancellationToken cancellationToken)
-    {
-        var resourceName = assembly
-            .GetManifestResourceNames()
-            .FirstOrDefault(n => n.EndsWith(fileName, StringComparison.OrdinalIgnoreCase));
-
-        if (resourceName is null)
-        {
-            throw new InvalidOperationException(
-                $"Embedded resource ending with '{fileName}' was not found. Available: {string.Join(", ", assembly.GetManifestResourceNames())}");
-        }
-
-        await using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null)
-        {
-            throw new InvalidOperationException($"Could not open embedded resource '{resourceName}'.");
-        }
-
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 }

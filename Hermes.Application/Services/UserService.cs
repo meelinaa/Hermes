@@ -1,5 +1,6 @@
 using Hermes.Application.Models;
 using Hermes.Application.Ports;
+using Hermes.Application.Scheduling;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
@@ -7,7 +8,7 @@ using Hermes.Domain.Interfaces.Services;
 
 namespace Hermes.Application.Services;
 
-public sealed class UserService(IHermesDataStore db) : IUserService
+public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger verificationMailJobTrigger) : IUserService
 {
     public async Task<UserScope> RegisterUserAsync(User user, CancellationToken cancellationToken = default)
     {
@@ -140,9 +141,14 @@ public sealed class UserService(IHermesDataStore db) : IUserService
 
     public async Task SendVerificationMailAsync(string email, CancellationToken cancellationToken)
     {
-        if(string.IsNullOrWhiteSpace(email) || email == null)
+        if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
-        
-        // Todo: use 
+
+        var normalized = email.Trim().ToLowerInvariant();
+        var user = await db.GetUserEntityForAuthenticationByEmailAsync(normalized, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            throw new UserNotFoundException($"User with email '{normalized}' was not found.");
+
+        verificationMailJobTrigger.EnqueueSendVerificationMail(user.Id);
     }
 }

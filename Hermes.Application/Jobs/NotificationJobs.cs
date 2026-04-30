@@ -1,12 +1,14 @@
 using Hermes.Application.Services;
+using Microsoft.Extensions.Logging;
 
-namespace Hermes.Worker.Jobs;
+namespace Hermes.Application.Jobs;
 
 /// <summary>
-/// Hangfire-invokable notification work: loads one news profile, fetches articles via NewsData.io, composes HTML with <see cref="NewsletterHtmlComposer"/>, sends e-mail, writes <see cref="NotificationLog"/> rows.
+/// Hangfire-invokable notification work: newsletter digests and verification e-mail.
 /// </summary>
 public sealed class NotificationJobs(
     INewsletterDigestService newsletterDigestService,
+    IVerificationDigestService verificationDigestService,
     ILogger<NotificationJobs> logger)
 {
     /// <summary>
@@ -17,5 +19,12 @@ public sealed class NotificationJobs(
     {
         logger.LogInformation("[NotificationJobs] Trigger digest for user {UserId}, news {NewsId}.", userId, newsId);
         await newsletterDigestService.SendAsync(userId, newsId, digestSlotStartUtc, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Sends verification e-mail with a fresh time-bound code (see <see cref="VerificationDigestService"/>).</summary>
+    public async Task SendVerificationMailAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("[NotificationJobs] Trigger verification mail for user {UserId}.", userId);
+        await verificationDigestService.SendAsync(userId, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Hangfire;
 using Hangfire.MySql;
+using Hermes.Application.Jobs;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Services;
@@ -7,7 +8,6 @@ using Hermes.Infrastructure.Data;
 using Hermes.Infrastructure.Email;
 using Hermes.Infrastructure.NewsDataIo;
 using Hermes.Notifications.Receiving.Models;
-using Hermes.Worker.Jobs;
 using Hermes.Worker.Scheduling;
 using Microsoft.EntityFrameworkCore;
 
@@ -55,8 +55,10 @@ public static class WorkerServiceCollectionExtensions
             if (!string.IsNullOrWhiteSpace(fromDot))
                 opts.ApiKey = fromDot.Trim();
         });
+        builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SectionName));
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
+        builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();
         builder.Services.AddScoped<NotificationJobs>();
         builder.Services.AddScoped<NewsletterScheduler>();

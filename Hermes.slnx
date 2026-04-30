@@ -3,9 +3,13 @@
   <Project Path="Hermes.Application/Hermes.Application.csproj" Id="a6832f07-3d63-4ede-9cbf-132e324cb916" />
   <Project Path="Hermes.Domain/Hermes.Domain.csproj" Id="e6739c6d-c4ae-4d27-b8e7-b88f25d9b676" />
   <Project Path="Hermes.Infrastructure/Hermes.Infrastructure.csproj" Id="8578627b-de54-4b67-9560-6874e62ff396" />
-  <Project Path="Hermes.IntegrationTests/Hermes.IntegrationTests.csproj" Id="07764314-1905-4031-9d27-5da304083214" />
+  <Project Path="Hermes.IntegrationTests/Hermes.IntegrationTests.csproj" Id="07764314-1905-4031-9d27-5da304083214">
+    <Build Solution="Debug|*" Project="false" />
+  </Project>
   <Project Path="Hermes.Notifications/Hermes.Notifications.csproj" Id="92ecb35d-1e79-4353-b2d3-dfd192b7240a" />
-  <Project Path="Hermes.UnitTests/Hermes.UnitTests.csproj" />
+  <Project Path="Hermes.UnitTests/Hermes.UnitTests.csproj">
+    <Build Solution="Debug|*" Project="false" />
+  </Project>
   <Project Path="Hermes.WebFrontend/Hermes.WebFrontend.Client/Hermes.WebFrontend.Client.csproj" Id="c48c8970-d55f-4741-86b3-e21f29fe396f" />
   <Project Path="Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj" Id="13eb8d64-6f7a-42e9-9fbd-5e8e577dd21e" />
   <Project Path="Hermes.Worker/Hermes.Worker.csproj" Id="d3372e6a-c2fd-4622-940c-3854172ac482" />

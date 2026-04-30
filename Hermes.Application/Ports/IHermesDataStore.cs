@@ -34,4 +34,9 @@ public interface IHermesDataStore
     Task RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default);
     Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default);
     Task<bool> ExistsSentNotificationInWindowAsync(int userId, int newsId, DateTime windowStartUtc, DateTime windowEndUtc, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists a short-lived e-mail verification code and its UTC expiry on the user (<see cref="User.TwoFactorCode"/> / <see cref="User.TwoFactorExpiry"/>).
+    /// </summary>
+    Task SetUserEmailVerificationChallengeAsync(int userId, string verificationCode, DateTime expiresAtUtc, CancellationToken cancellationToken = default);
 }

@@ -365,6 +365,28 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     }
 
     /// <inheritdoc />
+    public async Task SetUserEmailVerificationChallengeAsync(
+        int userId,
+        string verificationCode,
+        DateTime expiresAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+        if (string.IsNullOrWhiteSpace(verificationCode))
+            throw new ArgumentException("Verification code is required.", nameof(verificationCode));
+
+        var expires = DateTime.SpecifyKind(expiresAtUtc, DateTimeKind.Utc);
+        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            throw new UserNotFoundException($"User with id {userId} was not found.");
+
+        user.TwoFactorCode = verificationCode.Trim();
+        user.TwoFactorExpiry = expires;
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(entity =>
