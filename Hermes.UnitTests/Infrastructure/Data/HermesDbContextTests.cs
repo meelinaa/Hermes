@@ -157,4 +157,29 @@ public sealed class HermesDbContextTests
 
         Assert.Null(row);
     }
+
+    /// <summary>Changing e-mail on profile update clears verified flag (re-verification required).</summary>
+    [Fact]
+    public async Task UpdateUserAsync_Should_ClearIsEmailVerified_WhenEmailChanges()
+    {
+        await using HermesDbContext ctx = CreateInMemoryContext();
+        User user = await SeedUserAsync(ctx);
+        user.IsEmailVerified = true;
+        await ctx.SaveChangesAsync();
+
+        User patch = new()
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = "new-email@test.example",
+            PasswordHash = null,
+        };
+
+        await ctx.UpdateUserAsync(patch, CancellationToken.None);
+
+        User? reloaded = await ctx.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == user.Id);
+        Assert.NotNull(reloaded);
+        Assert.Equal("new-email@test.example", reloaded!.Email);
+        Assert.False(reloaded.IsEmailVerified);
+    }
 }

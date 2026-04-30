@@ -76,7 +76,7 @@ Worker-facing behaviour is covered mainly by **`Hermes.UnitTests`**: e.g. **`New
 dotnet test Hermes.slnx
 ```
 
-**`Hermes.IntegrationTests`** exercises **`Hermes.Api`** against real MySQL (Docker); it does **not** run the worker or SMTP end-to-end. Use **`Hermes.IntegrationTests`** plus manual runs with MailHog when adding worker-level integration coverage.
+**`Hermes.IntegrationTests`** exercises **`Hermes.Api`** against real MySQL (Docker). The worker is a separate host and is not started by that suite; add worker-level integration coverage when you need full pipeline tests.
 
 ---
 

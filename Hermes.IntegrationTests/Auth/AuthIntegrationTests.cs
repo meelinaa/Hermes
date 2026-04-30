@@ -267,4 +267,68 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    /// <summary>
+    /// Revoking the current refresh session invalidates that plaintext for further rotation.
+    /// </summary>
+    [Fact]
+    public async Task Logout_with_refresh_token_body_returns_NoContent_and_refresh_rejected_after()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+
+        using HttpRequestMessage logout = new(HttpMethod.Post, "/api/v1/auth/logout");
+        logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
+        logout.Content = JsonContent.Create(new { refreshToken = refresh }, options: JsonWeb);
+
+        using HttpResponseMessage logoutResp = await client.SendAsync(logout);
+        Assert.Equal(HttpStatusCode.NoContent, logoutResp.StatusCode);
+
+        using HttpResponseMessage replay = await AuthIntegrationFlows.RefreshResponseAsync(client, refresh);
+        Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+    }
+
+    /// <summary>
+    /// Empty-body logout revokes every refresh row for the JWT user.
+    /// </summary>
+    [Fact]
+    public async Task Logout_without_refresh_token_revokes_all_sessions()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+
+        using HttpRequestMessage logout = new(HttpMethod.Post, "/api/v1/auth/logout");
+        logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
+        logout.Content = JsonContent.Create(new { refreshToken = (string?)null }, options: JsonWeb);
+
+        using HttpResponseMessage logoutResp = await client.SendAsync(logout);
+        Assert.Equal(HttpStatusCode.NoContent, logoutResp.StatusCode);
+
+        using HttpResponseMessage replay = await AuthIntegrationFlows.RefreshResponseAsync(client, refresh);
+        Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+    }
+
+    /// <summary>
+    /// Wrong refresh material for targeted logout yields 400 (does not revoke all).
+    /// </summary>
+    [Fact]
+    public async Task Logout_with_foreign_refresh_token_returns_BadRequest()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+
+        using HttpRequestMessage logout = new(HttpMethod.Post, "/api/v1/auth/logout");
+        logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
+        logout.Content = JsonContent.Create(
+            new { refreshToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)) },
+            options: JsonWeb);
+
+        using HttpResponseMessage response = await client.SendAsync(logout);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

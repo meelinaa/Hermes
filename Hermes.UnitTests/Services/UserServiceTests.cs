@@ -16,8 +16,8 @@ namespace Hermes.UnitTests.Services;
 /// </summary>
 public sealed class UserServiceTests
 {
-    private static UserService CreateUserService(IHermesDataStore db) =>
-        new(db, Mock.Of<IVerificationMailJobTrigger>());
+    private static UserService CreateUserService(IHermesDataStore db, IVerificationMailJobTrigger? trigger = null) =>
+        new(db, trigger ?? Mock.Of<IVerificationMailJobTrigger>());
 
     /// <summary>
     /// Registration trims/normalizes email to lowercase, hashes plaintext password with BCrypt, assigns id from store callback.
@@ -218,9 +218,233 @@ public sealed class UserServiceTests
             sut.UpdateUserAsync(patch, currentPasswordPlain: "wrong-old"));
     }
 
-    /// <summary>
-    /// Get by id rejects non-positive ids at the service boundary.
-    /// </summary>
+    /// <summary>When changing password, missing user row yields <see cref="UserNotFoundException"/>.</summary>
+    [Fact]
+    public async Task UpdateUserAsync_Should_ThrowUserNotFound_WhenChangingPassword_AndUserMissing()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityByIdAsync(404, It.IsAny<CancellationToken>())) // User does not exist.
+            .ReturnsAsync((User?)null);
+
+        UserService sut = CreateUserService(db.Object);
+        User patch = new() { Id = 404, Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" }; // New password is not relevant for this test.
+
+        await Assert.ThrowsAsync<UserNotFoundException>(() =>
+            sut.UpdateUserAsync(patch, currentPasswordPlain: "old")); // Current password is not relevant for this test.
+    }
+
+    /// <summary>Cannot set new password if stored hash is missing (account without password).</summary>
+    [Fact]
+    public async Task UpdateUserAsync_Should_ThrowInvalidOperation_WhenStoredPasswordHashEmpty()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = null }); // Stored password hash is empty.
+
+        UserService sut = CreateUserService(db.Object);
+        User patch = new() { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.UpdateUserAsync(patch, currentPasswordPlain: "anything"));
+    }
+
+    /// <summary>Profile update without new password must not load entity for password verification.</summary>
+    [Fact]
+    public async Task UpdateUserAsync_Should_UpdateWithoutPassword_WhenNewPasswordOmitted()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask); // Update user does not require password verification.
+
+        UserService sut = CreateUserService(db.Object);
+        User patch = new() { Id = 2, Email = "u@x.y", Name = "OnlyName", PasswordHash = null };
+
+        await sut.UpdateUserAsync(patch, currentPasswordPlain: null);
+
+        Assert.Null(patch.PasswordHash);
+        db.Verify(x => x.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        db.Verify(x => x.UpdateUserAsync(patch, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>Name lookup delegates to store after trimming validation.</summary>
+    [Fact]
+    public async Task GetUserByNameAsync_Should_ReturnScope_FromStore()
+    {
+        UserScope expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" }; // User exists.
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync(expected); 
+
+        UserService sut = CreateUserService(db.Object);
+
+        UserScope? r = await sut.GetUserByNameAsync("sam"); // User exists.
+
+        Assert.Same(expected, r);
+    }
+
+    [Fact]
+    public async Task GetUserByNameAsync_Should_RejectBlankName()
+    {
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByNameAsync("  ")); // Blank name. This should be rejected before querying the database.
+    }
+
+    /// <summary>Positive id delegates to store.</summary>
+    [Fact]
+    public async Task GetUserByIdAsync_Should_ReturnScope_FromStore()
+    {
+        UserScope expected = new() { UserId = 3, Email = "e@e.e", Name = "E" };
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+
+        UserService sut = CreateUserService(db.Object);
+        UserScope? r = await sut.GetUserByIdAsync(3); // User exists.
+
+        Assert.Same(expected, r);
+    }
+
+    [Fact]
+    public async Task GetUserByEmailAsync_Should_ReturnScope_FromStore_WhenNormalized()
+    {
+        UserScope expected = new() { UserId = 9, Email = "a@b.c", Name = "A" };
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserByEmailAsync("a@b.c", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+
+        UserService sut = CreateUserService(db.Object);
+        UserScope? r = await sut.GetUserByEmailAsync("a@b.c"); // User exists.
+
+        Assert.Same(expected, r);
+    }
+
+    [Fact]
+    public async Task SendVerificationMailAsync_Should_EnqueueJob_WhenUserExists()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityForAuthenticationByEmailAsync("u@test.dev", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 42, Email = "u@test.dev" });
+
+        Mock<IVerificationMailJobTrigger> trigger = new();
+        trigger.Setup(t => t.EnqueueSendVerificationMail(42)).Returns("job-1");
+
+        UserService sut = CreateUserService(db.Object, trigger.Object);
+
+        await sut.SendVerificationMailAsync("  U@Test.dev ", CancellationToken.None);
+
+        trigger.Verify(t => t.EnqueueSendVerificationMail(42), Times.Once); // Verification mail job should be enqueued.
+    }
+
+    [Fact]
+    public async Task SendVerificationMailAsync_Should_ThrowUserNotFound_WhenEmailUnknown()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityForAuthenticationByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        UserService sut = CreateUserService(db.Object);
+
+        await Assert.ThrowsAsync<UserNotFoundException>(() => sut.SendVerificationMailAsync("ghost@test.dev", CancellationToken.None)); // User does not exist. 
+    }
+
+    [Fact]
+    public async Task SendVerificationMailAsync_Should_RejectBlankEmail()
+    {
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.SendVerificationMailAsync("  ", CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1_000_000)]
+    public async Task CheckVerificationCodeAsync_Should_RejectInvalidCode(int invalidCode)
+    {
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.CheckVerificationCodeAsync(1, invalidCode));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public async Task CheckVerificationCodeAsync_Should_RejectInvalidUserId(int invalidUserId)
+    {
+        UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.CheckVerificationCodeAsync(invalidUserId, 123456));
+    }
+
+    [Fact]
+    public async Task CheckVerificationCodeAsync_Should_ThrowUserNotFound_WhenUserMissing()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityForAuthenticationByIdAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        UserService sut = CreateUserService(db.Object);
+
+        await Assert.ThrowsAsync<UserNotFoundException>(() => sut.CheckVerificationCodeAsync(5, 123456));
+    }
+
+    [Fact]
+    public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenNoChallengeStored()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityForAuthenticationByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 1, TwoFactorCode = null, TwoFactorExpiry = null });
+
+        UserService sut = CreateUserService(db.Object);
+
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(1, 123456));
+    }
+
+    [Fact]
+    public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenExpired()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityForAuthenticationByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                Id = 1,
+                TwoFactorCode = "123456",
+                TwoFactorExpiry = DateTime.UtcNow.AddMinutes(-5),
+            });
+
+        UserService sut = CreateUserService(db.Object);
+
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(1, 123456));
+    }
+
+    [Fact]
+    public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenCodeWrong()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityForAuthenticationByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                Id = 1,
+                TwoFactorCode = "999999",
+                TwoFactorExpiry = DateTime.UtcNow.AddMinutes(10),
+            });
+
+        UserService sut = CreateUserService(db.Object);
+
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(1, 123456));
+    }
+
+    [Fact]
+    public async Task CheckVerificationCodeAsync_Should_CompleteVerification_WhenCodeAndExpiryValid()
+    {
+        Mock<IHermesDataStore> db = new();
+        db.Setup(x => x.GetUserEntityForAuthenticationByIdAsync(8, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                Id = 8,
+                TwoFactorCode = " 123456 ",
+                TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
+            });
+        db.Setup(x => x.CompleteUserEmailVerificationAsync(8, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        UserService sut = CreateUserService(db.Object);
+
+        await sut.CheckVerificationCodeAsync(8, 123456);
+
+        db.Verify(x => x.CompleteUserEmailVerificationAsync(8, It.IsAny<CancellationToken>()), Times.Once);
+    }
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

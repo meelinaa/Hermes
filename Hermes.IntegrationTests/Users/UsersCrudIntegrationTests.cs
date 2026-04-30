@@ -123,6 +123,61 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     }
 
     [Fact]
+    public async Task Update_password_with_correct_current_password_succeeds_and_login_with_new_password()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+
+        const string newPassword = "Replacement_Valid_8$";
+        object body = new
+        {
+            id = userId,
+            name = "Renamed After Pwd",
+            email,
+            newPassword,
+            currentPassword = AuthIntegrationFlows.DefaultPassword,
+        };
+
+        using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users");
+        put.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
+        put.Content = JsonContent.Create(body, options: JsonWeb);
+
+        using HttpResponseMessage putResp = await client.SendAsync(put);
+        Assert.Equal(HttpStatusCode.OK, putResp.StatusCode);
+
+        using HttpResponseMessage oldLogin = await AuthIntegrationFlows.LoginResponseAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        Assert.Equal(HttpStatusCode.Unauthorized, oldLogin.StatusCode);
+
+        using HttpResponseMessage newLogin = await AuthIntegrationFlows.LoginResponseAsync(client, email, newPassword);
+        Assert.Equal(HttpStatusCode.OK, newLogin.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_compat_add_user_returns_OK_with_assigned_id()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        string email = $"compat-{Guid.NewGuid():N}@integration.hermes";
+        object dto = new
+        {
+            id = 0,
+            name = "Compat User",
+            email,
+            passwordHash = AuthIntegrationFlows.DefaultPassword,
+            isEmailVerified = false,
+            twoFactorCode = (string?)null,
+            twoFactorExpiry = (DateTime?)null,
+        };
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/add/user", dto, options: JsonWeb);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(json.RootElement.GetProperty("id").GetInt32() > 0);
+        Assert.Equal(email, json.RootElement.GetProperty("email").GetString());
+    }
+
+    [Fact]
     public async Task Update_own_profile_returns_OK_and_reflected_on_get()
     {
         using HttpClient client = fixture.Factory.CreateClient();
