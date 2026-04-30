@@ -137,4 +137,12 @@ public sealed class UserService(IHermesDataStore db) : IUserService
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
         return await db.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task SendVerificationMailAsync(string email, CancellationToken cancellationToken)
+    {
+        if(string.IsNullOrWhiteSpace(email) || email == null)
+            throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
+        
+        // Todo: use 
+    }
 }
