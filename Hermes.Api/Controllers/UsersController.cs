@@ -160,7 +160,7 @@ public class UsersController(IUserService userService) : ControllerBase
         if (request.UserId <= 0)
             return this.BadRequestProblem("A valid user id is required.");
 
-        if (request.Code < 0 || request.Code > 999_999)
+        if (request.Code is < 0 or > 999_999)
             return this.BadRequestProblem("Verification code must be between 0 and 999999.");
 
         if (this.WhenCannotAccessUser(request.UserId) is { } denied)

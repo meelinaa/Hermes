@@ -20,8 +20,8 @@ public sealed class NewsletterDigestService(
     IOptions<NewsDataIoOptions> newsDataOptions,
     ILogger<NewsletterDigestService> logger) : INewsletterDigestService
 {
-    private const int MaxArticlesInNewsletter = 10;
-    private static readonly CultureInfo DigestCulture = CultureInfo.GetCultureInfo("de-DE");
+    private const int MAX_ARTICLES_IN_NEWSLETTER = 10;
+    private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
     public async Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
@@ -56,7 +56,7 @@ public sealed class NewsletterDigestService(
             return;
 
         var articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
-        var subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", DigestCulture)}";
+        var subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", _digestCulture)}";
         var body = await BuildNewsletterBodyAsync(user.Name, articles, cancellationToken).ConfigureAwait(false);
 
         try
@@ -135,9 +135,9 @@ public sealed class NewsletterDigestService(
         IReadOnlyList<NewsArticle> articles,
         CancellationToken cancellationToken)
     {
-        const int maxTextLength = 150;
+        const int MaxTextLength = 150;
         var composer = new NewsletterHtmlComposer();
-        var dateDisplay = DateTime.UtcNow.ToString("dddd, dd. MMMM yyyy", DigestCulture);
+        var dateDisplay = DateTime.UtcNow.ToString("dddd, dd. MMMM yyyy", _digestCulture);
 
         var greetings = DateTime.UtcNow.Hour switch
         {
@@ -157,11 +157,11 @@ public sealed class NewsletterDigestService(
             Intro: intro);
 
         var itemModels = articles
-            .Take(MaxArticlesInNewsletter)
+            .Take(MAX_ARTICLES_IN_NEWSLETTER)
             .Select(a => new NewsletterItemContent(
                 Category: a.Category?.FirstOrDefault() ?? "News",
                 Title: a.Title ?? string.Empty,
-                Content: TruncatePlainText(a.Description, maxTextLength),
+                Content: TruncatePlainText(a.Description, MaxTextLength),
                 Url: a.Link ?? "#",
                 ImageUrl: a.ImageUrl ?? string.Empty))
             .ToList();
@@ -171,7 +171,7 @@ public sealed class NewsletterDigestService(
             DeaboUrl: "#",
             SettingsUrl: "#");
 
-        return await composer.BuildAsync(header, itemModels, footer, cancellationToken).ConfigureAwait(false);
+        return await NewsletterHtmlComposer.BuildAsync(header, itemModels, footer, cancellationToken).ConfigureAwait(false);
     }
 
     private static string TruncatePlainText(string? value, int maxLength, string suffix = "...")

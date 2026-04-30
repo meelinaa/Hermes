@@ -17,7 +17,7 @@ public sealed class NewsletterHtmlComposer
     /// <param name="footer">Footer links and text.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>UTF-8 HTML suitable for an HTML e-mail body.</returns>
-    public async Task<string> BuildAsync(
+    public static async Task<string> BuildAsync(
         NewsletterHeaderContent header,
         IEnumerable<NewsletterItemContent> items,
         NewsletterFooterContent footer,

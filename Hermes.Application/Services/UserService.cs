@@ -44,11 +44,9 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
             return new LoginResult(false, "Password is required.", null);
 
         var key = nameOrEmail.Trim();
-        User? user;
-        if (key.Contains('@', StringComparison.Ordinal))
-            user = await db.GetUserEntityForAuthenticationByEmailAsync(key, cancellationToken).ConfigureAwait(false);
-        else
-            user = await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
+        User? user = key.Contains('@', StringComparison.Ordinal)
+            ? await db.GetUserEntityForAuthenticationByEmailAsync(key, cancellationToken).ConfigureAwait(false)
+            : await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
         if (user is null || string.IsNullOrEmpty(user.PasswordHash))
             return new LoginResult(false, "Invalid login or password.", null);

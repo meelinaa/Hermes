@@ -73,7 +73,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
         var normalized = email.Trim().ToLowerInvariant();
         var user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
+            .FirstOrDefaultAsync(u => u.Email != null && u.Email.Equals(normalized, StringComparison.CurrentCultureIgnoreCase), cancellationToken)
             .ConfigureAwait(false);
 
         return user is null ? throw new UserNotFoundException($"User with email '{email}' was not found.") : MapToUserScope(user);
@@ -109,7 +109,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             return null;
         var normalized = email.Trim().ToLowerInvariant();
         User? user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
+            .FirstOrDefaultAsync(u => u.Email != null && u.Email.Equals(normalized, StringComparison.CurrentCultureIgnoreCase), cancellationToken)
             .ConfigureAwait(false);
         return user is null ? throw new UserNotFoundException() : user;
     }
@@ -258,8 +258,10 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     /// <inheritdoc />
     public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0 || id <= 0)
-            throw new ArgumentOutOfRangeException();
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+        if (id <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id, "News id must be greater than zero.");
 
         var news = await News.AsNoTracking()
             .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId, cancellationToken)

@@ -8,7 +8,7 @@ namespace Hermes.Api.Hangfire;
 /// <summary>
 /// Enqueues <see cref="NotificationJobs.SendVerificationMailAsync"/> via shared Hangfire MySQL storage (processed by Hermes.Worker).
 /// </summary>
-public sealed class HangfireVerificationMailJobTrigger(JobStorage jobStorage, ILogger<HangfireVerificationMailJobTrigger> logger)
+public sealed class HangfireVerificationMailJobTrigger(JobStorage jobStorage)
     : IVerificationMailJobTrigger
 {
     public string? EnqueueSendVerificationMail(int userId)
@@ -19,10 +19,6 @@ public sealed class HangfireVerificationMailJobTrigger(JobStorage jobStorage, IL
         var client = new BackgroundJobClient(jobStorage);
         var jobId = client.Enqueue<NotificationJobs>(j =>
             j.SendVerificationMailAsync(userId, CancellationToken.None));
-        logger.LogInformation(
-            "Enqueued verification mail Hangfire job {JobId} for user {UserId}.",
-            jobId,
-            userId);
         return jobId;
     }
 }

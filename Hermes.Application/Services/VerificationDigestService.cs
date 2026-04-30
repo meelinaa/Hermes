@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Security.Cryptography;
 using Hermes.Application.Models.Email;
 using Hermes.Application.Options;
@@ -19,8 +19,8 @@ public sealed class VerificationDigestService(
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,
     ILogger<VerificationDigestService> logger) : IVerificationDigestService
 {
-    public const int VerificationCodeValidityMinutes = 15;
-    private static readonly CultureInfo DigestCulture = CultureInfo.GetCultureInfo("de-DE");
+    public const int VERIFICATION_CODE_VALIDITY_MINUTES = 15;
+    private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
     public async Task SendAsync(int userId, CancellationToken cancellationToken = default)
     {
@@ -32,7 +32,7 @@ public sealed class VerificationDigestService(
             return;
 
         var code = GenerateNumericVerificationCode();
-        var expiresAt = DateTime.UtcNow.AddMinutes(VerificationCodeValidityMinutes);
+        var expiresAt = DateTime.UtcNow.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
 
         await dataStore
             .SetUserEmailVerificationChallengeAsync(userId, code, expiresAt, cancellationToken)
@@ -86,14 +86,13 @@ public sealed class VerificationDigestService(
         string settingsUrl,
         CancellationToken cancellationToken)
     {
-        var composer = new VerificationHtmlComposer();
-        var dateDisplay = DateTime.UtcNow.ToString("dd. MMMM yyyy", DigestCulture);
+        var dateDisplay = DateTime.UtcNow.ToString("dd. MMMM yyyy", _digestCulture);
 
         var intro = string.IsNullOrWhiteSpace(userDisplayName)
             ? "Hallo,"
             : $"Hallo {userDisplayName.Trim()},";
 
-        const string intro2 =
+        const string INTRO_2 =
             "Vielen Dank für Ihre Registrierung bei Hermes. Um Ihr Konto zu verifizieren, verwenden Sie bitte den folgenden Verifizierungscode:";
 
         var infoFooter = $"Diese E-Mail wurde an {recipientEmail} gesendet";
@@ -103,13 +102,13 @@ public sealed class VerificationDigestService(
             Header2: "Konto-Verifizierung",
             DateDisplay: dateDisplay,
             Intro: intro,
-            Intro2: intro2,
+            Intro2: INTRO_2,
             VerificationCode: verificationCode,
             SupportMail: supportEmail,
             InfoFooter: infoFooter,
             DeaboUrl: deaboUrl,
             SettingsUrl: settingsUrl);
 
-        return await composer.BuildAsync(content, cancellationToken).ConfigureAwait(false);
+        return await VerificationHtmlComposer.BuildAsync(content, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -1,4 +1,4 @@
-﻿using Hermes.Notifications.Sending.HtmlLayout;
+using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Notifications.Sending.HtmlLayout.Models;
 using System.Net;
 
@@ -10,7 +10,7 @@ public class VerificationHtmlComposer
     /// <summary>
     /// Substitutes placeholders in <c>Verification.html</c> with UTF-8 HTML-safe values.
     /// </summary>
-    public async Task<string> BuildAsync(
+    public static async Task<string> BuildAsync(
         VerificationContent verificationContent,
         CancellationToken cancellationToken = default)
     {
