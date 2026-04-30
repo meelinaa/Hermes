@@ -5,6 +5,7 @@
 @using System.Net.Http.Json
 @using System.Text.Json
 @using System.Threading
+@using Hermes.Domain
 @using Hermes.Domain.DTOs
 @using Hermes.WebFrontend.Client.Services
 @using Hermes.WebFrontend.Client.Services.Auth
@@ -75,6 +76,8 @@
                 </span>
                 <input id="pf-old-pw" class="user-profile-input" type="@(showOldPassword ? "text" : "password")" autocomplete="off"
                        readonly="@oldPasswordReadonly"
+                       aria-invalid="@(!string.IsNullOrEmpty(oldPasswordFieldError))"
+                       aria-describedby="@(string.IsNullOrEmpty(oldPasswordFieldError) ? null : "pf-old-pw-err")"
                        @onfocus="OnOldPasswordFocus"
                        @bind="oldPassword" @bind:event="oninput" />
                 <button type="button" class="user-profile-input-reveal"
@@ -91,6 +94,10 @@
                     }
                 </button>
             </div>
+            @if (!string.IsNullOrEmpty(oldPasswordFieldError))
+            {
+                <p id="pf-old-pw-err" class="user-profile-field-error" role="alert">@oldPasswordFieldError</p>
+            }
         </div>
 
         <div class="user-profile-field">
@@ -115,6 +122,15 @@
                     }
                 </button>
             </div>
+            @if (newPassword.Length > 0)
+            {
+                <ul class="hermes-reg-rules user-profile-new-pw-rules" aria-label="Passwortanforderungen">
+                    <li class="@RuleClass(PasswordLenOk)">mind. 8 Zeichen</li>
+                    <li class="@RuleClass(PasswordCaseOk)">Groß- und Kleinbuchstaben</li>
+                    <li class="@RuleClass(PasswordDigitOk)">mindestens eine Zahl</li>
+                    <li class="@RuleClass(PasswordSymbolOk)">mindestens ein Symbol</li>
+                </ul>
+            }
         </div>
 
         @if (!string.IsNullOrEmpty(profileFeedback))
@@ -123,7 +139,12 @@
         }
 
         <div class="user-profile-actions">
-            <button type="button" class="user-profile-submit" @onclick="OnUpdateProfile" disabled="@profileBusy">
+            <button type="button"
+                    class="@ProfileSubmitButtonClass"
+                    disabled="@profileBusy"
+                    aria-busy="@profileBusy"
+                    aria-disabled="@ProfileSubmitAriaDisabled"
+                    @onclick="OnUpdateProfile">
                 @(profileBusy ? "Speichern…" : "Profil aktualisieren")
             </button>
         </div>
@@ -200,7 +221,23 @@
     private string profileName = string.Empty;
     private string profileEmail = string.Empty;
     private bool profileEmailVerified;
-    private string oldPassword = string.Empty;
+
+    private string _oldPassword = string.Empty;
+
+    private string oldPassword
+    {
+        get => _oldPassword;
+        set
+        {
+            var v = value ?? string.Empty;
+            if (string.Equals(_oldPassword, v, StringComparison.Ordinal))
+                return;
+            _oldPassword = v;
+            oldPasswordFieldError = null;
+        }
+    }
+
+    private string? oldPasswordFieldError;
     private string newPassword = string.Empty;
     private bool showOldPassword;
     private bool showNewPassword;
@@ -208,6 +245,43 @@
     private bool profileBusy;
     private string? profileFeedback;
     private int? profileUserId;
+
+    private bool PasswordLenOk => newPassword.Length >= 8;
+
+    private bool PasswordCaseOk =>
+        newPassword.Any(char.IsUpper) && newPassword.Any(char.IsLower);
+
+    private bool PasswordDigitOk => newPassword.Any(char.IsDigit);
+
+    private bool PasswordSymbolOk =>
+        newPassword.Any(static c => char.IsPunctuation(c) || char.IsSymbol(c));
+
+    /// <summary>When user typed a new password, all four rules must pass (same as registration).</summary>
+    private bool NewPasswordRulesSatisfied =>
+        PasswordLenOk && PasswordCaseOk && PasswordDigitOk && PasswordSymbolOk;
+
+    /// <summary>True if the user intends to change the password (non-whitespace new password field).</summary>
+    private bool IsAttemptingPasswordChange => !string.IsNullOrWhiteSpace(newPassword);
+
+    /// <summary>Profile can be saved: required fields set; if changing password, old password + rule checks.</summary>
+    private bool CanSaveProfile =>
+        profileUserId is not null
+        && !profileBusy
+        && !string.IsNullOrWhiteSpace(profileName)
+        && !string.IsNullOrWhiteSpace(profileEmail)
+        && (!IsAttemptingPasswordChange
+            || (!string.IsNullOrWhiteSpace(oldPassword) && NewPasswordRulesSatisfied));
+
+    /// <summary>Visual „disabled“ while form is invalid; button stays clickable so we can show guidance.</summary>
+    private bool ProfileSubmitLooksInactive => !CanSaveProfile && !profileBusy;
+
+    private string ProfileSubmitButtonClass =>
+        "user-profile-submit" + (ProfileSubmitLooksInactive ? " user-profile-submit--inactive" : string.Empty);
+
+    private bool ProfileSubmitAriaDisabled => ProfileSubmitLooksInactive || profileBusy;
+
+    private static string RuleClass(bool ok) =>
+        ok ? "hermes-reg-rule hermes-reg-rule--ok" : "hermes-reg-rule";
 
     private bool showVerificationModal;
     private bool modalOpenBusy;
@@ -273,6 +347,41 @@
         {
             profileFeedback = $"Profil konnte nicht geladen werden: {ex.Message}";
         }
+    }
+
+    private readonly record struct ProblemRead(string? Type, string? Title, string? Detail);
+
+    private static async Task<ProblemRead> TryReadProblemAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            var root = doc.RootElement;
+            string? type = null;
+            string? title = null;
+            string? detail = null;
+            if (root.TryGetProperty("type", out var ty) && ty.ValueKind == JsonValueKind.String)
+                type = ty.GetString();
+            if (root.TryGetProperty("title", out var ti) && ti.ValueKind == JsonValueKind.String)
+                title = ti.GetString();
+            if (root.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+                detail = d.GetString();
+            return new ProblemRead(type, title, detail);
+        }
+        catch
+        {
+            return new ProblemRead(null, null, null);
+        }
+    }
+
+    private static string ProblemUserMessage(ProblemRead p, HttpResponseMessage response)
+    {
+        if (!string.IsNullOrWhiteSpace(p.Detail))
+            return p.Detail!;
+        if (!string.IsNullOrWhiteSpace(p.Title))
+            return p.Title!;
+        return $"Anfrage fehlgeschlagen ({(int)response.StatusCode}).";
     }
 
     private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
@@ -501,6 +610,7 @@
     private async Task OnUpdateProfile()
     {
         profileFeedback = null;
+        oldPasswordFieldError = null;
         if (profileUserId is null)
         {
             profileFeedback = "Benutzer konnte nicht ermittelt werden. Bitte erneut anmelden.";
@@ -521,6 +631,13 @@
             return;
         }
 
+        if (newPw is not null && !(PasswordLenOk && PasswordCaseOk && PasswordDigitOk && PasswordSymbolOk))
+        {
+            profileFeedback =
+                "Das neue Passwort erfüllt nicht alle Anforderungen: mindestens 8 Zeichen, Groß- und Kleinbuchstaben, mindestens eine Zahl und ein Symbol. Bitte korrigieren Sie das Passwort oder leeren Sie das Feld „Neues Passwort“, um nur Profildaten zu speichern.";
+            return;
+        }
+
         profileBusy = true;
         try
         {
@@ -536,7 +653,20 @@
             var response = await Http.PutAsJsonAsync("api/v1/users", body, JsonSerializerOptions.Web).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                profileFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                var problem = await TryReadProblemAsync(response).ConfigureAwait(false);
+                var msg = ProblemUserMessage(problem, response);
+                if (newPw is not null
+                    && string.Equals(problem.Type, HermesProblemTypes.WrongCurrentPassword, StringComparison.Ordinal))
+                {
+                    oldPasswordFieldError = msg;
+                    profileFeedback = null;
+                }
+                else
+                {
+                    oldPasswordFieldError = null;
+                    profileFeedback = msg;
+                }
+
                 return;
             }
 

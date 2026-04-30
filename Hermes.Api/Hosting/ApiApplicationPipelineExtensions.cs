@@ -1,4 +1,5 @@
 using Hermes.Api.Middleware;
+using Hermes.Domain;
 using Hermes.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
@@ -106,11 +107,17 @@ public static class ApiApplicationPipelineExtensions
 
                 if (error is WrongCurrentPasswordException wcp)
                 {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
                     await problemDetailsService.WriteAsync(new ProblemDetailsContext
                     {
                         HttpContext = context,
-                        ProblemDetails = CreateMinimalProblem(wcp.Message, StatusCodes.Status401Unauthorized)
+                        ProblemDetails = new ProblemDetails
+                        {
+                            Type = HermesProblemTypes.WrongCurrentPassword,
+                            Title = "Aktuelles Passwort ungültig",
+                            Detail = wcp.Message,
+                            Status = StatusCodes.Status400BadRequest
+                        }
                     });
                     return;
                 }

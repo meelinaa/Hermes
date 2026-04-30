@@ -149,8 +149,10 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             throw new UserNotFoundException($"User with id {user.Id} was not found.");
 
         entity.Name = user.Name;
+
+        if (entity.Email != user.Email)
+            entity.IsEmailVerified = false; // If email is changing, require re-verification.
         entity.Email = user.Email;
-        // IsEmailVerified / 2FA fields are not changed via profile PUT (separate flows).
 
         if (!string.IsNullOrWhiteSpace(user.PasswordHash))
             entity.PasswordHash = user.PasswordHash;

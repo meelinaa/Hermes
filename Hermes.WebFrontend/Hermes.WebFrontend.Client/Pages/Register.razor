@@ -89,6 +89,10 @@
     private bool PasswordSymbolOk =>
         password.Any(static c => char.IsPunctuation(c) || char.IsSymbol(c));
 
+    /// <summary>All registration password rules satisfied (independent of username/e-mail).</summary>
+    private bool PasswordRulesSatisfied =>
+        PasswordLenOk && PasswordCaseOk && PasswordDigitOk && PasswordSymbolOk;
+
     private bool EmailFormatOk =>
         !string.IsNullOrWhiteSpace(email) && EmailValidator.IsValid(email.Trim());
 
@@ -98,10 +102,7 @@
     private bool CanRegister =>
         !string.IsNullOrWhiteSpace(username)
         && EmailFormatOk
-        && PasswordLenOk
-        && PasswordCaseOk
-        && PasswordDigitOk
-        && PasswordSymbolOk;
+        && PasswordRulesSatisfied;
 
     private static string RuleClass(bool ok) =>
         ok ? "hermes-reg-rule hermes-reg-rule--ok" : "hermes-reg-rule";

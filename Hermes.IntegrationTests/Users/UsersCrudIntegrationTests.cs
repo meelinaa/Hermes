@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Hermes.Domain;
 using Hermes.IntegrationTests.Infrastructure;
 
 
@@ -90,6 +91,35 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(userId, json.RootElement.GetProperty("userId").GetInt32());
+    }
+
+    [Fact]
+    public async Task Update_password_with_wrong_current_password_returns_BadRequest_problem_type()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+
+        object body = new
+        {
+            id = userId,
+            name = "Pwd Change User",
+            email,
+            newPassword = "New_Valid_Pwd_9#",
+            currentPassword = "totally-wrong-current-password",
+        };
+
+        using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users");
+        put.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
+        put.Content = JsonContent.Create(body, options: JsonWeb);
+
+        using HttpResponseMessage response = await client.SendAsync(put);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using JsonDocument doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        JsonElement root = doc.RootElement;
+        Assert.Equal(HermesProblemTypes.WrongCurrentPassword, root.GetProperty("type").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
     }
 
     [Fact]

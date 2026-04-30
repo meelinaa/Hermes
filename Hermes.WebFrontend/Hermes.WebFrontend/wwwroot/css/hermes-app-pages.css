@@ -271,6 +271,13 @@
     margin: 1rem 0 0;
 }
 
+.user-profile-field-error {
+    font-size: 0.82rem;
+    color: #b00020;
+    margin: 0.45rem 0 0;
+    line-height: 1.35;
+}
+
 .user-profile-actions {
     display: flex;
     justify-content: flex-end;
@@ -295,6 +302,24 @@
 
 .user-profile-submit:hover {
     background: var(--poster-accent, #e03616);
+}
+
+.user-profile-submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.user-profile-submit--inactive {
+    opacity: 0.48;
+    cursor: not-allowed;
+    background: #8a8a8a;
+    color: #f2f2f2;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.user-profile-submit--inactive:hover {
+    background: #8a8a8a;
+    color: #f2f2f2;
 }
 
 /* --- E-Mail verification status + modal --- */
@@ -531,4 +556,10 @@
     margin: 0.75rem 0 0;
     font-size: 0.84rem;
     color: #b91c1c;
+}
+
+/* Password rules under profile „Neues Passwort“ (same tokens as Register). */
+.user-profile-new-pw-rules {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
 }
