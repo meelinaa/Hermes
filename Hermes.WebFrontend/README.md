@@ -64,10 +64,10 @@ dotnet run
 |-------|------|----------------|
 | `/` | `RootRedirect` | MainLayout; redirects to login or home depending on session. |
 | `/login` | Login | **AuthLayout** (split form + `AuthSwissPoster`). |
-| `/register` | Register | AuthLayout; `POST api/v1/users` then login, tokens in local storage, navigate to `/home`. |
+| `/register` | Register | AuthLayout; password strength checklist (same rules as profile **new password**); `POST api/v1/users` then login, tokens in local storage, navigate to `/home`. |
 | `/home` | Home | **AppHomeLayout** (top nav + main area); Swiss poster content. |
 | `/news-settings`, `/news-settings/new` | News configuration | AppHomeLayout; list/edit via `NewsSettingsPanel` / `NewsSubscriptionCard`. |
-| `/user-settings` | Profile | AppHomeLayout; name, email, password change (`PUT api/v1/users`). |
+| `/user-settings` | Profile | AppHomeLayout; name, e-mail, optional password change (`PUT api/v1/users` with `newPassword` / `currentPassword`). **E-mail verification**: badges (`UserScope.isEmailVerified`), warning when unverified, modal to enter **six-digit code** (`POST api/v1/users/verify/code`) and resend with cooldown (`GET api/v1/users/verify/{email}`). **Password**: same rule checklist as registration for **new** password; submit button can look inactive while invalid but stay clickable for guidance; **wrong current password** shows an inline error under **Old password** (API returns **400** with `type` `https://hermes.dev/problems/wrong-current-password`). **E-mail change** clears verified state server-side until the user verifies again. |
 
 Error pages: server components under `Hermes.WebFrontend/Components/Pages/` (e.g. `/Error`, status-code reexecute to not-found).
 
@@ -109,7 +109,7 @@ Components include `HermesBrand`, `HermesTopNavigation`, `NewsSettingsPanel`, `N
 
 ## Known limitations
 
-- **Email verification** is not fully wired in the product UI (backend may already expose fields for it).
+- **Blazor / E2E:** There is no dedicated UI test project yet (`bUnit`, Playwright, etc.).
 
 ---
 

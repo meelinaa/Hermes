@@ -22,6 +22,8 @@ Configuration for signing and validation lives under the `Jwt` section (see `app
 | `POST` | `/api/v1/auth/logout` | Yes | Revoke one refresh session or all sessions for the user |
 | `POST` | `/api/v1/users` | No | Register a new user |
 | `PUT` | `/api/v1/users` | Yes | Update user (caller must match user id) |
+| `GET` | `/api/v1/users/verify/{email}` | Yes | Queue verification e-mail for `email` (URL-encode `@`); caller must be allowed to manage that account |
+| `POST` | `/api/v1/users/verify/code` | Yes | Submit six-digit e-mail verification code (`userId` + `code` in body) |
 | `GET` | `/api/v1/users/{id}` | Yes | Get user by id |
 | `GET` | `/api/v1/users/by-email/{email}` | Yes | Get user by email (URL-encode `@` as `%40`) |
 | `DELETE` | `/api/v1/users/{id}` | Yes | Delete user |
@@ -40,8 +42,17 @@ Configuration for signing and validation lives under the `Jwt` section (see `app
 ## Errors
 
 - Validation failures (FluentValidation) return **400** with `application/problem+json` (`ValidationProblemDetails`).
-- Domain-specific failures are mapped to **404**, **403**, **409**, etc. via the global exception handler (see `Hosting/ApiApplicationPipelineExtensions.cs`).
+- Domain-specific failures are mapped to **404**, **403**, **409**, **400**, etc. via the global exception handler (see `Hosting/ApiApplicationPipelineExtensions.cs`).
 - Unexpected errors return **500** with a generic problem body (no exception message in production-oriented responses).
+
+**Typed problems (RFC 7807 `type`)** — clients can branch on `type` in the JSON body:
+
+| Situation | HTTP | `type` (constant: `Hermes.Domain.HermesProblemTypes`) |
+|-----------|------|------------------------------------------------------|
+| Password change: `currentPassword` does not match the stored BCrypt hash | **400** | `https://hermes.dev/problems/wrong-current-password` |
+| Verification code wrong or expired | **400** | _(no stable `type`; use status + `title`/`detail`)_ |
+
+For wrong-current-password responses, **`detail`** carries the user-facing message; **`title`** is a short summary.
 
 ---
 
@@ -117,7 +128,7 @@ Success: **204 No Content**.
 
 ### Users
 
-Entity shape for register/update: [`User`](../Hermes.Domain/Entities/User.cs). Response DTO for lookups/register: [`UserScope`](../Hermes.Domain/DTOs/UserScope.cs).
+**Register** uses entity [`User`](../Hermes.Domain/Entities/User.cs) (plain password in `passwordHash`; stored as BCrypt hash). **Profile update** uses [`UserProfileUpdateRequest`](../Hermes.Application/Models/User/UserProfileUpdateRequest.cs) (`newPassword` / `currentPassword`, not the full `User` JSON). Response DTO for lookups/register: [`UserScope`](../Hermes.Domain/DTOs/UserScope.cs).
 
 **Register** (`POST /api/v1/users`) — example (password is sent in `passwordHash` and hashed server-side):
 
@@ -133,19 +144,31 @@ Entity shape for register/update: [`User`](../Hermes.Domain/Entities/User.cs). R
 }
 ```
 
-**Update** (`PUT /api/v1/users`):
+**Update** (`PUT /api/v1/users`) — body type [`UserProfileUpdateRequest`](../Hermes.Application/Models/User/UserProfileUpdateRequest.cs). Omit `newPassword` (or send empty) to keep the existing password. When `newPassword` is set, **`currentPassword`** is required; the API verifies it with **BCrypt** against the stored hash before persisting the new hash.
 
 ```json
 {
   "id": 1,
   "name": "Max Mustermann",
   "email": "max@example.com",
-  "passwordHash": "only-if-changing-password",
-  "isEmailVerified": true,
-  "twoFactorCode": null,
-  "twoFactorExpiry": null
+  "newPassword": null,
+  "currentPassword": null
 }
 ```
+
+Password change example:
+
+```json
+{
+  "id": 1,
+  "name": "Max Mustermann",
+  "email": "max@example.com",
+  "newPassword": "New_Secret_1!",
+  "currentPassword": "Old_Secret_1!"
+}
+```
+
+If the **e-mail address changes**, persistence resets **`isEmailVerified`** to `false` until the user completes verification again.
 
 **Get user** — success body is `UserScope`:
 
@@ -153,9 +176,25 @@ Entity shape for register/update: [`User`](../Hermes.Domain/Entities/User.cs). R
 {
   "name": "Max Mustermann",
   "email": "max@example.com",
-  "userId": 1
+  "userId": 1,
+  "isEmailVerified": true
 }
 ```
+
+**E-mail verification** — queue mail (same auth rules as other user routes; `email` must be URL-encoded):
+
+`GET /api/v1/users/verify/max%40example.com` → **200** with the **e-mail string** repeated in the body (implementation queues the message with a time-limited code).
+
+Confirm code — body [`UserVerificationCodeRequest`](../Hermes.Application/Models/User/UserVerificationCodeRequest.cs):
+
+```json
+{
+  "userId": 1,
+  "code": 123456
+}
+```
+
+→ **200** when the code matches and is not expired; **400** when the code is wrong or expired (problem body without a stable `type`).
 
 *More inline examples:* [`Controllers/UsersController.cs`](Controllers/UsersController.cs) (`SetNewUser`, `UpdateUser`).
 
@@ -265,7 +304,7 @@ Automated coverage lives in **`Hermes.UnitTests`** (fast, no Docker) and **`Herm
 | **Health** | `HealthProbeIntegrationTests` — `/health/live`, `/health/ready`, DB probe behaviour |
 | | `ReadinessProbeFailureIntegrationTests` — readiness when MySQL stops |
 | **Auth** | `AuthIntegrationTests` — login, refresh + replay, credential validation, JWT bearer rejection (`UsersController` as probe), malformed/expired/forged tokens |
-| **Users** | `UsersCrudIntegrationTests` — anonymous register, profile GET (by id / by email), update, delete + GET **404**, cross-account **403**, **401**/ **400** samples |
+| **Users** | `UsersCrudIntegrationTests` — anonymous register, profile GET (by id / by email), update, delete + GET **404**, cross-account **403**, **401**/ **400** samples; password update with wrong `currentPassword` → **400** + `type` `https://hermes.dev/problems/wrong-current-password` |
 | **News** | `NewsCrudIntegrationTests` — create/list/get/update/delete, cross-user **403**, missing-news **404**, invalid JSON / binding **400**, **401** paths |
 | **Notification logs** | `NotificationLogsIntegrationTests` — `POST …/notification-logs` happy path, route vs body `userId` **400**, cross-user **403**, **401**/ malformed bearer |
 
