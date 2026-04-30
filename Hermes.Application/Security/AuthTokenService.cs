@@ -19,6 +19,9 @@ public sealed class AuthTokenService(
     /// <inheritdoc />
     public async Task<AuthTokensResult> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
+        if(userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
+
         // Access: stateless JWT for API authorization.
         var access = jwt.Issue(userId, email, name);
         // Refresh: high-entropy random string shown once; only its hash is stored.

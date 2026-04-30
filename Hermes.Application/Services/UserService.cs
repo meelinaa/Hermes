@@ -11,6 +11,11 @@ public sealed class UserService(IHermesDataStore db) : IUserService
 {
     public async Task<UserScope> RegisterUserAsync(User user, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(user);
+        if (string.IsNullOrWhiteSpace(user.Name))
+            throw new InvalidOperationException("User name is required.");
+        user.Name = user.Name.Trim();
+
         if (!string.IsNullOrEmpty(user.Email))
             user.Email = user.Email.Trim().ToLowerInvariant();
         // API sends plain password in PasswordHash field; store BCrypt hash only.
@@ -18,8 +23,6 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id <= 0)
             throw new InvalidOperationException("Failed to create user.");
-        if (string.IsNullOrEmpty(user.Name))
-            throw new InvalidOperationException("User name is required.");
         if (string.IsNullOrEmpty(user.Email))
             throw new InvalidOperationException("User email is required.");
         UserScope userScope = new()
@@ -133,5 +136,13 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
         return await db.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SendVerificationMailAsync(string email, CancellationToken cancellationToken)
+    {
+        if(string.IsNullOrWhiteSpace(email) || email == null)
+            throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
+        
+        // Todo: use 
     }
 }

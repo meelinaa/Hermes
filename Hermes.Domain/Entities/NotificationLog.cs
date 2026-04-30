@@ -7,7 +7,9 @@ public class NotificationLog
     // User
     public int Id { get; set; }
     public int UserId { get; set; }
-    public User User { get; set; } = null!;
+
+    /// <summary>EF navigation; optional on JSON-bound instances (API body omits this).</summary>
+    public User? User { get; set; }
 
     /// <summary>When set, this log row refers to a single <see cref="News"/> digest send (one e-mail per news profile).</summary>
     public int? NewsId { get; set; }

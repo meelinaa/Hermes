@@ -2,7 +2,7 @@
 
 Hermes is a **personal news digest service**. The idea is that you configure **who you are** and **what news you care about** once—through a **Blazor web frontend** (interactive UI wired to the API)—and the system persists that configuration in a database via a **REST API**. On a **schedule** you define (weekdays and times), the **`Hermes.Worker`** background host (Hangfire + MySQL job storage) fetches matching articles from a **third-party news API** (**[NewsData.io](https://newsdata.io/)** — HTTP integration in **`Hermes.Infrastructure`**, with a standalone **`Hermes.NewsClient`** library still in the repo for reference/experiments), composes an **HTML email** using a dedicated layout, and sends it so you receive **regular, predictable** news by mail. Hermes does not own the news corpus; it **calls NewsData.io’s HTTP API** (e.g. the **latest** endpoint) using your API key and the filters derived from each user’s saved profile.
 
-The codebase is intentionally structured for **clarity and maintainability**: layered architecture, explicit domain models, validation at the API boundary, and separate libraries for **news HTTP access** and **email delivery**. **Automated tests** are planned as the surface area stabilizes. **Docker** is the intended packaging and deployment story for running the API, database, frontend, and **worker** together.
+The codebase is intentionally structured for **clarity and maintainability**: layered architecture, explicit domain models, validation at the API boundary, and separate libraries for **news HTTP access** and **email delivery**. **`Hermes.UnitTests`** holds **xUnit** unit tests (services, JWT/auth + refresh hashing, API validators and HTTP helpers, NewsData.io URL builder, domain mappers, worker scheduler/digest/schedule services, EF Core **InMemory** checks on selected `HermesDbContext` methods). **`Hermes.IntegrationTests`** runs **API + real MySQL** tests via **Testcontainers** and **`WebApplicationFactory`** over **`Hermes.Api`** (**Docker** required). **Docker** is also the intended packaging and deployment story for running the API, database, frontend, and **worker** together.
 
 For **HTTP route details, request/response examples, and OpenAPI notes**, see `[Hermes.Api/README.md](Hermes.Api/README.md)`.
 
@@ -29,8 +29,10 @@ The solution is organized into focused projects:
 | **Hermes.Application**                                 | **Use cases** and **services** (users, authentication, news configuration, etc.) that orchestrate domain rules and call into persistence through interfaces.                                                                                                                                                                                                                         |
 | **Hermes.Infrastructure**                              | **Entity Framework Core** with **Pomelo.EntityFrameworkCore.MySql**; **repositories**; `HermesDbContext`; resilience helpers (e.g. **Polly**) where appropriate. The database is **MySQL**.                                                                                                                                                                                          |
 | **Hermes.Api**                                         | **ASP.NET Core** host: controllers, **JWT** authentication, **FluentValidation**, global exception handling mapped to **Problem Details**, **health** endpoints (live/ready), **CORS** and DI composition. OpenAPI is available in **Development**.                                                                                                                                  |
-| **Hermes.NewsClient**                                  | Typed **HTTP client** for the external **[NewsData.io](https://newsdata.io/)** REST API (**latest** news): URL construction (`NewsDataIoUrlBuilder`), query parameters (`ApiUrlParts` — API key, countries, languages, categories, timezone, sort, optional flags), deserialization DTOs, `NewsDataIoClient.GetLatestAsync`. This is the **live news source** Hermes talks to today. |
+| **Hermes.NewsClient**                                  | Optional **reference** project under `Hermes.NewsClient/` — typed HTTP client for **[NewsData.io](https://newsdata.io/)** (`NewsDataIoUrlBuilder`, `ApiUrlParts`, DTOs). It is **not** included in **`Hermes.slnx`**; the running pipeline uses **`Hermes.Infrastructure`** (`NewsDataIoClient` / `INewsArticleProvider`). |
 | **Hermes.Notifications**                               | **Email sending** (`IEmailSender`, `SmtpEmailSender` using `System.Net.Mail.SmtpClient`), configuration models, and **HTML newsletter composition** (`NewsletterHtmlComposer`) from **embedded** partial templates (header, repeating item row, footer).                                                                                                                             |
+| **Hermes.UnitTests**                                   | **Unit tests** (xUnit, Moq): `UserService`, `NewsService`, `AuthTokenService`, JWT issuer, refresh-token hashing, `NewsWriteValidator`, `ControllerUserExtensions`, `NewsDataIoUrlBuilder`, ISO-code mappers / weekday converter, **`HermesDbContext`** helpers (e.g. notification-window query), **`NewsletterScheduler`**, **`NewsletterScheduleService`**, **`NewsletterDigestService`**. Uses **EF Core InMemory** where persistence is exercised without MySQL.                                                                                                                                                               |
+| **Hermes.IntegrationTests**                            | **Integration tests** (**Docker** + Testcontainers **MySQL 8.4**, EF migrations, **`WebApplicationFactory`**): **`/health/live`** & **`/health/ready`** (+ readiness when DB stops), **`/api/v1/auth`** (login, refresh rotation, replay, validation), JWT bearer edge cases via protected routes, **`/api/v1/users`** (register, CRUD-style flows, cross-user **403**, **401**/**404**/**400** where applicable), **`/api/v1/users/news`** (full CRUD + **401**/ **403**/ **404**/ **400**), **`POST …/notification-logs`** (happy path + **401**/ **403**/ **400**). Trait **`Integration=Docker`** on these tests.                                                                                                                                               |
 | **Hermes.Worker**                                      | **.NET Worker Service** hosting **Hangfire** (MySQL): minutely **newsletter scheduler**, background **digest jobs**, shared application services with the API. Configuration for DB, NewsData.io, SMTP, optional MailHog test mail. See `[Hermes.Worker/README.md](Hermes.Worker/README.md)`.                                                                                         |
 | **Hermes.WebFrontend** / **Hermes.WebFrontend.Client** | **Blazor Web App** (.NET 10) with **Interactive WebAssembly**: authentication (login, register + auto-login), JWT/refresh via `HttpClient`, home, user profile, and CRUD UI for **news digest profiles**. See `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.                                                                                                        |
 | **Hermes**                                             | Small **console** executable (currently oriented around **Notifications**)—useful as a **local playground**. It is **not** the production scheduler; use **`Hermes.Worker`** for scheduled digests.                                                                                                                                                                                    |
@@ -88,7 +90,7 @@ The API exposes **list**, **get by id**, **create**, **update**, and **delete** 
 ### Notification logs
 
 - A **notification log** entity tracks **sent-at** time, **status**, **channel** (e.g. email), optional **error message**, **retry** metadata, etc.
-- The API can **append** log entries so the delivery pipeline (once implemented) can record success, failure, and retries for observability and debugging.
+- The **worker digest pipeline** persists outcomes (e.g. Sent / Failed) via the application layer; the API can also **append** log entries for observability or manual tooling.
 
 ### Third-party news API: NewsData.io (`Hermes.NewsClient`)
 
@@ -98,7 +100,7 @@ Hermes already integrates with **[NewsData.io](https://newsdata.io/)** as the **
 - `**ApiUrlParts`** carries everything needed for that request: **API key** (required), optional **countries**, **languages**, **categories**, **timezone**, **sort**, image / dedupe flags, and **field exclusion** defaults tuned for lighter payloads.
 - `**NewsDataIoClient.GetLatestAsync`** executes the request and deserializes the JSON into DTOs (`NewsDataIoDto` / result rows).
 
-The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, categories, languages, countries, schedule). **`Hermes.Worker`** translates due rows into NewsData.io requests (via **`Hermes.Infrastructure`**), maps articles into **`NewsletterItemContent`**, and hands off to the mail composer. The standalone **`Hermes.NewsClient`** project remains available for experiments; the running pipeline uses the infrastructure client.
+The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, categories, languages, countries, schedule). **`Hermes.Worker`** translates due rows into NewsData.io requests (via **`Hermes.Infrastructure`**), maps articles into **`NewsletterItemContent`**, and hands off to the mail composer. The standalone **`Hermes.NewsClient`** folder remains available as a reference client; it is **not** part of **`Hermes.slnx`** — day-to-day builds use **`Hermes.Infrastructure`** for HTTP.
 
 ### Web frontend (`Hermes.WebFrontend`)
 
@@ -132,7 +134,8 @@ The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, c
 
 - **Production hardening of scheduling**: The worker uses a **minutely** Hangfire tick; production may want tuned cron, explicit **per-user time zones**, back-pressure, and stronger **idempotency** / dead-letter handling beyond the current design.
 - **Email verification flow**: Not fully productized end-to-end in the UI (API/domain may already expose related fields).
-- **Tests**: **Unit tests** for schedule/digest logic and **integration tests** for API + database + worker paths are still open; the solution has **no test projects** committed yet.
+- **Gaps in automated integration coverage**: **`Hermes.IntegrationTests`** (Docker + MySQL) already covers **health/readiness**, **`/api/v1/auth`** (login, refresh, replay), **JWT** rejection paths, **users**, **news CRUD**, and **notification log POST**. Still **out of scope there today**: **`/api/v1/auth/logout`**, **Hangfire**-driven digest execution, and **worker + SMTP** (or MailHog) **end-to-end**—those would be extra suites or manual verification.
+- **CI/CD**: No committed pipeline (e.g. GitHub Actions) to build and run **`dotnet test`** on every change.
 
 ---
 
@@ -141,7 +144,7 @@ The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, c
 1. **Frontend polish**: Hardening (tests, a11y), optional session/refresh-token cleanup UX, and any remaining flows (e.g. email verification). Details: `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.
 2. **Worker / scheduler polish**: Time-zone strategy, production cron/scale-out story, retries and alerting; optional **Dockerfile** for `Hermes.Worker` alongside the API.
 3. **Configuration & secrets**: SMTP settings, NewsData API key, connection strings, JWT keys—standardized for **Development** vs **Production**, all overrideable via environment variables.
-4. **Testing**: Unit tests for composition and scheduling logic; integration tests for API and persistence; optional contract tests against OpenAPI.
+4. **Testing**: Extend automated coverage where useful—e.g. **`Hermes.IntegrationTests`** for **`/api/v1/auth/logout`** or Hangfire/database-visible scheduler behaviour; contract tests against OpenAPI; **Blazor** component or E2E tests (**Hermes.WebFrontend** still has no dedicated UI test project).
 5. **Docker**: `Dockerfile`(s) for API, worker, and static/Blazor hosting; **docker-compose** with MySQL, optional **MailHog** (or similar) for local SMTP capture, and documented ports/volumes.
 
 ---
@@ -161,7 +164,29 @@ Exact compose files and images are **not** committed yet; this README states the
 
 ## Quality bar
 
-The author aims to keep Hermes at a **solid engineering level**: clear boundaries between layers, typed APIs, validation and error contracts suitable for a real client, and reusable libraries for **news** and **mail** so the scheduler remains thin. Documentation (this file, `[Hermes.Api/README.md](Hermes.Api/README.md)`, `[Hermes.Worker/README.md](Hermes.Worker/README.md)`) should stay close to what the code actually does.
+The author aims to keep Hermes at a **solid engineering level**: clear boundaries between layers, typed APIs, validation and error contracts suitable for a real client, reusable libraries for **news** and **mail** so the scheduler remains thin, and **automated unit tests** plus **Docker-backed API integration tests** for critical REST paths and health checks. Documentation (this file, `[Hermes.Api/README.md](Hermes.Api/README.md)`, `[Hermes.Worker/README.md](Hermes.Worker/README.md)`, `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`) should stay close to what the code actually does.
+
+---
+
+## Testing
+
+From the repository root:
+
+```bash
+dotnet test Hermes.slnx
+```
+
+That runs **`Hermes.UnitTests`** (always) and **`Hermes.IntegrationTests`** (starts **Docker** containers for MySQL—ensure Docker Desktop or another engine is running). To run **only** Docker-backed integration tests:
+
+```bash
+dotnet test Hermes.slnx --filter "Integration=Docker"
+```
+
+To build without executing tests:
+
+```bash
+dotnet build Hermes.slnx
+```
 
 ---
 

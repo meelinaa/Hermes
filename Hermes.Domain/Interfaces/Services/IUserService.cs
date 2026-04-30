@@ -16,4 +16,5 @@ public interface IUserService
     Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default);
     Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task SendVerificationMailAsync(string email, CancellationToken cancellationToken);
 }

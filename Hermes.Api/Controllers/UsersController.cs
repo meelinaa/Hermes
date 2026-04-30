@@ -137,4 +137,15 @@ public class UsersController(IUserService userService) : ControllerBase
 
         return Ok(user);
     }
+
+    [HttpGet("verify/{email}")]
+    public async Task<ActionResult> SendVerificationMail(string email, CancellationToken cancellationToken)
+    {
+        if(string.IsNullOrWhiteSpace(email) || email.Length == 0)
+            return this.BadRequestProblem("Path segment 'email' is required.");
+
+        await userService.SendVerificationMailAsync(email, cancellationToken).ConfigureAwait(false);
+
+        return Ok(email);
+    }
 }
