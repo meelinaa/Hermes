@@ -1,6 +1,7 @@
 using Hermes.Application.Models;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Exceptions;
 
 namespace Hermes.Domain.Interfaces.Services;
 
@@ -17,4 +18,9 @@ public interface IUserService
     Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
     Task SendVerificationMailAsync(string email, CancellationToken cancellationToken);
+    /// <summary>
+    /// Validates the verification code and expiry, then marks the e-mail as verified and clears the challenge.
+    /// </summary>
+    /// <exception cref="VerificationCodeMismatchException">Code missing, wrong, or expired.</exception>
+    Task CheckVerificationCodeAsync(int userId, int code, CancellationToken cancellationToken = default);
 }

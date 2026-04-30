@@ -112,8 +112,19 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
             .ConfigureAwait(false);
         return user is null ? throw new UserNotFoundException() : user;
+    }
 
+    /// <inheritdoc />
+    public async Task<User?> GetUserEntityForAuthenticationByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        if (id <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
 
+        User? user = await Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        return user ?? throw new UserNotFoundException();
     }
 
     /// <inheritdoc />
@@ -383,6 +394,22 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
         user.TwoFactorCode = verificationCode.Trim();
         user.TwoFactorExpiry = expires;
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task CompleteUserEmailVerificationAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+
+        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            throw new UserNotFoundException($"User with id {userId} was not found.");
+
+        user.IsEmailVerified = true;
+        user.TwoFactorCode = null;
+        user.TwoFactorExpiry = null;
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

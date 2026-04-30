@@ -1,5 +1,6 @@
 using Hermes.Api.Http;
 using Hermes.Application.Models;
+using Hermes.Application.Models.User;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Interfaces.Services;
@@ -147,5 +148,25 @@ public class UsersController(IUserService userService) : ControllerBase
         await userService.SendVerificationMailAsync(email, cancellationToken).ConfigureAwait(false);
 
         return Ok(email);
+    }
+
+    /// <summary>Submit e-mail verification code (six-digit). Returns 200 when the account is marked verified.</summary>
+    [HttpPost("verify/code")]
+    public async Task<ActionResult> CheckVerificationCode([FromBody] UserVerificationCodeRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null)
+            return this.BadRequestProblem("Request body is required.");
+
+        if (request.UserId <= 0)
+            return this.BadRequestProblem("A valid user id is required.");
+
+        if (request.Code < 0 || request.Code > 999_999)
+            return this.BadRequestProblem("Verification code must be between 0 and 999999.");
+
+        if (this.WhenCannotAccessUser(request.UserId) is { } denied)
+            return denied;
+
+        await userService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
+        return Ok();
     }
 }

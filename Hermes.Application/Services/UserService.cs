@@ -1,3 +1,4 @@
+using System.Globalization;
 using Hermes.Application.Models;
 using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;
@@ -150,5 +151,33 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
             throw new UserNotFoundException($"User with email '{normalized}' was not found.");
 
         verificationMailJobTrigger.EnqueueSendVerificationMail(user.Id);
+    }
+
+    public async Task CheckVerificationCodeAsync(int userId, int code, CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), "User id must be positive.");
+        if (code is < 0 or > 999_999)
+            throw new ArgumentOutOfRangeException(nameof(code), "Verification code must be a six-digit value.");
+
+        var user = await db.GetUserEntityForAuthenticationByIdAsync(userId, cancellationToken).ConfigureAwait(false)
+            ?? throw new UserNotFoundException($"User with id {userId} was not found.");
+        var stored = user.TwoFactorCode;
+        var expiry = user.TwoFactorExpiry;
+        if (string.IsNullOrWhiteSpace(stored) || !expiry.HasValue)
+            throw new VerificationCodeMismatchException();
+
+        var expiresUtc = expiry.Value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(expiry.Value, DateTimeKind.Utc)
+            : expiry.Value.ToUniversalTime();
+
+        if (DateTime.UtcNow >= expiresUtc)
+            throw new VerificationCodeMismatchException();
+
+        var provided = code.ToString("D6", CultureInfo.InvariantCulture);
+        if (!string.Equals(stored.Trim(), provided, StringComparison.Ordinal))
+            throw new VerificationCodeMismatchException();
+
+        await db.CompleteUserEmailVerificationAsync(userId, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -115,6 +115,17 @@ public static class ApiApplicationPipelineExtensions
                     return;
                 }
 
+                if (error is VerificationCodeMismatchException vcm)
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = CreateMinimalProblem(vcm.Message, StatusCodes.Status400BadRequest)
+                    });
+                    return;
+                }
+
                 Log.Error(error, "Unhandled exception");
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 await problemDetailsService.WriteAsync(new ProblemDetailsContext
