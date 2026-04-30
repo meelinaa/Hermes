@@ -1,19 +1,22 @@
 @page "/user-settings"
 @layout AppHomeLayout
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Globalization
 @using System.Net.Http.Json
 @using System.Text.Json
+@using System.Threading
 @using Hermes.Domain.DTOs
 @using Hermes.WebFrontend.Client.Services
 @using Hermes.WebFrontend.Client.Services.Auth
 @using Hermes.WebFrontend.Client.Services.User
+@implements IAsyncDisposable
 @inject AuthTokenStore AuthTokens
 @inject HttpClient Http
 @inject UserProfileRefreshNotifier ProfileRefresh
 
 <PageTitle>Profil — Hermes</PageTitle>
 
-<div class="home-content">
+<div class="home-content @((showVerificationModal ? " home-content--modal-open" : ""))">
     <h2 class="home-welcome">Profil &amp; Sicherheit</h2>
 
     <section class="home-panel user-profile-panel">
@@ -25,13 +28,23 @@
                 <span class="user-profile-input-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4Z"/></svg>
                 </span>
-                <input id="pf-name" class="user-profile-input" type="text" autocomplete="name" 
+                <input id="pf-name" class="user-profile-input" type="text" autocomplete="name"
                        placeholder="Name" @bind="profileName" @bind:event="oninput" />
             </div>
         </div>
 
         <div class="user-profile-field">
-            <label class="user-profile-label" for="pf-email">E-Mail</label>
+            <div class="user-profile-label-row">
+                <label class="user-profile-label" for="pf-email">E-Mail</label>
+                @if (profileEmailVerified)
+                {
+                    <span class="user-profile-email-badge user-profile-email-badge--verified">Verifiziert</span>
+                }
+                else
+                {
+                    <span class="user-profile-email-badge user-profile-email-badge--unverified">Nicht verifiziert</span>
+                }
+            </div>
             <div class="user-profile-input-wrap">
                 <span class="user-profile-input-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z"/></svg>
@@ -41,10 +54,18 @@
             </div>
         </div>
 
-        <button type="button" class="user-profile-verify-btn" @onclick="OnRequestEmailVerification"
-                disabled="@(verifyBusy || string.IsNullOrWhiteSpace(profileEmail))">
-            @(verifyBusy ? "E-Mail wird angefordert…" : "E-Mail verifizieren")
-        </button>
+        @if (!profileEmailVerified)
+        {
+            <div class="user-profile-verify-warning" role="status">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2 1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16v2h2v-2h-2zm0-6v4h2v-4h-2z"/></svg>
+                <span>Ihre E-Mail ist nicht verifiziert. Daher können keine Newsletter oder Sicherheitsbenachrichtigungen gesendet werden.</span>
+            </div>
+
+            <button type="button" class="user-profile-verify-btn--cta" @onclick="OpenEmailVerificationModalAsync"
+                    disabled="@(modalOpenBusy || string.IsNullOrWhiteSpace(profileEmail))">
+                @(modalOpenBusy ? "Wird geöffnet…" : "E-Mail verifizieren")
+            </button>
+        }
 
         <div class="user-profile-field user-profile-field--after-verify">
             <label class="user-profile-label" for="pf-old-pw">Altes Passwort</label>
@@ -109,18 +130,101 @@
     </section>
 </div>
 
+@if (showVerificationModal)
+{
+    <div class="verify-email-overlay" role="dialog" aria-modal="true" aria-labelledby="verify-email-dialog-title">
+        <div class="verify-email-overlay__backdrop" aria-hidden="true"></div>
+        <div class="verify-email-overlay__dialog" @onclick:stopPropagation>
+            <h3 id="verify-email-dialog-title" class="verify-email-dialog__title">E-Mail-Verifizierung</h3>
+
+            <label class="verify-email-dialog__label" for="verify-code-input">Verifizierungscode eingeben</label>
+            <div class="user-profile-input-wrap">
+                <span class="user-profile-input-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                </span>
+                <input id="verify-code-input" class="user-profile-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="12"
+                       placeholder="Code aus E-Mail einfügen…" @bind="verificationCodeInput" @bind:event="oninput" />
+            </div>
+
+            <button type="button" class="verify-email-dialog__confirm" @onclick="OnConfirmVerificationCodeAsync" disabled="@confirmCodeBusy">
+                @(confirmCodeBusy ? "Wird geprüft…" : "Code bestätigen")
+            </button>
+
+            @if (!string.IsNullOrEmpty(verificationCodeError))
+            {
+                <p class="verify-email-dialog__code-feedback" role="alert">@verificationCodeError</p>
+            }
+
+            <div class="verify-email-dialog__info">
+                <div>
+                    <strong>E-Mail noch nicht angekommen?</strong>
+                    Falls die E-Mail nicht nach einigen Minuten angekommen ist, können Sie eine neue anfordern.
+                </div>
+                <div style="margin-top:0.65rem;">
+                    @if (resendCooldownSecondsRemaining > 0)
+                    {
+                        <span class="verify-email-dialog__resend-link" aria-disabled="true">Neue E-Mail anfordern (verfügbar in @FormatMmSs(resendCooldownSecondsRemaining))</span>
+                    }
+                    else
+                    {
+                        <button type="button" class="verify-email-dialog__resend-link" @onclick="OnResendVerificationEmailAsync">Neue E-Mail anfordern</button>
+                    }
+                </div>
+            </div>
+
+            <button type="button" class="verify-email-dialog__send-secondary"
+                    disabled="@(resendCooldownSecondsRemaining > 0 || modalSendBusy)"
+                    @onclick="OnResendVerificationEmailAsync">
+                @(modalSendBusy ? "Wird gesendet…" : "E-Mail senden")
+            </button>
+            @if (resendCooldownSecondsRemaining > 0)
+            {
+                <p class="verify-email-dialog__wait">Bitte warten… @FormatMmSs(resendCooldownSecondsRemaining)</p>
+            }
+
+            @if (!string.IsNullOrEmpty(verificationSendError))
+            {
+                <p class="verify-email-dialog__feedback" role="alert">@verificationSendError</p>
+            }
+        </div>
+    </div>
+}
+
 @code {
+    private const int ResendCooldownTotalSeconds = 180;
+
+    private const string WrongOrExpiredCodeMessage =
+        "Der eingegebene Code ist nicht richtig oder nicht mehr gültig. Bitte prüfen Sie den Code und versuchen Sie es erneut. " +
+        "Wenn der Code abgelaufen ist oder weiterhin nicht funktioniert, können Sie nach Ablauf der Wartezeit unten eine neue Verifizierungs-E-Mail anfordern.";
+
     private string profileName = string.Empty;
     private string profileEmail = string.Empty;
+    private bool profileEmailVerified;
     private string oldPassword = string.Empty;
     private string newPassword = string.Empty;
     private bool showOldPassword;
     private bool showNewPassword;
     private bool oldPasswordReadonly = true;
     private bool profileBusy;
-    private bool verifyBusy;
     private string? profileFeedback;
     private int? profileUserId;
+
+    private bool showVerificationModal;
+    private bool modalOpenBusy;
+    private bool modalSendBusy;
+    private bool confirmCodeBusy;
+    private string verificationCodeInput = string.Empty;
+    private string? verificationCodeError;
+    private string? verificationSendError;
+    private int resendCooldownSecondsRemaining;
+    private Timer? _resendCooldownTimer;
+
+    private static string FormatMmSs(int totalSeconds)
+    {
+        var m = totalSeconds / 60;
+        var s = totalSeconds % 60;
+        return string.Create(CultureInfo.InvariantCulture, $"{m}:{s:D2}");
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -137,7 +241,12 @@
         await LoadProfileFromApiAsync().ConfigureAwait(false);
     }
 
-    /// <summary>Lädt Name/E-Mail per GET api/v1/users/{id} neu (Start und nach Speichern).</summary>
+    public async ValueTask DisposeAsync()
+    {
+        StopResendCooldownTimer();
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
     private async Task LoadProfileFromApiAsync()
     {
         if (profileUserId is null)
@@ -157,6 +266,7 @@
             {
                 profileName = scope.Name ?? string.Empty;
                 profileEmail = scope.Email ?? string.Empty;
+                profileEmailVerified = scope.IsEmailVerified;
             }
         }
         catch (Exception ex)
@@ -171,8 +281,19 @@
         {
             using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
-                return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
+            var root = doc.RootElement;
+            if (root.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+            {
+                var ds = d.GetString();
+                if (!string.IsNullOrWhiteSpace(ds))
+                    return ds!;
+            }
+            if (root.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
+            {
+                var ts = t.GetString();
+                if (!string.IsNullOrWhiteSpace(ts))
+                    return ts!;
+            }
         }
         catch
         {
@@ -189,47 +310,191 @@
         oldPasswordReadonly = false;
     }
 
-    private async Task OnRequestEmailVerification()
+    private void StopResendCooldownTimer()
+    {
+        _resendCooldownTimer?.Dispose();
+        _resendCooldownTimer = null;
+    }
+
+    private void ArmResendCooldownTimer()
+    {
+        StopResendCooldownTimer();
+        _resendCooldownTimer = new Timer(
+            _ => _ = InvokeAsync(TickResendCooldownAsync),
+            null,
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1));
+    }
+
+    private Task TickResendCooldownAsync()
+    {
+        if (!showVerificationModal)
+        {
+            StopResendCooldownTimer();
+            return Task.CompletedTask;
+        }
+
+        if (resendCooldownSecondsRemaining > 0)
+            resendCooldownSecondsRemaining--;
+
+        if (resendCooldownSecondsRemaining <= 0)
+            StopResendCooldownTimer();
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task OpenEmailVerificationModalAsync()
     {
         profileFeedback = null;
+        verificationCodeError = null;
+        verificationSendError = null;
+        verificationCodeInput = string.Empty;
+
         if (profileUserId is null)
         {
             profileFeedback = "Benutzer konnte nicht ermittelt werden. Bitte erneut anmelden.";
             return;
         }
 
-        var email = profileEmail.Trim();
-        if (string.IsNullOrWhiteSpace(email))
+        if (string.IsNullOrWhiteSpace(profileEmail))
         {
             profileFeedback = "Bitte zuerst eine E-Mail-Adresse eintragen.";
             return;
         }
 
-        verifyBusy = true;
+        modalOpenBusy = true;
+        showVerificationModal = true;
+        StopResendCooldownTimer();
+        resendCooldownSecondsRemaining = 0;
+        StateHasChanged();
+
         try
         {
-            var encoded = Uri.EscapeDataString(email); // Da die API den E-Mail-Parameter in der URL erwartet, muss er korrekt URL-kodiert werden (z.B. "user@example.com" -> "user%40example.com")
-            var response = await Http.GetAsync($"api/v1/users/verify/{encoded}").ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
+            var ok = await SendVerificationEmailAsync().ConfigureAwait(false);
+            if (ok)
             {
-                profileFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);
-                return;
+                resendCooldownSecondsRemaining = ResendCooldownTotalSeconds;
+                ArmResendCooldownTimer();
             }
-
-            profileFeedback =
-                "Verifizierungs-E-Mail wurde angefordert. Bitte Posteingang prüfen (Versand läuft über den Hermes-Worker).";
-        }
-        catch (HttpRequestException ex)
-        {
-            profileFeedback = $"Verbindung fehlgeschlagen: {ex.Message}";
-        }
-        catch (Exception ex)
-        {
-            profileFeedback = $"Verifizierung konnte nicht angefordert werden: {ex.Message}";
         }
         finally
         {
-            verifyBusy = false;
+            modalOpenBusy = false;
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        }
+    }
+
+    private async Task OnResendVerificationEmailAsync()
+    {
+        if (resendCooldownSecondsRemaining > 0 || modalSendBusy || !showVerificationModal)
+            return;
+
+        verificationSendError = null;
+        verificationCodeError = null;
+        modalSendBusy = true;
+        StateHasChanged();
+        try
+        {
+            var ok = await SendVerificationEmailAsync().ConfigureAwait(false);
+            if (ok)
+            {
+                resendCooldownSecondsRemaining = ResendCooldownTotalSeconds;
+                ArmResendCooldownTimer();
+            }
+        }
+        finally
+        {
+            modalSendBusy = false;
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<bool> SendVerificationEmailAsync()
+    {
+        if (profileUserId is null)
+        {
+            verificationSendError = "Benutzer konnte nicht ermittelt werden.";
+            return false;
+        }
+
+        var email = profileEmail.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            verificationSendError = "Bitte eine E-Mail-Adresse eintragen.";
+            return false;
+        }
+
+        try
+        {
+            var encoded = Uri.EscapeDataString(email);
+            var response = await Http.GetAsync($"api/v1/users/verify/{encoded}").ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                verificationSendError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                return false;
+            }
+
+            verificationSendError = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            verificationSendError = $"E-Mail konnte nicht angefordert werden: {ex.Message}";
+            return false;
+        }
+    }
+
+    private async Task OnConfirmVerificationCodeAsync()
+    {
+        verificationCodeError = null;
+        if (profileUserId is null)
+        {
+            verificationCodeError = "Benutzer konnte nicht ermittelt werden.";
+            return;
+        }
+
+        var digits = new string((verificationCodeInput ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (digits.Length is < 6 or > 6 || !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var code))
+        {
+            verificationCodeError =
+                "Bitte geben Sie den sechsstelligen Code aus der E-Mail ein. Achten Sie auf alle Ziffern; Sie können es danach erneut versuchen oder eine neue E-Mail anfordern.";
+            return;
+        }
+
+        confirmCodeBusy = true;
+        StateHasChanged();
+        try
+        {
+            var body = new { userId = profileUserId.Value, code };
+            var response = await Http.PostAsJsonAsync("api/v1/users/verify/code", body, JsonSerializerOptions.Web).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                if ((int)response.StatusCode == 400)
+                    verificationCodeError = WrongOrExpiredCodeMessage;
+                else
+                    verificationCodeError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                return;
+            }
+
+            verificationCodeError = null;
+            StopResendCooldownTimer();
+            resendCooldownSecondsRemaining = 0;
+            showVerificationModal = false;
+            verificationCodeInput = string.Empty;
+            await LoadProfileFromApiAsync().ConfigureAwait(false);
+            if (string.IsNullOrEmpty(profileFeedback))
+                profileFeedback = "E-Mail-Adresse wurde verifiziert.";
+            await ProfileRefresh.NotifyAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            verificationCodeError = $"Verifizierung fehlgeschlagen: {ex.Message}";
+        }
+        finally
+        {
+            confirmCodeBusy = false;
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
         }
     }
 

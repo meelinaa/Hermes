@@ -505,7 +505,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     {
         UserId = user.Id,
         Name = user.Name ?? string.Empty,
-        Email = user.Email ?? string.Empty
+        Email = user.Email ?? string.Empty,
+        IsEmailVerified = user.IsEmailVerified
     };
 
     private static User MapToUserEntity(UserScope scope) => new()
