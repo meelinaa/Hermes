@@ -24,6 +24,10 @@ public sealed class NewsletterDigestService(
 
     public async Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
+        if(userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
+        if(newsId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(newsId), "News ID must be positive.");
         var apiKey = newsDataOptions.Value.ApiKey?.Trim();
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new InvalidOperationException("Configure NewsDataIo:ApiKey.");

@@ -242,3 +242,41 @@ Controller XML comments (`<summary>`, `<remarks>`) document individual routes an
 | JWT validation rules | [`Hosting/JwtAuthenticationExtensions.cs`](Hosting/JwtAuthenticationExtensions.cs) |
 | Middleware order, exception mapping | [`Hosting/ApiApplicationPipelineExtensions.cs`](Hosting/ApiApplicationPipelineExtensions.cs) |
 | Base settings | `appsettings.json`, `appsettings.Development.json`, `appsettings.Production.json` |
+
+---
+
+## Automated tests
+
+Automated coverage lives in **`Hermes.UnitTests`** (fast, no Docker) and **`Hermes.IntegrationTests`** (trait **`Integration=Docker`**; **Testcontainers** MySQL + **`WebApplicationFactory`**).
+
+### `Hermes.UnitTests` (selected areas relevant to this API)
+
+| Area | Examples |
+|------|-----------|
+| Auth / JWT | `AuthTokenServiceTests`, `JwtTokenIssuerTests`, `RefreshTokenHasherTests` |
+| Users / news | `UserServiceTests`, `NewsServiceTests`, `NewsWriteValidatorTests` |
+| HTTP / controllers | `ControllerUserExtensionsTests` |
+| Notification / digest persistence | `HermesDbContextTests` (notification send window), `NewsletterDigestServiceTests` |
+
+### `Hermes.IntegrationTests` (against this host)
+
+| Suite | What it covers |
+|-------|----------------|
+| **Health** | `HealthProbeIntegrationTests` — `/health/live`, `/health/ready`, DB probe behaviour |
+| | `ReadinessProbeFailureIntegrationTests` — readiness when MySQL stops |
+| **Auth** | `AuthIntegrationTests` — login, refresh + replay, credential validation, JWT bearer rejection (`UsersController` as probe), malformed/expired/forged tokens |
+| **Users** | `UsersCrudIntegrationTests` — anonymous register, profile GET (by id / by email), update, delete + GET **404**, cross-account **403**, **401**/ **400** samples |
+| **News** | `NewsCrudIntegrationTests` — create/list/get/update/delete, cross-user **403**, missing-news **404**, invalid JSON / binding **400**, **401** paths |
+| **Notification logs** | `NotificationLogsIntegrationTests` — `POST …/notification-logs` happy path, route vs body `userId` **400**, cross-user **403**, **401**/ malformed bearer |
+
+From the **repository root**:
+
+```bash
+dotnet test Hermes.slnx
+```
+
+Docker-backed tests only:
+
+```bash
+dotnet test Hermes.slnx --filter "Integration=Docker"
+```

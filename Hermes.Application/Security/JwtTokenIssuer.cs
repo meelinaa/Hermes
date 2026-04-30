@@ -16,6 +16,9 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssu
     /// <inheritdoc />
     public JwtAccessTokenResult Issue(int userId, string? email, string? name)
     {
+        if(userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
+
         var o = options.Value;
         var id = userId.ToString(CultureInfo.InvariantCulture);
 

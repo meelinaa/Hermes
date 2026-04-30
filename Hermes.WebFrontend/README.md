@@ -133,10 +133,28 @@ Hermes.WebFrontend/
 
 ---
 
+## Automated tests
+
+There are **no dedicated Blazor or Playwright tests** in this repo yet. Backend paths the UI relies on (**auth**, **users**, **news**, **notification logs**) are covered by **`Hermes.IntegrationTests`** together with **`Hermes.UnitTests`** (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)). Future UI work might add **bUnit** or E2E tests here.
+
+Run all solution tests from the repository root:
+
+```bash
+dotnet test Hermes.slnx
+```
+
+Docker-backed API integration tests only:
+
+```bash
+dotnet test Hermes.slnx --filter "Integration=Docker"
+```
+
+---
+
 ## Build
 
 ```bash
 dotnet build Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj
 ```
 
-The client assembly builds as a dependency. For CI, building the solution (`Hermes.slnx`) is usually enough.
+The client assembly builds as a dependency. **`dotnet build Hermes.slnx`** (from the repo root) builds the frontend together with the API, worker, and test projects.

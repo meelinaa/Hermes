@@ -68,6 +68,18 @@ Ensure `ConnectionStrings:DefaultConnection` matches your database and run **EF 
 
 ---
 
+## Automated tests
+
+Worker-facing behaviour is covered mainly by **`Hermes.UnitTests`**: e.g. **`NewsletterSchedulerTests`**, **`NewsletterScheduleServiceTests`**, **`NewsletterDigestServiceTests`**, plus persistence helpers such as **`HermesDbContextTests`** where they touch notification-window queries. Run the full suite from the repository root:
+
+```bash
+dotnet test Hermes.slnx
+```
+
+**`Hermes.IntegrationTests`** exercises **`Hermes.Api`** against real MySQL (Docker); it does **not** run the worker or SMTP end-to-end. Use **`Hermes.IntegrationTests`** plus manual runs with MailHog when adding worker-level integration coverage.
+
+---
+
 ## Operations and production notes
 
 - **Tick frequency:** The code uses **every minute** so due times align with minute granularity. For production you might switch to a less aggressive cron or a dedicated queue strategy; the **due-selection logic** in application services should remain the source of truth.
