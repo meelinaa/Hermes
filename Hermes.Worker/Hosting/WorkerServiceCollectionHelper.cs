@@ -8,37 +8,80 @@ namespace Hermes.Worker.Hosting;
 public class WorkerServiceCollectionHelper
 {
     /// <summary>
-    /// Reads <c>.env</c> (line <c>NEWSDATA.IO: &lt;apiKey&gt;</c>) from several search folders so the key reaches <see cref="NewsDataIoOptions.ApiKey"/> / <see cref="IOptions{T}"/>.
+    /// Reads the NewsData.io API key only from a <c>.env</c> file (not from <c>appsettings</c>).
+    /// Supported lines: <c>NEWSDATA.IO: &lt;apiKey&gt;</c>, <c>NewsDataIo__ApiKey=&lt;apiKey&gt;</c>, or <c>NEWSDATA_IO_API_KEY=&lt;apiKey&gt;</c>.
+    /// Searches content root, base directory, current directory, executable directory, and walks up from each to find <c>.env</c>.
     /// </summary>
-    internal static string? TryReadNewsDataIoKeyFromDotEnv(string contentRootPath)
+    internal static string? TryReadNewsDataIoApiKeyFromEnvFile(string contentRootPath)
     {
-        const string linePrefix = "NEWSDATA.IO:";
-        var exeDir = Path.GetDirectoryName(Environment.ProcessPath);
-        foreach (var dir in new[] { contentRootPath, AppContext.BaseDirectory, Directory.GetCurrentDirectory(), exeDir })
+        foreach (var envPath in EnumerateEnvFilePaths(contentRootPath))
         {
-            if (string.IsNullOrWhiteSpace(dir))
-                continue;
-            var path = Path.Combine(dir, ".env");
-            if (!File.Exists(path))
-                continue;
-
-            foreach (var rawLine in File.ReadLines(path))
-            {
-                var line = rawLine.Trim().TrimStart('\uFEFF');
-                if (line.Length == 0 || line.StartsWith('#'))
-                    continue;
-                if (!line.StartsWith(linePrefix, StringComparison.Ordinal))
-                    continue;
-
-                var value = line[linePrefix.Length..].Trim();
-                if (string.IsNullOrWhiteSpace(value))
-                    continue;
-
-                return value;
-            }
+            var key = TryParseNewsDataIoKeyFromEnvFile(envPath);
+            if (!string.IsNullOrWhiteSpace(key))
+                return key.Trim();
         }
 
         return null;
+    }
+
+    private static IEnumerable<string> EnumerateEnvFilePaths(string contentRootPath)
+    {
+        var exeDir = Path.GetDirectoryName(Environment.ProcessPath);
+        var starts = new[] { contentRootPath, AppContext.BaseDirectory, Directory.GetCurrentDirectory(), exeDir };
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var start in starts)
+        {
+            if (string.IsNullOrWhiteSpace(start))
+                continue;
+            string? dir = Path.GetFullPath(start);
+            for (var depth = 0; depth < 8 && !string.IsNullOrEmpty(dir); depth++)
+            {
+                var candidate = Path.Combine(dir, ".env");
+                if (File.Exists(candidate) && seen.Add(candidate))
+                    yield return candidate;
+                dir = Directory.GetParent(dir)?.FullName;
+            }
+        }
+    }
+
+    private static string? TryParseNewsDataIoKeyFromEnvFile(string envFilePath)
+    {
+        const string colonPrefix = "NEWSDATA.IO:";
+        foreach (var rawLine in File.ReadLines(envFilePath))
+        {
+            var line = rawLine.Trim().TrimStart('\uFEFF');
+            if (line.Length == 0 || line.StartsWith('#'))
+                continue;
+
+            if (line.StartsWith(colonPrefix, StringComparison.Ordinal))
+            {
+                var v = line[colonPrefix.Length..].Trim();
+                if (!string.IsNullOrWhiteSpace(v))
+                    return StripOptionalQuotes(v);
+                continue;
+            }
+
+            var eq = line.IndexOf('=');
+            if (eq <= 0)
+                continue;
+            var keyName = line[..eq].Trim();
+            var value = line[(eq + 1)..].Trim();
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+            if (keyName.Equals("NewsDataIo__ApiKey", StringComparison.OrdinalIgnoreCase) ||
+                keyName.Equals("NEWSDATA_IO_API_KEY", StringComparison.OrdinalIgnoreCase))
+                return StripOptionalQuotes(value);
+        }
+
+        return null;
+    }
+
+    private static string StripOptionalQuotes(string value)
+    {
+        if (value.Length >= 2 &&
+            ((value[0] == '"' && value[^1] == '"') || (value[0] == '\'' && value[^1] == '\'')))
+            return value[1..^1].Trim();
+        return value;
     }
 
     internal static EmailSettings BindEmailSettings(IConfiguration configuration)

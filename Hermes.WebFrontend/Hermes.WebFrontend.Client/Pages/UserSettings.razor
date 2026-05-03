@@ -156,7 +156,16 @@
     <div class="verify-email-overlay" role="dialog" aria-modal="true" aria-labelledby="verify-email-dialog-title">
         <div class="verify-email-overlay__backdrop" aria-hidden="true"></div>
         <div class="verify-email-overlay__dialog" @onclick:stopPropagation>
-            <h3 id="verify-email-dialog-title" class="verify-email-dialog__title">E-Mail-Verifizierung</h3>
+            <div class="verify-email-dialog__header">
+                <h3 id="verify-email-dialog-title" class="verify-email-dialog__title">E-Mail-Verifizierung</h3>
+                <button type="button" class="verify-email-dialog__close"
+                        @onclick="CloseEmailVerificationModal"
+                        aria-label="Dialog schließen">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                        <path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                    </svg>
+                </button>
+            </div>
 
             <label class="verify-email-dialog__label" for="verify-code-input">Verifizierungscode eingeben</label>
             <div class="user-profile-input-wrap">
@@ -451,6 +460,17 @@
 
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    private void CloseEmailVerificationModal()
+    {
+        StopResendCooldownTimer();
+        resendCooldownSecondsRemaining = 0;
+        showVerificationModal = false;
+        verificationCodeInput = string.Empty;
+        verificationCodeError = null;
+        verificationSendError = null;
+        StateHasChanged();
     }
 
     private async Task OpenEmailVerificationModalAsync()

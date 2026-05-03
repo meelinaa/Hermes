@@ -15,7 +15,7 @@ public sealed class NotificationJobsTests
         Mock<IVerificationDigestService> verify = new();
         digest.Setup(x => x.SendAsync(7, 3, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        NotificationJobs sut = new(digest.Object, verify.Object, NullLogger<NotificationJobs>.Instance);
+        NotificationJobs sut = new(digest.Object, verify.Object);
 
         var slot = new DateTime(2026, 4, 1, 12, 0, 0, DateTimeKind.Utc);
         await sut.SendNewsDigestAsync(7, 3, slot);
@@ -30,7 +30,7 @@ public sealed class NotificationJobsTests
         Mock<IVerificationDigestService> verify = new();
         verify.Setup(x => x.SendAsync(99, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        NotificationJobs sut = new(digest.Object, verify.Object, NullLogger<NotificationJobs>.Instance);
+        NotificationJobs sut = new(digest.Object, verify.Object);
 
         await sut.SendVerificationMailAsync(99);
 

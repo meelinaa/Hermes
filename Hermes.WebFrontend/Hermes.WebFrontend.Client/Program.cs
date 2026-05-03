@@ -3,7 +3,6 @@ using Hermes.WebFrontend.Client.Services.Auth;
 using Hermes.WebFrontend.Client.Services.NewsService;
 using Hermes.WebFrontend.Client.Services.User;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.Configuration;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 

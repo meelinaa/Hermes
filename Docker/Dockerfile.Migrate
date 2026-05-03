@@ -1,0 +1,11 @@
+# One-shot EF Core migrations (Hermes.Infrastructure). Same connection string env as API/worker via HermesDbContextFactory.
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+WORKDIR /src
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+RUN dotnet tool install --global dotnet-ef --version 9.0.10
+ENV PATH="${PATH}:/root/.dotnet/tools"
+
+COPY . .
+RUN dotnet restore "Hermes.Infrastructure/Hermes.Infrastructure.csproj"
+
+ENTRYPOINT ["dotnet", "ef", "database", "update", "--project", "Hermes.Infrastructure/Hermes.Infrastructure.csproj", "--startup-project", "Hermes.Infrastructure/Hermes.Infrastructure.csproj"]

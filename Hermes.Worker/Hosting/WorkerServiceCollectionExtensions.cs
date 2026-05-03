@@ -17,19 +17,10 @@ public static class WorkerServiceCollectionExtensions
 {
     /// <summary>
     /// Registers EF Core, e-mail, NewsData.io, Hangfire storage/server, and worker-scoped jobs.
-    /// Also merges <c>NEWSDATA.IO</c> from <c>.env</c> into configuration when present.
+    /// NewsData.io API key is read only from <c>.env</c> (see <see cref="WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile"/>).
     /// </summary>
     public static void AddHermesWorker(this HostApplicationBuilder builder)
     {
-        var newsDataIoApiKeyFromDotEnv = WorkerServiceCollectionHelper.TryReadNewsDataIoKeyFromDotEnv(builder.Environment.ContentRootPath);
-        if (!string.IsNullOrWhiteSpace(newsDataIoApiKeyFromDotEnv))
-        {
-            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["NewsDataIo:ApiKey"] = newsDataIoApiKeyFromDotEnv.Trim()
-            });
-        }
-
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? builder.Configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
@@ -46,14 +37,10 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailSettings(builder.Configuration));
         builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
         builder.Services.Configure<MailHogSettings>(builder.Configuration.GetSection("MailHog"));
-        builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
-        builder.Services.PostConfigure<NewsDataIoOptions>(opts =>
+        builder.Services.Configure<NewsDataIoOptions>(opts =>
         {
-            if (!string.IsNullOrWhiteSpace(opts.ApiKey))
-                return;
-            var fromDot = WorkerServiceCollectionHelper.TryReadNewsDataIoKeyFromDotEnv(builder.Environment.ContentRootPath);
-            if (!string.IsNullOrWhiteSpace(fromDot))
-                opts.ApiKey = fromDot.Trim();
+            opts.ApiKey = WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile(builder.Environment.ContentRootPath)
+                ?? string.Empty;
         });
         builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SectionName));
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();

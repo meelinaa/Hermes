@@ -107,11 +107,14 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     {
         if (string.IsNullOrWhiteSpace(email))
             return null;
+
         var normalized = email.Trim().ToLowerInvariant();
+
         User? user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email != null && u.Email.Equals(normalized, StringComparison.CurrentCultureIgnoreCase), cancellationToken)
+            .FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken)
             .ConfigureAwait(false);
-        return user is null ? throw new UserNotFoundException() : user;
+
+        return user ?? throw new UserNotFoundException();
     }
 
     /// <inheritdoc />

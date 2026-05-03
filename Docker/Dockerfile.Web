@@ -1,0 +1,37 @@
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Projekte kopieren
+COPY ["Hermes.Domain/Hermes.Domain.csproj", "Hermes.Domain/"]
+COPY ["Hermes.Infrastructure/Hermes.Infrastructure.csproj", "Hermes.Infrastructure/"]
+COPY ["Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj", "Hermes.WebFrontend/Hermes.WebFrontend/"]
+COPY ["Hermes.WebFrontend/Hermes.WebFrontend.Client/Hermes.WebFrontend.Client.csproj", "Hermes.WebFrontend/Hermes.WebFrontend.Client/"]
+
+# Restore
+RUN dotnet restore "Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj"
+
+# Quellcode kopieren
+COPY . .
+
+# Publish mit erzwungenem StaticWebAssets-Export
+# Wir nutzen hier einen kleinen Trick: Wir publishen direkt in das Verzeichnis, 
+# damit .NET gezwungen wird, die Abhängigkeiten physisch aufzulösen.
+RUN dotnet publish "Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj" \
+    -c Release \
+    -o /app/publish \
+    /p:UseAppHost=false \
+    /p:PublishStaticWebAssets=true
+
+# Stage 2: Run
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# WICHTIG: In Linux-Containern ist die Groß-/Kleinschreibung entscheidend.
+# Stelle sicher, dass der Pfad im HTML exakt so geschrieben ist wie der Projektname.
+
+ENV ASPNETCORE_HTTP_PORTS=7016
+EXPOSE 7016
+
+ENTRYPOINT ["dotnet", "Hermes.WebFrontend.dll"]
