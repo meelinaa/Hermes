@@ -5,6 +5,7 @@ using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -39,8 +40,15 @@ public class NewsController(
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        var news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
-        return news is null ? this.NotFoundProblem() : Ok(news);
+        try
+        {
+            var news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+            return news is null ? this.NotFoundProblem() : Ok(news);
+        }
+        catch (NewsNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
     }
 
     /// <summary>Create news for <paramref name="userId"/>.</summary>
@@ -108,7 +116,16 @@ public class NewsController(
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        var deleteNews = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+        News? deleteNews;
+        try
+        {
+            deleteNews = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (NewsNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
         if (deleteNews is null)
             return this.NotFoundProblem();
 

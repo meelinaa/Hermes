@@ -3,6 +3,7 @@ using Hermes.Application.Models;
 using Hermes.Application.Models.User;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Exceptions;
 using Hermes.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -101,7 +102,16 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        UserScope? user;
+        try
+        {
+            user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
         if (user is null)
             return this.NotFoundProblem();
 
@@ -117,8 +127,15 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
-        return user is null ? this.NotFoundProblem() : Ok(user);
+        try
+        {
+            var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+            return user is null ? this.NotFoundProblem() : Ok(user);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
     }
 
     /// <summary>Get user by e-mail address (path segment).</summary>
@@ -129,7 +146,16 @@ public class UsersController(IUserService userService) : ControllerBase
         if (string.IsNullOrWhiteSpace(email))
             return this.BadRequestProblem("Path segment 'email' is required.");
 
-        UserScope? user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        UserScope? user;
+        try
+        {
+            user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
         if (user is null)
             return this.NotFoundProblem();
 
@@ -145,7 +171,14 @@ public class UsersController(IUserService userService) : ControllerBase
         if(string.IsNullOrWhiteSpace(email) || email.Length == 0)
             return this.BadRequestProblem("Path segment 'email' is required.");
 
-        await userService.SendVerificationMailAsync(email, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await userService.SendVerificationMailAsync(email, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
 
         return Ok(email);
     }

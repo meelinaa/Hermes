@@ -73,7 +73,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
         var normalized = email.Trim().ToLowerInvariant();
         var user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email != null && u.Email.Equals(normalized, StringComparison.CurrentCultureIgnoreCase), cancellationToken)
+            .FirstOrDefaultAsync(u => u.Email != null && u.Email == normalized, cancellationToken)
             .ConfigureAwait(false);
 
         return user is null ? throw new UserNotFoundException($"User with email '{email}' was not found.") : MapToUserScope(user);
@@ -443,8 +443,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
             entity.Property(e => e.Keywords)
                 .HasConversion(
-                    v => v == null ? null : JsonSerializer.Serialize(v),
-                    v => string.IsNullOrEmpty(v) ? null : JsonSerializer.Deserialize<List<string>>(v));
+                    v => v == null ? null : JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => string.IsNullOrEmpty(v) ? null : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null));
 
             entity.Property(e => e.Category)
                 .HasConversion(
@@ -474,8 +474,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
             entity.Property(e => e.SendAtTimes)
                 .HasConversion(
-                    v => JsonSerializer.Serialize(v),
-                    v => JsonSerializer.Deserialize<List<TimeOnly>>(v) ?? new List<TimeOnly>());
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<TimeOnly>>(v, (JsonSerializerOptions?)null) ?? new List<TimeOnly>());
         });
 
         modelBuilder.Entity<NotificationLog>(entity =>
