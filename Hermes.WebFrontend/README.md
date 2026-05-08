@@ -6,7 +6,7 @@ Full API documentation: [`../Hermes.Api/README.md`](../Hermes.Api/README.md).
 
 ### Role and scope
 
-This frontend is for **defining and maintaining settings the Hermes worker needs** (scheduler / digest delivery) and for making **authentication observable** — e.g. **JWT**, refresh tokens, and session via the login and registration flows and the API client.
+This frontend is for **defining and maintaining settings the Hermes worker needs** (scheduler / digest delivery) and for making **authentication observable**, for example **JWT**, refresh tokens, and session via the login and registration flows and the API client.
 
 It also covers the **end-user experience**: **setting up and editing email digest preferences** (topics, cadence, content), **defining the outgoing mail** (what gets sent and how it reads), and choosing the **name users want to be addressed by**, wired to the API and worker.
 

@@ -2,7 +2,7 @@
 
 **Hermes.Worker** is a **.NET Worker Service** that runs the **scheduled newsletter pipeline** for Hermes: it wakes up on a timer, finds user **news digest profiles** that are due, fetches articles from **NewsData.io**, composes **HTML email** via `Hermes.Notifications`, sends through **SMTP**, and records results in the database (`NotificationLog` and related persistence through `Hermes.Infrastructure`).
 
-The API (`Hermes.Api`) and the Blazor frontend manage **who** you are, **what** digest profiles you want, **profile and password updates** (current-password checks; API may return a typed `ProblemDetails` **`type`** when the current password is wrong), and **e-mail verification** orchestration; the worker is the **always-on backend process** that actually performs **time-based newsletter delivery**. It is **not** a browser service worker—it has access to the database, API keys, and mail configuration server-side. Verification **e-mails** use the same mail composition/SMTP stack as digests where applicable; the verification **HTTP** API lives on the API host (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)).
+The API (`Hermes.Api`) and the Blazor frontend manage **who** you are, **what** digest profiles you want, **profile and password updates** (current-password checks; API may return a typed `ProblemDetails` **`type`** when the current password is wrong), and **e-mail verification** orchestration; the worker is the **always-on backend process** that actually performs **time-based newsletter delivery**. It is **not** a browser service worker, because it has access to the database, API keys, and mail configuration server-side. Verification **e-mails** use the same mail composition/SMTP stack as digests where applicable; the verification **HTTP** API lives on the API host (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)).
 
 ---
 
@@ -26,7 +26,7 @@ The worker **reuses** the same application and infrastructure types as the API s
    On startup, `Program.cs` registers a recurring Hangfire job (`NewsletterSchedulerRecurringJob.Id` in `Hermes.Application`) that invokes `NewsletterScheduler.RunAsync` **every minute** (`Cron.Minutely()`), using the host’s **local** timezone for the recurring schedule.
 
 2. **Due detection**  
-   `NewsletterScheduler` calls `INewsletterScheduleService.GetDueItemsAsync` with the current time. Each **matching** `(userId, newsId)` pair represents **one** digest profile row—**one email per row**, not merged per user.
+   `NewsletterScheduler` calls `INewsletterScheduleService.GetDueItemsAsync` with the current time. Each **matching** `(userId, newsId)` pair represents **one** digest profile row, which means **one email per row**, not merged per user.
 
 3. **Background jobs**  
    For each due item, it **enqueues** `NotificationJobs.SendNewsDigestAsync`, which delegates to `INewsletterDigestService.SendAsync`. That method applies **idempotency** (no duplicate send for the same user/news **minute slot** in UTC, as documented in configuration comments).
