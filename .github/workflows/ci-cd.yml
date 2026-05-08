@@ -21,6 +21,10 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
 
     steps:
       - name: Checkout Code
@@ -61,7 +65,7 @@ jobs:
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1.9.1
-        if: always()
+        if: success() || failure()
         with:
           name: .NET Test Results
           path: '${{ github.workspace }}/test-results/*.trx'
