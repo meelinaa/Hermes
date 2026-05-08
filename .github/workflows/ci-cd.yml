@@ -26,10 +26,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup .NET
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'  # WICHTIG für .NET 10!
 
       - name: Restore Dependencies
         run: dotnet restore Hermes.sln
@@ -38,30 +39,32 @@ jobs:
         run: dotnet build Hermes.sln --configuration Release --no-restore
 
       - name: Create Test Results Directory
-        run: mkdir -p test-results
+        run: mkdir -p ${{ github.workspace }}/test-results
 
       - name: Run Unit Tests
         run: |
           dotnet test Hermes.UnitTests/Hermes.UnitTests.csproj \
             --configuration Release \
+            --no-build \
             --verbosity normal \
             --logger "trx;LogFileName=unit-test-results.trx" \
-            --results-directory ./test-results
+            --results-directory ${{ github.workspace }}/test-results
 
       - name: Run Integration Tests
         run: |
           dotnet test Hermes.IntegrationTests/Hermes.IntegrationTests.csproj \
             --configuration Release \
+            --no-build \
             --verbosity normal \
             --logger "trx;LogFileName=integration-test-results.trx" \
-            --results-directory ./test-results
+            --results-directory ${{ github.workspace }}/test-results
 
       - name: Publish Test Results
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v1.9.1
         if: always()
         with:
           name: .NET Test Results
-          path: 'test-results/*.trx'
+          path: '${{ github.workspace }}/test-results/*.trx'
           reporter: dotnet-trx
           fail-on-error: true
 
@@ -70,7 +73,7 @@ jobs:
         if: always()
         with:
           name: test-results
-          path: test-results/*.trx
+          path: ${{ github.workspace }}/test-results/*.trx
 
   build-and-push:
     name: Build and Push Docker Images
@@ -121,7 +124,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.service.context }}
           file: ${{ matrix.service.dockerfile }}
@@ -154,7 +157,7 @@ jobs:
 
     steps:
       - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}:${{ github.ref_name }}
 
