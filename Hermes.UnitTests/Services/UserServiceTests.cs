@@ -32,11 +32,11 @@ public sealed class UserServiceTests
             .Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);
-        User user = new()
+        RegisterUserRequest user = new()
         {
             Name = "Tester",
             Email = "  Hello@Test.COM ",
-            PasswordHash = "plain-secret",
+            Password = "plain-secret",
         };
 
         // Act
@@ -44,7 +44,9 @@ public sealed class UserServiceTests
 
         // Assert
         Assert.Equal("hello@test.com", scope.Email);
-        Assert.True(BCrypt.Net.BCrypt.Verify("plain-secret", user.PasswordHash));
+        db.Verify(x => x.SetUserAsync(
+            It.Is<User>(u => BCrypt.Net.BCrypt.Verify("plain-secret", u.PasswordHash)),
+            It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(100, scope.UserId);
     }
 
@@ -60,7 +62,7 @@ public sealed class UserServiceTests
             .Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);
-        User user = new() { Name = "   ", Email = "ok@test.dev", PasswordHash = "pw", Id = 0 };
+        RegisterUserRequest user = new() { Name = "   ", Email = "ok@test.dev", Password = "pw" };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
         db.Verify(x => x.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -76,7 +78,7 @@ public sealed class UserServiceTests
         db.Setup(x => x.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);
-        User user = new() { Name = "A", Email = "a@b.c", PasswordHash = "x", Id = 0 };
+        RegisterUserRequest user = new() { Name = "A", Email = "a@b.c", Password = "x" };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
     }

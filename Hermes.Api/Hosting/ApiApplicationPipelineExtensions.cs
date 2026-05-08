@@ -155,6 +155,9 @@ public static class ApiApplicationPipelineExtensions
         // Origins from configuration (Cors:AllowedOrigins), e.g. Hermes.WebFrontend (Blazor) URLs.
         app.UseCors("FrontendPolicy");
 
+        // Endpoint-level rate limiting policies (e.g., stricter auth login/refresh throttling).
+        app.UseRateLimiter();
+
         // Validates JWT on incoming requests (Bearer) before authorization policies run.
         app.UseAuthentication();
         app.UseAuthorization();

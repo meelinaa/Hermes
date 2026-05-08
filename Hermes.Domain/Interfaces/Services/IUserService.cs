@@ -7,8 +7,7 @@ namespace Hermes.Domain.Interfaces.Services;
 
 public interface IUserService
 {
-    Task<UserScope> RegisterUserAsync(User user, CancellationToken cancellationToken = default);
-
+    Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default);
     /// <summary>Validates password against stored BCrypt hash after resolving user by email (if input contains '@') or by name.</summary>
     Task<LoginResult> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default);
     /// <param name="currentPasswordPlain">Required when <see cref="User.PasswordHash"/> carries a new plain password: current password for verification.</param>

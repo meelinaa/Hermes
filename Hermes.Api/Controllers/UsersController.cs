@@ -7,6 +7,7 @@ using Hermes.Domain.Exceptions;
 using Hermes.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Concurrent;
 
 namespace Hermes.Api.Controllers;
 
@@ -16,6 +17,9 @@ namespace Hermes.Api.Controllers;
 [Route("api/v1/users")]
 public class UsersController(IUserService userService) : ControllerBase
 {
+    private static readonly TimeSpan _verificationMailCooldown = TimeSpan.FromSeconds(60);
+    private static readonly ConcurrentDictionary<int, DateTimeOffset> _lastVerificationMailByUserId = new();
+
     /// <summary>Register a new user. Plain password is sent in <c>passwordHash</c>; it is hashed before storage.</summary>
     /// <remarks>
     /// <b>POST</b> <c>api/v1/users</c> — Body (application/json):
@@ -33,11 +37,11 @@ public class UsersController(IUserService userService) : ControllerBase
     /// </remarks>
     [AllowAnonymous]
     [HttpPost]
-    public async Task<ActionResult<UserScope>> SetNewUser([FromBody] User request, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserScope>> SetNewUser([FromBody] RegisterUserRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.Name))
             return this.BadRequestProblem("Name is required.");
-        if (string.IsNullOrEmpty(request.PasswordHash))
+        if (string.IsNullOrEmpty(request.Password))
             return this.BadRequestProblem("Password is required.");
 
         UserScope userScope = await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
@@ -165,22 +169,34 @@ public class UsersController(IUserService userService) : ControllerBase
         return Ok(user);
     }
 
-    [HttpGet("verify/{email}")]
-    public async Task<ActionResult> SendVerificationMail(string email, CancellationToken cancellationToken)
+    [HttpPost("{id:int}/verify")]
+    public async Task<ActionResult> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
-        if(string.IsNullOrWhiteSpace(email) || email.Length == 0)
-            return this.BadRequestProblem("Path segment 'email' is required.");
+        if (id <= 0)
+            return this.BadRequestProblem("A valid user id is required.");
 
+        if (this.WhenCannotAccessUser(id) is { } denied)
+            return denied;
+
+        UserScope? user;
         try
         {
-            await userService.SendVerificationMailAsync(email, cancellationToken).ConfigureAwait(false);
+            user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         }
         catch (UserNotFoundException)
         {
             return this.NotFoundProblem();
         }
 
-        return Ok(email);
+        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+            return this.NotFoundProblem();
+
+        if (TryGetVerificationMailCooldownResponse(id) is { } cooldownResult)
+            return cooldownResult;
+
+        await userService.SendVerificationMailAsync(user.Email, cancellationToken).ConfigureAwait(false);
+        RegisterVerificationMailSend(id);
+        return Ok(new { userId = id, email = user.Email });
     }
 
     /// <summary>Submit e-mail verification code (six-digit). Returns 200 when the account is marked verified.</summary>
@@ -202,4 +218,21 @@ public class UsersController(IUserService userService) : ControllerBase
         await userService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
         return Ok();
     }
+
+    private ActionResult? TryGetVerificationMailCooldownResponse(int userId)
+    {
+        if (!_lastVerificationMailByUserId.TryGetValue(userId, out var lastSentAt))
+            return null;
+
+        var elapsed = DateTimeOffset.UtcNow - lastSentAt;
+        if (elapsed >= _verificationMailCooldown)
+            return null;
+
+        var remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
+        Response.Headers["Retry-After"] = remainingSeconds.ToString();
+        return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
+    }
+
+    private static void RegisterVerificationMailSend(int userId)
+        => _lastVerificationMailByUserId[userId] = DateTimeOffset.UtcNow;
 }

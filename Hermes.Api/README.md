@@ -23,7 +23,7 @@ Configuration for signing and validation lives under the `Jwt` section (see `app
 | `POST`   | `/api/v1/auth/logout`                                | Yes  | Revoke one refresh session or all sessions for the user                                               |
 | `POST`   | `/api/v1/users`                                      | No   | Register a new user                                                                                   |
 | `PUT`    | `/api/v1/users`                                      | Yes  | Update user (caller must match user id)                                                               |
-| `GET`    | `/api/v1/users/verify/{email}`                       | Yes  | Queue verification e-mail for `email` (URL-encode `@`); caller must be allowed to manage that account |
+| `POST`   | `/api/v1/users/{id}/verify`                          | Yes  | Queue verification e-mail for the authenticated user id (ownership checked)                            |
 | `POST`   | `/api/v1/users/verify/code`                          | Yes  | Submit six-digit e-mail verification code (`userId` + `code` in body)                                 |
 | `GET`    | `/api/v1/users/{id}`                                 | Yes  | Get user by id                                                                                        |
 | `GET`    | `/api/v1/users/by-email/{email}`                     | Yes  | Get user by email (URL-encode `@` as `%40`)                                                           |
@@ -185,9 +185,9 @@ If the **e-mail address changes**, persistence resets `**isEmailVerified`** to `
 }
 ```
 
-**E-mail verification**: queue mail (same auth rules as other user routes; `email` must be URL-encoded):
+**E-mail verification**: queue mail for account id (same auth rules as other user routes):
 
-`GET /api/v1/users/verify/max%40example.com` → **200** with the **e-mail string** repeated in the body (implementation queues the message with a time-limited code).
+`POST /api/v1/users/1/verify` → **200** with `{ "userId": 1, "email": "max@example.com" }` (implementation queues the message with a time-limited code). The caller must be authorized to access the user id.
 
 Confirm code: body `[UserVerificationCodeRequest](../Hermes.Application/Models/User/UserVerificationCodeRequest.cs)`:
 
@@ -316,8 +316,8 @@ Automated coverage lives in `**Hermes.UnitTests**` (fast, no Docker) and `**Herm
 | **Health**            | `HealthProbeIntegrationTests`: `/health/live`, `/health/ready`, DB probe behaviour                                                                                                                                                                                    |
 |                       | `ReadinessProbeFailureIntegrationTests`: readiness when MySQL stops                                                                                                                                                                                                   |
 | **Auth**              | `AuthIntegrationTests`: login, refresh + replay, **logout** (single session, revoke all, bad refresh body → **400**), credential validation, JWT bearer rejection (`UsersController` as probe), malformed/expired/forged tokens                                       |
-| **Users**             | `UsersCrudIntegrationTests`: anonymous register, compat `**POST …/add/user`**, profile GET (by id / by email), update, **password change success**, wrong `currentPassword` → **400** + `type`, delete + GET **404**, cross-account **403**, **401**/ **400** samples |
-|                       | `UsersEmailVerificationIntegrationTests`: `GET …/users/verify/{email}` (**200** / unknown e-mail **404**), `POST …/users/verify/code` (success → `isEmailVerified`, wrong code / expired → **400**)                                                                   |
+| **Users**             | `UsersCrudIntegrationTests`: anonymous register, profile GET (by id / by email), update, **password change success**, wrong `currentPassword` → **400** + `type`, delete + GET **404**, cross-account **403**, **401**/ **400** samples |
+|                       | `UsersEmailVerificationIntegrationTests`: `POST …/users/{id}/verify` and `POST …/users/verify/code` (success → `isEmailVerified`, wrong code / expired → **400**)                                                          |
 | **News**              | `NewsCrudIntegrationTests`: create/list/get/update/delete, cross-user **403**, missing-news **404**, invalid JSON / binding **400**, **401** paths                                                                                                                    |
 | **Notification logs** | `NotificationLogsIntegrationTests`: `POST …/notification-logs` happy path, route vs body `userId` **400**, cross-user **403**, **401**/ malformed bearer                                                                                                              |
 

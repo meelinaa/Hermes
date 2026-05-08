@@ -7,6 +7,7 @@ using Hermes.Application.Security;
 using Hermes.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Hermes.Api.Controllers;
 
@@ -39,6 +40,7 @@ public class AuthController(IUserService userService) : ControllerBase
     /// </remarks>
     [AllowAnonymous]
     [HttpPost("login")]
+    [EnableRateLimiting("AuthLoginPolicy")]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequest request,
         [FromServices] IValidator<LoginRequest> loginValidator,
@@ -71,6 +73,7 @@ public class AuthController(IUserService userService) : ControllerBase
     /// <summary>Exchange a valid refresh token for a new access + refresh pair (rotation).</summary>
     [AllowAnonymous]
     [HttpPost("refresh")]
+    [EnableRateLimiting("AuthRefreshPolicy")]
     public async Task<IActionResult> Refresh(
         [FromBody] RefreshRequest request,
         [FromServices] IValidator<RefreshRequest> refreshValidator,

@@ -135,7 +135,7 @@ public sealed class NewsletterDigestService(
         IReadOnlyList<NewsArticle> articles,
         CancellationToken cancellationToken)
     {
-        const int MaxTextLength = 150;
+        const int MAX_TEXT_LENGTH = 150;
         var composer = new NewsletterHtmlComposer();
         var dateDisplay = DateTime.UtcNow.ToString("dddd, dd. MMMM yyyy", _digestCulture);
 
@@ -161,7 +161,7 @@ public sealed class NewsletterDigestService(
             .Select(a => new NewsletterItemContent(
                 Category: a.Category?.FirstOrDefault() ?? "News",
                 Title: a.Title ?? string.Empty,
-                Content: TruncatePlainText(a.Description, MaxTextLength),
+                Content: TruncatePlainText(a.Description, MAX_TEXT_LENGTH),
                 Url: a.Link ?? "#",
                 ImageUrl: a.ImageUrl ?? string.Empty))
             .ToList();

@@ -11,17 +11,23 @@ namespace Hermes.Application.Services;
 
 public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger verificationMailJobTrigger) : IUserService
 {
-    public async Task<UserScope> RegisterUserAsync(User user, CancellationToken cancellationToken = default)
+    public async Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(user);
-        if (string.IsNullOrWhiteSpace(user.Name))
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.Name))
             throw new InvalidOperationException("User name is required.");
-        user.Name = user.Name.Trim();
+        request.Name = request.Name.Trim();
 
-        if (!string.IsNullOrEmpty(user.Email))
-            user.Email = user.Email.Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(request.Email))
+            request.Email = request.Email.Trim().ToLowerInvariant();
         // API sends plain password in PasswordHash field; store BCrypt hash only.
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash ?? "");
+        request.Password = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "");
+        User user = new()
+        {
+            Name = request.Name,
+            Email = request.Email,
+            PasswordHash = request.Password
+        };
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id <= 0)
             throw new InvalidOperationException("Failed to create user.");
@@ -31,7 +37,8 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         {
             Name = user.Name,
             Email = user.Email,
-            UserId = user.Id
+            UserId = user.Id,
+            IsEmailVerified = false
         };
         return userScope;
     }

@@ -547,17 +547,9 @@
             return false;
         }
 
-        var email = profileEmail.Trim();
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            verificationSendError = "Bitte eine E-Mail-Adresse eintragen.";
-            return false;
-        }
-
         try
         {
-            var encoded = Uri.EscapeDataString(email);
-            var response = await Http.GetAsync($"api/v1/users/verify/{encoded}").ConfigureAwait(false);
+            var response = await Http.PostAsync($"api/v1/users/{profileUserId.Value}/verify", null).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 verificationSendError = await ReadErrorDetailAsync(response).ConfigureAwait(false);

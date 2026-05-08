@@ -12,10 +12,12 @@ using Hermes.Domain.Interfaces.Services;
 using Hermes.Infrastructure.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 namespace Hermes.Api.Hosting;
 
@@ -104,6 +106,57 @@ public static class ApiServiceCollectionExtensions
                 }
             };
         });
+
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                var problemDetailsService = context.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
+                context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
+                    context.HttpContext.Response.Headers["Retry-After"] = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+
+                await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                {
+                    HttpContext = context.HttpContext,
+                    ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                    {
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Title = "Too many requests.",
+                        Detail = "Rate limit exceeded. Please retry later."
+                    }
+                });
+            };
+
+            options.AddPolicy("AuthLoginPolicy", httpContext =>
+                CreateAuthPartition(httpContext, permitLimit: 8, window: TimeSpan.FromMinutes(1)));
+
+            options.AddPolicy("AuthRefreshPolicy", httpContext =>
+                CreateAuthPartition(httpContext, permitLimit: 30, window: TimeSpan.FromMinutes(1)));
+        });
+    }
+
+    private static RateLimitPartition<string> CreateAuthPartition(HttpContext httpContext, int permitLimit, TimeSpan window)
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
+        var clientKey = httpContext.Request.Headers["X-Client-Key"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(clientKey))
+            clientKey = "anonymous-client";
+
+        // Partition by both dimensions so callers are naturally segmented by source and client identity.
+        var partitionKey = $"ip:{ip}|client:{clientKey.Trim()}";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = window,
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
     }
 
     private static JobStorage CreateHangfireJobStorage(IConfiguration configuration)
