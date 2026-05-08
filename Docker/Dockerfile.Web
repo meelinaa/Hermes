@@ -1,3 +1,4 @@
+# Stage 1: Build
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 WORKDIR /src
 
@@ -6,6 +7,7 @@ COPY ["Hermes.Infrastructure/Hermes.Infrastructure.csproj", "Hermes.Infrastructu
 COPY ["Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj", "Hermes.WebFrontend/Hermes.WebFrontend/"]
 COPY ["Hermes.WebFrontend/Hermes.WebFrontend.Client/Hermes.WebFrontend.Client.csproj", "Hermes.WebFrontend/Hermes.WebFrontend.Client/"]
 
+# Restore
 RUN dotnet restore "Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj"
 
 COPY . .
@@ -16,7 +18,8 @@ RUN dotnet publish "Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csp
     /p:UseAppHost=false \
     /p:PublishStaticWebAssets=true
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS final
+# Stage 2: Run
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
