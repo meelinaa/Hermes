@@ -11,13 +11,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Hermes.IntegrationTests.Users;
 
 /// <summary>
-/// E-mail verification routes: <c>GET …/verify/{{email}}</c> and <c>POST …/verify/code</c> against MySQL.
+/// E-mail verification routes: <c>POST …/users/{id}/verify</c> and <c>POST …/verify/code</c> against MySQL.
 /// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixture)
 {
-    private static readonly JsonSerializerOptions JsonWeb = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonWeb = new(JsonSerializerDefaults.Web);
 
     private static async Task SeedVerificationChallengeAsync(
         HermesApiWebApplicationFactory factory,
@@ -26,8 +26,8 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
         DateTime expiryUtc)
     {
         using IServiceScope scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HermesDbContext>();
-        User user = await db.Users.FirstAsync(u => u.Id == userId);
+        HermesDbContext db = scope.ServiceProvider.GetRequiredService<HermesDbContext>();
+        User user = await db.Users.FirstAsync(userEntity => userEntity.Id == userId);
         user.TwoFactorCode = code;
         user.TwoFactorExpiry = expiryUtc;
         await db.SaveChangesAsync();
@@ -40,32 +40,41 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
         return request;
     }
 
-    [Fact]
-    public async Task Get_verify_known_email_returns_OK()
+    private static HttpRequestMessage AuthorizedPost(string relativeUri, string accessToken)
     {
-        using HttpClient client = fixture.Factory.CreateClient();
-        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
-
-        string path = $"/api/v1/users/verify/{Uri.EscapeDataString(email)}";
-        using HttpResponseMessage response = await client.SendAsync(AuthorizedGet(path, access));
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(email, (await response.Content.ReadAsStringAsync()).Trim());
+        HttpRequestMessage request = new(HttpMethod.Post, relativeUri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return request;
     }
 
     [Fact]
-    public async Task Get_verify_unknown_email_returns_NotFound()
+    public async Task Post_verify_with_own_userid_returns_OK()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
+
+        string path = $"/api/v1/users/{userId}/verify";
+        using HttpResponseMessage response = await client.SendAsync(AuthorizedPost(path, access));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(userId, json.RootElement.GetProperty("userId").GetInt32());
+        Assert.Equal(email, json.RootElement.GetProperty("email").GetString());
+    }
+
+    [Fact]
+    public async Task Post_verify_with_unknown_userid_returns_Forbidden()
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        string ghost = $"ghost-{Guid.NewGuid():N}@integration.hermes";
-        string path = $"/api/v1/users/verify/{Uri.EscapeDataString(ghost)}";
-        using HttpResponseMessage response = await client.SendAsync(AuthorizedGet(path, access));
+        int unknownUserId = int.MaxValue;
+        string path = $"/api/v1/users/{unknownUserId}/verify";
+        using HttpResponseMessage response = await client.SendAsync(AuthorizedPost(path, access));
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -73,13 +82,13 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         await SeedVerificationChallengeAsync(fixture.Factory, userId, "654321", DateTime.UtcNow.AddMinutes(10));
 
         using HttpRequestMessage post = new(HttpMethod.Post, "/api/v1/users/verify/code");
         post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        post.Content = JsonContent.Create(new { userId, code = 654321 }, options: JsonWeb);
+        post.Content = JsonContent.Create(new { userId, code = 654321 }, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(post);
 
@@ -96,13 +105,13 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         await SeedVerificationChallengeAsync(fixture.Factory, userId, "111111", DateTime.UtcNow.AddMinutes(10));
 
         using HttpRequestMessage post = new(HttpMethod.Post, "/api/v1/users/verify/code");
         post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        post.Content = JsonContent.Create(new { userId, code = 999999 }, options: JsonWeb);
+        post.Content = JsonContent.Create(new { userId, code = 999999 }, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(post);
 
@@ -114,13 +123,13 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         await SeedVerificationChallengeAsync(fixture.Factory, userId, "222222", DateTime.UtcNow.AddMinutes(-2));
 
         using HttpRequestMessage post = new(HttpMethod.Post, "/api/v1/users/verify/code");
         post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        post.Content = JsonContent.Create(new { userId, code = 222222 }, options: JsonWeb);
+        post.Content = JsonContent.Create(new { userId, code = 222222 }, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(post);
 

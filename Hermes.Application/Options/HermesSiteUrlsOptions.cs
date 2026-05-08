@@ -5,7 +5,7 @@ namespace Hermes.Application.Options;
 /// </summary>
 public sealed class HermesSiteUrlsOptions
 {
-    public const string SectionName = "Hermes";
+    public const string SECTION_NAME = "Hermes";
 
     /// <summary>Scheme + host for deep links, e.g. <c>https://hermes.de</c> (no trailing slash).</summary>
     public string PublicBaseUrl { get; set; } = "https://hermes.de";

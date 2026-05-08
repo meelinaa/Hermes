@@ -40,7 +40,7 @@
         if (!string.IsNullOrEmpty(Tokens.AccessToken))
             return;
 
-        var path = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/');
+        string path = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/');
         if (path.Length == 0)
             path = "/";
 

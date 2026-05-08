@@ -17,7 +17,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     /// <inheritdoc />
     public async Task<User?> GetUserByIdAsync(int id, CancellationToken ct = default)
     {
-        return await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct).ConfigureAwait(false);
+        return await db.Users.AsNoTracking().FirstOrDefaultAsync(userEntity => userEntity.Id == id, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -28,8 +28,8 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
             return null;
         }
 
-        var normalized = email.Trim();
-        return await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalized, ct).ConfigureAwait(false);
+        string normalized = email.Trim();
+        return await db.Users.AsNoTracking().FirstOrDefaultAsync(userEntity => userEntity.Email == normalized, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -50,7 +50,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     /// <inheritdoc />
     public async Task DeleteUserAsync(int id, CancellationToken ct = default)
     {
-        var entity = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct).ConfigureAwait(false);
+        User? entity = await db.Users.FirstOrDefaultAsync(userEntity => userEntity.Id == id, ct).ConfigureAwait(false);
         if (entity is null)
         {
             return;

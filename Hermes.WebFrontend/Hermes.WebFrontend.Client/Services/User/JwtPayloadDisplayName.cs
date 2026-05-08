@@ -9,31 +9,31 @@ namespace Hermes.WebFrontend.Client.Services.User;
 /// </summary>
 public static class JwtPayloadDisplayName
 {
-    private const string ClaimName =
+    private const string CLAIM_NAME =
         "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name";
 
-    private const string ClaimEmail =
+    private const string CLAIM_EMAIL =
         "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress";
 
     public static string? TryGet(string? accessToken)
     {
-        var json = DecodePayloadJson(accessToken);
+        string? json = DecodePayloadJson(accessToken);
         if (json is null)
             return null;
 
         try
         {
-            using var doc = JsonDocument.Parse(json);
-            var o = doc.RootElement;
-            if (TryString(o, ClaimName, out var name))
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement element = doc.RootElement;
+            if (TryString(element, CLAIM_NAME, out string? name))
                 return name;
-            if (TryString(o, "name", out name))
+            if (TryString(element, "name", out name))
                 return name;
-            if (TryString(o, "unique_name", out name))
+            if (TryString(element, "unique_name", out name))
                 return name;
-            if (TryString(o, ClaimEmail, out var email))
+            if (TryString(element, CLAIM_EMAIL, out string? email))
                 return email;
-            if (TryString(o, "email", out email))
+            if (TryString(element, "email", out email))
                 return email;
         }
         catch
@@ -47,19 +47,19 @@ public static class JwtPayloadDisplayName
     /// <summary>Returns <c>sub</c> claim as user id (matches API JWT).</summary>
     public static int? TryGetUserId(string? accessToken)
     {
-        var json = DecodePayloadJson(accessToken);
+        string? json = DecodePayloadJson(accessToken);
         if (json is null)
             return null;
 
         try
         {
-            using var doc = JsonDocument.Parse(json);
-            var o = doc.RootElement;
-            if (!o.TryGetProperty("sub", out var sub))
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement element = doc.RootElement;
+            if (!element.TryGetProperty("sub", out JsonElement sub))
                 return null;
             if (sub.ValueKind == JsonValueKind.String)
             {
-                if (int.TryParse(sub.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
+                if (int.TryParse(sub.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int id))
                     return id;
             }
             else if (sub.ValueKind == JsonValueKind.Number)
@@ -78,21 +78,21 @@ public static class JwtPayloadDisplayName
     /// <summary>JWT <c>exp</c> as UTC (Unix seconds); no signature validation.</summary>
     public static DateTimeOffset? TryGetExpiresAtUtc(string? accessToken)
     {
-        var json = DecodePayloadJson(accessToken);
+        string? json = DecodePayloadJson(accessToken);
         if (json is null)
             return null;
 
         try
         {
-            using var doc = JsonDocument.Parse(json);
-            var o = doc.RootElement;
-            if (!o.TryGetProperty("exp", out var exp))
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement element = doc.RootElement;
+            if (!element.TryGetProperty("exp", out JsonElement exp))
                 return null;
             if (exp.ValueKind == JsonValueKind.Number)
                 return DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64());
             if (exp.ValueKind == JsonValueKind.String)
             {
-                if (long.TryParse(exp.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var sec))
+                if (long.TryParse(exp.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long sec))
                     return DateTimeOffset.FromUnixTimeSeconds(sec);
             }
         }
@@ -108,7 +108,7 @@ public static class JwtPayloadDisplayName
     {
         if (string.IsNullOrWhiteSpace(accessToken))
             return null;
-        var parts = accessToken.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        string[] parts = accessToken.Split('.', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
             return null;
         try
@@ -121,26 +121,26 @@ public static class JwtPayloadDisplayName
         }
     }
 
-    private static bool TryString(JsonElement o, string property, out string? value)
+    private static bool TryString(JsonElement payloadElement, string property, out string? value)
     {
         value = null;
-        if (!o.TryGetProperty(property, out var el))
+        if (!payloadElement.TryGetProperty(property, out JsonElement propertyElement))
             return false;
-        if (el.ValueKind != JsonValueKind.String)
+        if (propertyElement.ValueKind != JsonValueKind.String)
             return false;
-        value = el.GetString();
+        value = propertyElement.GetString();
         return !string.IsNullOrWhiteSpace(value);
     }
 
     private static byte[] Base64UrlDecode(string input)
     {
-        var s = input.Replace('-', '+').Replace('_', '/');
-        switch (s.Length % 4)
+        string normalized = input.Replace('-', '+').Replace('_', '/');
+        switch (normalized.Length % 4)
         {
-            case 2: s += "=="; break;
-            case 3: s += "="; break;
+            case 2: normalized += "=="; break;
+            case 3: normalized += "="; break;
         }
 
-        return Convert.FromBase64String(s);
+        return Convert.FromBase64String(normalized);
     }
 }

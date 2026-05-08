@@ -8,6 +8,6 @@ public sealed class NewsWriteValidator : AbstractValidator<News>
 {
     public NewsWriteValidator()
     {
-        RuleFor(n => n.UserId).GreaterThan(0);
+        RuleFor(newsRequest => newsRequest.UserId).GreaterThan(0);
     }
 }

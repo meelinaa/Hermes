@@ -121,9 +121,9 @@
 
     <div class="news-sub-field">
         <p class="news-sub-hint mb-2">Die folgenden Zeiten gelten für <strong>alle aktiven</strong> Sende-Tage. Du kannst mehrere Uhrzeiten hinzufügen.</p>
-        @for (var i = 0; i < sharedTimes.Count; i++)
+        @for (int i = 0; i < sharedTimes.Count; i++)
         {
-            var index = i;
+            int index = i;
             <div class="news-time-row">
                 <input class="form-control news-sub-time" type="time" step="60"
                        value="@sharedTimes[index]"
@@ -200,7 +200,7 @@
     {
         if (string.IsNullOrWhiteSpace(query))
             return true;
-        var q = query.Trim();
+        string q = query.Trim();
         return labelDe.Contains(q, StringComparison.CurrentCultureIgnoreCase)
                || enumName.Contains(q, StringComparison.OrdinalIgnoreCase);
     }
@@ -241,33 +241,33 @@
         selectedCategories.Clear();
         if (InitialModel.Category is not null)
         {
-            foreach (var c in InitialModel.Category)
+            foreach (NewsCategory c in InitialModel.Category)
                 selectedCategories.Add(c);
         }
 
         selectedLanguages.Clear();
         if (InitialModel.Languages is not null)
         {
-            foreach (var l in InitialModel.Languages)
+            foreach (Language l in InitialModel.Languages)
                 selectedLanguages.Add(l);
         }
 
         selectedCountries.Clear();
         if (InitialModel.Countries is not null)
         {
-            foreach (var c in InitialModel.Countries)
+            foreach (Country c in InitialModel.Countries)
                 selectedCountries.Add(c);
         }
 
-        foreach (var d in AllWeekdays)
+        foreach (Weekdays d in AllWeekdays)
             dayActive[d] = false;
-        foreach (var d in InitialModel.SendOnWeekdays)
+        foreach (Weekdays d in InitialModel.SendOnWeekdays)
             dayActive[d] = true;
 
         sharedTimes.Clear();
         if (InitialModel.SendAtTimes.Count > 0)
         {
-            foreach (var t in InitialModel.SendAtTimes.OrderBy(x => x))
+            foreach (TimeOnly t in InitialModel.SendAtTimes.OrderBy(x => x))
                 sharedTimes.Add(t.ToString("HH:mm"));
         }
         else
@@ -285,7 +285,7 @@
         selectedCategories.Clear();
         selectedLanguages.Clear();
         selectedCountries.Clear();
-        foreach (var d in AllWeekdays)
+        foreach (Weekdays d in AllWeekdays)
             dayActive[d] = false;
         sharedTimes.Clear();
         sharedTimes.Add("10:00");
@@ -340,7 +340,7 @@
 
     private void AddSharedTimeSlot()
     {
-        var template = sharedTimes.Count > 0 ? sharedTimes[^1] : "10:00";
+        string template = sharedTimes.Count > 0 ? sharedTimes[^1] : "10:00";
         sharedTimes.Add(NormalizeTime(template));
     }
 
@@ -355,7 +355,7 @@
     {
         if (string.IsNullOrWhiteSpace(raw))
             return "10:00";
-        var s = raw.Trim();
+        string s = raw.Trim();
         return s.Length >= 5 ? s[..5] : s;
     }
 
@@ -363,17 +363,17 @@
     {
         newsFeedback = null;
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        var userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
         if (userId is null)
         {
             newsFeedback = "Bitte erneut anmelden.";
             return;
         }
 
-        var keywords = keywordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        List<string> keywords = keywordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(s => s.Length > 0).ToList();
 
-        var weekdays = dayActive.Where(kv => kv.Value).Select(kv => kv.Key).OrderBy(d => (int)d).ToList();
+        List<Weekdays> weekdays = dayActive.Where(kv => kv.Value).Select(kv => kv.Key).OrderBy(d => (int)d).ToList();
         if (weekdays.Count == 0)
         {
             newsFeedback = "Bitte mindestens einen Sendetag wählen.";
@@ -386,13 +386,13 @@
             return;
         }
 
-        var times = sharedTimes
+        List<TimeOnly> times = sharedTimes
             .Select(t => TimeOnly.ParseExact(NormalizeTime(t), "HH:mm", CultureInfo.InvariantCulture))
             .Distinct()
             .OrderBy(t => t)
             .ToList();
 
-        var news = new News
+        News news = new()
         {
             Id = _editingId,
             UserId = userId.Value,
@@ -421,7 +421,7 @@
                     await OnReturnToList.InvokeAsync(true).ConfigureAwait(false);
                 else
                 {
-                    var scope = await response.Content.ReadFromJsonAsync<NewsScope>(HermesNewsJson.Options).ConfigureAwait(false);
+                    NewsScope? scope = await response.Content.ReadFromJsonAsync<NewsScope>(HermesNewsJson.Options).ConfigureAwait(false);
                     newsFeedback = scope != null
                         ? $"Gespeichert (News-Konfiguration #{scope.NewsId})."
                         : "Gespeichert.";
@@ -456,8 +456,8 @@
     {
         try
         {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            using Stream? stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
             if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
                 return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
         }

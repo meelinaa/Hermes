@@ -1,6 +1,7 @@
 using Hermes.Api.Middleware;
 using Hermes.Domain;
 using Hermes.Domain.Exceptions;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -31,7 +32,7 @@ public static class ApiApplicationPipelineExtensions
             options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
             options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
             {
-                var correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextItemKey]?.ToString();
+                string? correlationId = httpContext.Items[CorrelationIdMiddleware.HTTP_CONTEXT_ITEM_KEY]?.ToString();
                 if (!string.IsNullOrEmpty(correlationId))
                     diagnosticContext.Set("CorrelationId", correlationId);
             };
@@ -43,8 +44,8 @@ public static class ApiApplicationPipelineExtensions
         {
             exceptionHandlerApp.Run(async context =>
             {
-                var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
-                var exceptionHandlerFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+                IProblemDetailsService problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+                IExceptionHandlerFeature? exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
                 if (exceptionHandlerFeature?.Error is not { } error)
                     return;
 
@@ -113,7 +114,7 @@ public static class ApiApplicationPipelineExtensions
                         HttpContext = context,
                         ProblemDetails = new ProblemDetails
                         {
-                            Type = HermesProblemTypes.WrongCurrentPassword,
+                            Type = HermesProblemTypes.WRONG_CURRENT_PASSWORD,
                             Title = "Aktuelles Passwort ungültig",
                             Detail = wcp.Message,
                             Status = StatusCodes.Status400BadRequest
@@ -175,17 +176,17 @@ public static class ApiApplicationPipelineExtensions
         app.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("ready"),
-            ResponseWriter = async (context, report) =>
+            ResponseWriter = static async (context, report) =>
             {
                 context.Response.ContentType = "application/json";
                 var response = new
                 {
                     Status = report.Status.ToString(),
-                    Checks = report.Entries.Select(e => new
+                    Checks = report.Entries.Select(entry => new
                     {
-                        Component = e.Key,
-                        Status = e.Value.Status.ToString(),
-                        Description = e.Value.Description
+                        Component = entry.Key,
+                        Status = entry.Value.Status.ToString(),
+                        entry.Value.Description
                     }),
                     Duration = report.TotalDuration
                 };

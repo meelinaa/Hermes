@@ -6,10 +6,10 @@ namespace Hermes.IntegrationTests.Infrastructure;
 /// </summary>
 internal static class IntegrationTestAuthSettings
 {
-    public const string JwtIssuer = "Hermes.IntegrationTests";
+    public const string JWT_ISSUER = "Hermes.IntegrationTests";
 
-    public const string JwtAudience = "Hermes.Api.Tests";
+    public const string JWT_AUDIENCE = "Hermes.Api.Tests";
 
     /// <summary>Same minimum-length symmetric secret configured on the test API host (HS256).</summary>
-    public const string JwtSigningKey = "INTEGRATION_TESTS_SIGNING_KEY_32_CHARS_MIN________";
+    public const string JWT_SIGNING_KEY = "INTEGRATION_TESTS_SIGNING_KEY_32_CHARS_MIN________";
 }

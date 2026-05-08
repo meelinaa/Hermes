@@ -14,17 +14,17 @@ public sealed class HangfireNewsletterSchedulerRunTrigger(JobStorage jobStorage,
     {
         try
         {
-            new RecurringJobManager(jobStorage).TriggerJob(NewsletterSchedulerRecurringJob.Id);
+            new RecurringJobManager(jobStorage).TriggerJob(NewsletterSchedulerRecurringJob.ID);
             logger.LogInformation(
                 "Triggered Hangfire recurring job {JobId} after news mutation.",
-                NewsletterSchedulerRecurringJob.Id);
+                NewsletterSchedulerRecurringJob.ID);
         }
         catch (Exception ex)
         {
             logger.LogWarning(
                 ex,
                 "Could not trigger Hangfire recurring job {JobId} after news mutation; hourly schedule still applies.",
-                NewsletterSchedulerRecurringJob.Id);
+                NewsletterSchedulerRecurringJob.ID);
         }
     }
 }

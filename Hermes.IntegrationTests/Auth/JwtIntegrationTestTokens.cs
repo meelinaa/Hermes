@@ -13,7 +13,7 @@ namespace Hermes.IntegrationTests.Auth;
 internal static class JwtIntegrationTestTokens
 {
     /// <summary>Creates a syntactically invalid bearer secret (not three Base64Url segments).</summary>
-    public const string MalformedJwtMaterial = "not.a.valid.jwt.structure";
+    public const string MALFORMED_JWT_MATERIAL = "not.a.valid.jwt.structure";
 
     private static string BuildToken(
         int userId,
@@ -24,16 +24,16 @@ internal static class JwtIntegrationTestTokens
         DateTime expiresUtc)
     {
         string id = userId.ToString(CultureInfo.InvariantCulture);
-        var claims = new List<Claim>
-        {
+        List<Claim> claims =
+        [
             new(JwtRegisteredClaimNames.Sub, id),
             new(ClaimTypes.NameIdentifier, id),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
-        };
+        ];
 
-        var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
+        SigningCredentials creds = new(signingKey, SecurityAlgorithms.HmacSha256);
+        JwtSecurityToken token = new(
             issuer,
             audience,
             claims,
@@ -47,12 +47,12 @@ internal static class JwtIntegrationTestTokens
     /// <summary>JWT whose <c>exp</c> lies firmly in the past—middleware must reject it even though the signature matches.</summary>
     public static string CreateExpiredAccessToken(int userId)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JwtSigningKey));
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));
         DateTime now = DateTime.UtcNow;
         return BuildToken(
             userId,
-            IntegrationTestAuthSettings.JwtIssuer,
-            IntegrationTestAuthSettings.JwtAudience,
+            IntegrationTestAuthSettings.JWT_ISSUER,
+            IntegrationTestAuthSettings.JWT_AUDIENCE,
             key,
             notBeforeUtc: now.AddHours(-2),
             expiresUtc: now.AddMinutes(-45));
@@ -61,40 +61,40 @@ internal static class JwtIntegrationTestTokens
     /// <summary>JWT signed with a different symmetric key—signature verification must fail.</summary>
     public static string CreateTokenWithWrongSigningKey(int userId)
     {
-        var wrongKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(new string('z', 48)));
+        SymmetricSecurityKey wrongKey = new(Encoding.UTF8.GetBytes(new string('z', 48)));
         DateTime now = DateTime.UtcNow;
         return BuildToken(
             userId,
-            IntegrationTestAuthSettings.JwtIssuer,
-            IntegrationTestAuthSettings.JwtAudience,
+            IntegrationTestAuthSettings.JWT_ISSUER,
+            IntegrationTestAuthSettings.JWT_AUDIENCE,
             wrongKey,
             notBeforeUtc: now.AddMinutes(-5),
             expiresUtc: now.AddMinutes(60));
     }
 
-    /// <summary>JWT whose <c>aud</c> claim does not match configured <see cref="IntegrationTestAuthSettings.JwtAudience"/>.</summary>
+    /// <summary>JWT whose <c>aud</c> claim does not match configured <see cref="IntegrationTestAuthSettings.JWT_AUDIENCE"/>.</summary>
     public static string CreateTokenWithWrongAudience(int userId)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JwtSigningKey));
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));
         DateTime now = DateTime.UtcNow;
         return BuildToken(
             userId,
-            IntegrationTestAuthSettings.JwtIssuer,
+            IntegrationTestAuthSettings.JWT_ISSUER,
             audience: "wrong-audience.integration.tests",
             key,
             notBeforeUtc: now.AddMinutes(-5),
             expiresUtc: now.AddMinutes(60));
     }
 
-    /// <summary>JWT whose <c>iss</c> claim does not match configured <see cref="IntegrationTestAuthSettings.JwtIssuer"/>.</summary>
+    /// <summary>JWT whose <c>iss</c> claim does not match configured <see cref="IntegrationTestAuthSettings.JWT_ISSUER"/>.</summary>
     public static string CreateTokenWithWrongIssuer(int userId)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JwtSigningKey));
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));
         DateTime now = DateTime.UtcNow;
         return BuildToken(
             userId,
             issuer: "wrong-issuer.integration.tests",
-            IntegrationTestAuthSettings.JwtAudience,
+            IntegrationTestAuthSettings.JWT_AUDIENCE,
             key,
             notBeforeUtc: now.AddMinutes(-5),
             expiresUtc: now.AddMinutes(60));

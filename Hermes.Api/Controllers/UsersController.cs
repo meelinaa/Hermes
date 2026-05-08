@@ -78,7 +78,7 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(request.Id) is { } denied)
             return denied;
 
-        var user = new User
+        User user = new() 
         {
             Id = request.Id,
             Name = request.Name,
@@ -133,7 +133,7 @@ public class UsersController(IUserService userService) : ControllerBase
 
         try
         {
-            var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+            UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
             return user is null ? this.NotFoundProblem() : Ok(user);
         }
         catch (UserNotFoundException)
@@ -221,14 +221,14 @@ public class UsersController(IUserService userService) : ControllerBase
 
     private ActionResult? TryGetVerificationMailCooldownResponse(int userId)
     {
-        if (!_lastVerificationMailByUserId.TryGetValue(userId, out var lastSentAt))
+        if (!_lastVerificationMailByUserId.TryGetValue(userId, out DateTimeOffset lastSentAt))
             return null;
 
-        var elapsed = DateTimeOffset.UtcNow - lastSentAt;
+        TimeSpan elapsed = DateTimeOffset.UtcNow - lastSentAt;
         if (elapsed >= _verificationMailCooldown)
             return null;
 
-        var remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
+        int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
         Response.Headers["Retry-After"] = remainingSeconds.ToString();
         return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
     }

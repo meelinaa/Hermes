@@ -1,4 +1,4 @@
-﻿using Hangfire;
+using Hangfire;
 using Hangfire.MySql;
 using Hermes.Application.Jobs;
 using Hermes.Application.Options;
@@ -21,12 +21,12 @@ public static class WorkerServiceCollectionExtensions
     /// </summary>
     public static void AddHermesWorker(this HostApplicationBuilder builder)
     {
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? builder.Configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
 
-        var hangfireConnectionRaw = builder.Configuration.GetConnectionString("Hangfire");
-        var hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
+        string? hangfireConnectionRaw = builder.Configuration.GetConnectionString("Hangfire");
+        string hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
             ? connectionString
             : hangfireConnectionRaw;
 
@@ -42,7 +42,7 @@ public static class WorkerServiceCollectionExtensions
             opts.ApiKey = WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile(builder.Environment.ContentRootPath)
                 ?? string.Empty;
         });
-        builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SectionName));
+        builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
         builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();

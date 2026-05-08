@@ -13,10 +13,7 @@ public sealed class CountryIsoCodeMapperTests
     /// Enum → API uses lowercase two-letter code from attributes.
     /// </summary>
     [Fact]
-    public void ToIso3166Alpha2_ReturnsLowercaseAttributeCode()
-    {
-        Assert.Equal("de", CountryIsoCodeMapper.ToIso3166Alpha2(Country.Germany));
-    }
+    public void ToIso3166Alpha2_ReturnsLowercaseAttributeCode() => Assert.Equal("de", CountryIsoCodeMapper.ToIso3166Alpha2(Country.Germany));
 
     /// <summary>
     /// Parsing trims whitespace and accepts case-insensitive two-letter codes.
@@ -24,11 +21,11 @@ public sealed class CountryIsoCodeMapperTests
     [Fact]
     public void TryGetCountry_ReturnsTrue_ForAnyCaseTwoLetterCode()
     {
-        Assert.True(CountryIsoCodeMapper.TryGetCountry("DE", out var c));
-        Assert.Equal(Country.Germany, c);
+        Assert.True(CountryIsoCodeMapper.TryGetCountry("DE", out Country country));
+        Assert.Equal(Country.Germany, country);
 
-        Assert.True(CountryIsoCodeMapper.TryGetCountry(" de ", out var c2));
-        Assert.Equal(Country.Germany, c2);
+        Assert.True(CountryIsoCodeMapper.TryGetCountry(" de ", out Country country2));
+        Assert.Equal(Country.Germany, country2);
     }
 
     /// <summary>
@@ -43,10 +40,7 @@ public sealed class CountryIsoCodeMapperTests
     }
 
     [Fact]
-    public void ParseCountry_ReturnsEnum_WhenKnown()
-    {
-        Assert.Equal(Country.Germany, CountryIsoCodeMapper.ParseCountry("de"));
-    }
+    public void ParseCountry_ReturnsEnum_WhenKnown() => Assert.Equal(Country.Germany, CountryIsoCodeMapper.ParseCountry("de"));
 
     /// <summary>
     /// Parse throws <see cref="ArgumentException"/> with consistent parameter name for invalid codes.
@@ -54,7 +48,7 @@ public sealed class CountryIsoCodeMapperTests
     [Fact]
     public void ParseCountry_ThrowsArgumentException_WhenUnknown()
     {
-        var ex = Assert.Throws<ArgumentException>(() => CountryIsoCodeMapper.ParseCountry("zz"));
+        ArgumentException ex = Assert.Throws<ArgumentException>(() => CountryIsoCodeMapper.ParseCountry("zz"));
 
         Assert.Equal("iso3166Alpha2", ex.ParamName);
     }

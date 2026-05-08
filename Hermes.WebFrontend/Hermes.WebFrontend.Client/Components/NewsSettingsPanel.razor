@@ -35,7 +35,7 @@
         else
         {
             <ul class="news-settings-list">
-                @foreach (var n in items.OrderBy(x => x.Id))
+                @foreach (News n in items.OrderBy(x => x.Id))
                 {
                     <li class="news-settings-card">
                         <div class="news-settings-card-head">
@@ -94,7 +94,7 @@
         loading = true;
         loadError = null;
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        var userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
         if (userId is null)
         {
             loadError = "Bitte erneut anmelden.";
@@ -135,14 +135,14 @@
     private async Task DeleteAsync(News n)
     {
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        var userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
         if (userId is null)
             return;
 
         deletingId = n.Id;
         try
         {
-            var response = await Http.DeleteAsync(
+            HttpResponseMessage response = await Http.DeleteAsync(
                 $"api/v1/users/news/userId={userId.Value}/newsId={n.Id}").ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
@@ -205,9 +205,9 @@
     {
         try
         {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+            using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out JsonElement d) && d.ValueKind == JsonValueKind.String)
                 return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
         }
         catch

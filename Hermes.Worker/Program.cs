@@ -10,7 +10,7 @@ var host = builder.Build();
 
 using (var scope = host.Services.CreateScope())
 {
-    var storage = scope.ServiceProvider.GetService<JobStorage>();
+    JobStorage? storage = scope.ServiceProvider.GetService<JobStorage>();
     if (storage is not null)
         JobStorage.Current = storage;
 }
@@ -18,8 +18,8 @@ using (var scope = host.Services.CreateScope())
 WorkerServiceCollectionHelper.LogMailHogDevHints(host);
 
 RecurringJob.AddOrUpdate<NewsletterScheduler>(
-    NewsletterSchedulerRecurringJob.Id,
-    s => s.RunAsync(CancellationToken.None),
+    NewsletterSchedulerRecurringJob.ID,
+    scheduler => scheduler.RunAsync(CancellationToken.None),
     Cron.Minutely(),
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
 

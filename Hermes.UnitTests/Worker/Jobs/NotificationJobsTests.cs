@@ -13,14 +13,14 @@ public sealed class NotificationJobsTests
     {
         Mock<INewsletterDigestService> digest = new();
         Mock<IVerificationDigestService> verify = new();
-        digest.Setup(x => x.SendAsync(7, 3, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        digest.Setup(digestService => digestService.SendAsync(7, 3, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         NotificationJobs sut = new(digest.Object, verify.Object);
 
-        var slot = new DateTime(2026, 4, 1, 12, 0, 0, DateTimeKind.Utc);
+        DateTime slot = new(2026, 4, 1, 12, 0, 0, DateTimeKind.Utc);
         await sut.SendNewsDigestAsync(7, 3, slot);
 
-        digest.Verify(x => x.SendAsync(7, 3, slot, It.IsAny<CancellationToken>()), Times.Once);
+        digest.Verify(digestService => digestService.SendAsync(7, 3, slot, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -28,12 +28,12 @@ public sealed class NotificationJobsTests
     {
         Mock<INewsletterDigestService> digest = new();
         Mock<IVerificationDigestService> verify = new();
-        verify.Setup(x => x.SendAsync(99, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        verify.Setup(verificationService => verificationService.SendAsync(99, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         NotificationJobs sut = new(digest.Object, verify.Object);
 
         await sut.SendVerificationMailAsync(99);
 
-        verify.Verify(x => x.SendAsync(99, It.IsAny<CancellationToken>()), Times.Once);
+        verify.Verify(verificationService => verificationService.SendAsync(99, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

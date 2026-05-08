@@ -23,10 +23,10 @@ public sealed class AuthTokenService(
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
         // Access: stateless JWT for API authorization.
-        var access = jwt.Issue(userId, email, name);
+        JwtAccessTokenResult access = jwt.Issue(userId, email, name);
         // Refresh: high-entropy random string shown once; only its hash is stored.
-        var plain = CreateRefreshPlain();
-        var row = new RefreshToken
+        string? plain = CreateRefreshPlain();
+        RefreshToken row = new()
         {
             UserId = userId,
             TokenHash = RefreshTokenHasher.Hash(plain),
@@ -47,15 +47,15 @@ public sealed class AuthTokenService(
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return null;
 
-        var hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
-        var old = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
+        string? hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
+        RefreshToken? old = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
         if (old is null || old.User is null)
             return null;
 
         // New access token for the same user (claims refreshed from current user row).
-        var access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
-        var newPlain = CreateRefreshPlain();
-        var newRow = new RefreshToken
+        JwtAccessTokenResult access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
+        string? newPlain = CreateRefreshPlain();
+        RefreshToken newRow = new()
         {
             UserId = old.UserId,
             TokenHash = RefreshTokenHasher.Hash(newPlain),
@@ -77,8 +77,8 @@ public sealed class AuthTokenService(
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return false;
 
-        var hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
-        var row = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
+        string? hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
+        RefreshToken? row = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
         // Ensure the refresh belongs to the authenticated user (JWT sub) so users cannot revoke others' sessions.
         if (row is null || row.UserId != userId)
             return false;

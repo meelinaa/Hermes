@@ -14,7 +14,7 @@ public static class ControllerUserExtensions
     public static bool TryGetUserId(this ClaimsPrincipal principal, out int userId)
     {
         userId = 0;
-        var id = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        string? id = principal.FindFirstValue(ClaimTypes.NameIdentifier);
         return !string.IsNullOrEmpty(id) && int.TryParse(id, out userId) && userId > 0;
     }
 
@@ -24,7 +24,7 @@ public static class ControllerUserExtensions
     /// </summary>
     public static ActionResult? WhenCannotAccessUser(this ControllerBase controller, int resourceUserId)
     {
-        if (!controller.TryGetCurrentUserId(out var currentUserId))
+        if (!controller.TryGetCurrentUserId(out int currentUserId))
             return controller.UnauthorizedProblem("Missing or invalid user identity in token.");
 
         if (currentUserId != resourceUserId)

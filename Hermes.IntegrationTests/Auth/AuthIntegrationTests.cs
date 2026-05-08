@@ -27,7 +27,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client); // Register a new user to ensure we have valid credentials; this also verifies the user registration flow and database connectivity as a prerequisite for login tests.
-        using HttpResponseMessage response = await AuthIntegrationFlows.LoginResponseAsync(client, email, AuthIntegrationFlows.DefaultPassword); // Attempt to log in with the registered user's email and known password; this tests the login endpoint's ability to validate credentials and issue tokens.
+        using HttpResponseMessage response = await AuthIntegrationFlows.LoginResponseAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD); // Attempt to log in with the registered user's email and known password; this tests the login endpoint's ability to validate credentials and issue tokens.
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync()); // Parse the JSON response to verify the presence and validity of the expected properties: success flag, userId, accessToken, and refreshToken.
@@ -77,7 +77,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage response = await AuthIntegrationFlows.RefreshResponseAsync(client, refresh); // Attempt to refresh the access token using the valid refresh token obtained from login.
 
@@ -99,7 +99,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string refreshFromLogin = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DefaultPassword); // Obtain the initial refresh token from login, which will be used to test the refresh flow and subsequent replay detection after rotation.
+        string refreshFromLogin = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD); // Obtain the initial refresh token from login, which will be used to test the refresh flow and subsequent replay detection after rotation.
 
         string refreshAfterRotation = await AuthIntegrationFlows.RefreshAndGetNewRefreshAsync(client, refreshFromLogin); // Perform a refresh using the initial refresh token, which should succeed and return a new refresh token; this simulates the normal refresh flow and sets up the scenario for testing replay detection of the old token.
 
@@ -170,7 +170,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         (int userId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
 
         using HttpRequestMessage request = new(HttpMethod.Get, $"/api/v1/users/{userId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MalformedJwtMaterial); // Attempt to access a protected route using a malformed JWT token that does not conform to the expected structure (e.g., missing segments, invalid base64 encoding); this should fail with an Unauthorized status, demonstrating that the authentication middleware correctly identifies and rejects malformed tokens before they reach the controller logic.
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MALFORMED_JWT_MATERIAL); // Attempt to access a protected route using a malformed JWT token that does not conform to the expected structure (e.g., missing segments, invalid base64 encoding); this should fail with an Unauthorized status, demonstrating that the authentication middleware correctly identifies and rejects malformed tokens before they reach the controller logic.
 
         using HttpResponseMessage response = await client.SendAsync(request);
 
@@ -258,7 +258,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         using HttpClient client = fixture.Factory.CreateClient();
         (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DefaultPassword);
+        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage request = new(HttpMethod.Get, $"/api/v1/users/{victimId}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", attackerAccess);
@@ -276,8 +276,8 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DefaultPassword);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage logout = new(HttpMethod.Post, "/api/v1/auth/logout");
         logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
@@ -298,8 +298,8 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DefaultPassword);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage logout = new(HttpMethod.Post, "/api/v1/auth/logout");
         logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
@@ -320,7 +320,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage logout = new(HttpMethod.Post, "/api/v1/auth/logout");
         logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);

@@ -4,7 +4,7 @@ namespace Hermes.Infrastructure.NewsDataIo;
 
 public static class NewsDataIoUrlBuilder
 {
-    private const string BaseUrl = "https://newsdata.io/api/1/latest?";
+    private const string BASE_URL = "https://newsdata.io/api/1/latest?";
 
     public static string Build(ApiUrlParts parts)
     {
@@ -12,8 +12,8 @@ public static class NewsDataIoUrlBuilder
         if (string.IsNullOrWhiteSpace(parts.ApiKey))
             throw new ArgumentException("ApiKey is required.", nameof(parts));
 
-        var sb = new StringBuilder();
-        sb.Append(BaseUrl);
+        StringBuilder sb = new();
+        sb.Append(BASE_URL);
         sb.Append("apikey=");
         sb.Append(Uri.EscapeDataString(parts.ApiKey));
 
@@ -33,10 +33,10 @@ public static class NewsDataIoUrlBuilder
     {
         if (values is null)
             return;
-        var list = values.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToList();
-        if (list.Count == 0)
+        List<string> filteredValues = values.Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value.Trim()).ToList();
+        if (filteredValues.Count == 0)
             return;
-        sb.Append('&').Append(queryName).Append('=').Append(Uri.EscapeDataString(string.Join(",", list)));
+        sb.Append('&').Append(queryName).Append('=').Append(Uri.EscapeDataString(string.Join(",", filteredValues)));
     }
 
     private static void AppendOptionalString(StringBuilder sb, string queryName, string? value)

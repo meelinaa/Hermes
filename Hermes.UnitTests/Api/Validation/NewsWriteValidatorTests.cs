@@ -27,7 +27,7 @@ public sealed class NewsWriteValidatorTests
         TestValidationResult<News> result = _validator.TestValidate(entity);
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.UserId);
+        result.ShouldHaveValidationErrorFor(newsEntity => newsEntity.UserId);
     }
 
     /// <summary>
@@ -43,6 +43,6 @@ public sealed class NewsWriteValidatorTests
         TestValidationResult<News> result = _validator.TestValidate(entity);
 
         // Assert
-        result.ShouldNotHaveValidationErrorFor(x => x.UserId);
+        result.ShouldNotHaveValidationErrorFor(newsEntity => newsEntity.UserId);
     }
 }

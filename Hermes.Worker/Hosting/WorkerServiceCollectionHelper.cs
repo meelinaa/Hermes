@@ -14,9 +14,9 @@ public class WorkerServiceCollectionHelper
     /// </summary>
     internal static string? TryReadNewsDataIoApiKeyFromEnvFile(string contentRootPath)
     {
-        foreach (var envPath in EnumerateEnvFilePaths(contentRootPath))
+        foreach (string envPath in EnumerateEnvFilePaths(contentRootPath))
         {
-            var key = TryParseNewsDataIoKeyFromEnvFile(envPath);
+            string? key = TryParseNewsDataIoKeyFromEnvFile(envPath);
             if (!string.IsNullOrWhiteSpace(key))
                 return key.Trim();
         }
@@ -26,17 +26,17 @@ public class WorkerServiceCollectionHelper
 
     private static IEnumerable<string> EnumerateEnvFilePaths(string contentRootPath)
     {
-        var exeDir = Path.GetDirectoryName(Environment.ProcessPath);
-        var starts = new[] { contentRootPath, AppContext.BaseDirectory, Directory.GetCurrentDirectory(), exeDir };
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var start in starts)
+        string? exeDir = Path.GetDirectoryName(Environment.ProcessPath);
+        string?[] starts = [contentRootPath, AppContext.BaseDirectory, Directory.GetCurrentDirectory(), exeDir];
+        HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string? start in starts)
         {
             if (string.IsNullOrWhiteSpace(start))
                 continue;
             string? dir = Path.GetFullPath(start);
-            for (var depth = 0; depth < 8 && !string.IsNullOrEmpty(dir); depth++)
+            for (int depth = 0; depth < 8 && !string.IsNullOrEmpty(dir); depth++)
             {
-                var candidate = Path.Combine(dir, ".env");
+                string candidate = Path.Combine(dir, ".env");
                 if (File.Exists(candidate) && seen.Add(candidate))
                     yield return candidate;
                 dir = Directory.GetParent(dir)?.FullName;
@@ -46,26 +46,26 @@ public class WorkerServiceCollectionHelper
 
     private static string? TryParseNewsDataIoKeyFromEnvFile(string envFilePath)
     {
-        const string colonPrefix = "NEWSDATA.IO:";
-        foreach (var rawLine in File.ReadLines(envFilePath))
+        const string COLON_PREFIX = "NEWSDATA.IO:";
+        foreach (string rawLine in File.ReadLines(envFilePath))
         {
-            var line = rawLine.Trim().TrimStart('\uFEFF');
+            string line = rawLine.Trim().TrimStart('\uFEFF');
             if (line.Length == 0 || line.StartsWith('#'))
                 continue;
 
-            if (line.StartsWith(colonPrefix, StringComparison.Ordinal))
+            if (line.StartsWith(COLON_PREFIX, StringComparison.Ordinal))
             {
-                var v = line[colonPrefix.Length..].Trim();
-                if (!string.IsNullOrWhiteSpace(v))
-                    return StripOptionalQuotes(v);
+                string parsedValue = line[COLON_PREFIX.Length..].Trim();
+                if (!string.IsNullOrWhiteSpace(parsedValue))
+                    return StripOptionalQuotes(parsedValue);
                 continue;
             }
 
-            var eq = line.IndexOf('=');
+            int eq = line.IndexOf('=');
             if (eq <= 0)
                 continue;
-            var keyName = line[..eq].Trim();
-            var value = line[(eq + 1)..].Trim();
+            string keyName = line[..eq].Trim();
+            string value = line[(eq + 1)..].Trim();
             if (string.IsNullOrWhiteSpace(value))
                 continue;
             if (keyName.Equals("NewsDataIo__ApiKey", StringComparison.OrdinalIgnoreCase) ||
@@ -86,12 +86,12 @@ public class WorkerServiceCollectionHelper
 
     internal static EmailSettings BindEmailSettings(IConfiguration configuration)
     {
-        var section = configuration.GetSection("Email");
-        var host = section["Host"]
+        IConfigurationSection section = configuration.GetSection("Email");
+        string host = section["Host"]
             ?? throw new InvalidOperationException("Configure Email:Host (SMTP server).");
-        var from = section["DefaultFromAddress"]
+        string from = section["DefaultFromAddress"]
             ?? throw new InvalidOperationException("Configure Email:DefaultFromAddress.");
-        var replyTo = section["DefaultReplyToAddress"] ?? from;
+        string replyTo = section["DefaultReplyToAddress"] ?? from;
         return new EmailSettings(
             host,
             section.GetValue("Port", 25),
@@ -108,8 +108,8 @@ public class WorkerServiceCollectionHelper
     /// <summary>Logs SMTP target and MailHog web UI </summary>
     public static void LogMailHogDevHints(IHost host)
     {
-        var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Hermes.Worker");
-        var smtp = host.Services.GetRequiredService<EmailSettings>();
+        ILogger logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Hermes.Worker");
+        EmailSettings smtp = host.Services.GetRequiredService<EmailSettings>();
         logger.LogInformation(
             "SMTP: {Host}:{Port} (SSL={Ssl}), From={From} — für lokales MailHog typisch Port 1025.",
             smtp.Host,
@@ -117,7 +117,7 @@ public class WorkerServiceCollectionHelper
             smtp.EnableSsl,
             smtp.DefaultFromAddress);
 
-        var mailHog = host.Services.GetService<IOptions<MailHogSettings>>()?.Value;
+        MailHogSettings? mailHog = host.Services.GetService<IOptions<MailHogSettings>>()?.Value;
         if (mailHog is not null && !string.IsNullOrWhiteSpace(mailHog.BaseUrl))
             logger.LogInformation("MailHog-Web-UI: {BaseUrl}", mailHog.BaseUrl.TrimEnd('/'));
     }

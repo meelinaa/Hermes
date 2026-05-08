@@ -11,10 +11,10 @@ namespace Hermes.WebFrontend.Client.Services.Auth;
 /// </summary>
 public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory httpFactory, IConfiguration config)
 {
-    public const string AnonymousHttpClientName = "HermesApiAnonymous";
+    public const string ANONYMOUS_HTTP_CLIENT_NAME = "HermesApiAnonymous";
 
-    private static readonly JsonSerializerOptions JsonWeb = JsonSerializerOptions.Web;
-    private static readonly TimeSpan ExpirationClockSkew = TimeSpan.FromMinutes(2);
+    private static readonly JsonSerializerOptions _jsonWeb = JsonSerializerOptions.Web;
+    private static readonly TimeSpan _expirationClockSkew = TimeSpan.FromMinutes(2);
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private sealed record RefreshTokenRequestBody(string RefreshToken);
@@ -30,13 +30,13 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
         {
             await tokens.EnsureLoadedFromStorageAsync(cancellationToken).ConfigureAwait(false);
 
-            var hasAccess = !string.IsNullOrEmpty(tokens.AccessToken);
-            var hasRefresh = !string.IsNullOrEmpty(tokens.RefreshToken);
+            bool hasAccess = !string.IsNullOrEmpty(tokens.AccessToken);
+            bool hasRefresh = !string.IsNullOrEmpty(tokens.RefreshToken);
             if (!hasAccess && !hasRefresh)
                 return false;
 
-            var idleDays = GetIdleTimeoutDays();
-            var last = tokens.LastActivityUtc;
+            int idleDays = GetIdleTimeoutDays();
+            DateTimeOffset? last = tokens.LastActivityUtc;
             if (last.HasValue && DateTimeOffset.UtcNow - last.Value > TimeSpan.FromDays(idleDays))
             {
                 await tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
@@ -55,7 +55,7 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
                 return false;
             }
 
-            var refreshed = await TryRefreshAsync(cancellationToken).ConfigureAwait(false);
+            bool refreshed = await TryRefreshAsync(cancellationToken).ConfigureAwait(false);
             if (!refreshed)
             {
                 await tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
@@ -73,36 +73,36 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
 
     private static bool IsAccessTokenAlive(string? accessToken)
     {
-        var exp = JwtPayloadDisplayName.TryGetExpiresAtUtc(accessToken);
+        DateTimeOffset? exp = JwtPayloadDisplayName.TryGetExpiresAtUtc(accessToken);
         if (!exp.HasValue)
             return false;
-        return exp.Value > DateTimeOffset.UtcNow.Add(ExpirationClockSkew);
+        return exp.Value > DateTimeOffset.UtcNow.Add(_expirationClockSkew);
     }
 
     private int GetIdleTimeoutDays()
     {
-        var s = config["Session:IdleTimeoutDays"];
-        if (int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) && d > 0)
-            return d;
+        string? configuredIdleDays = config["Session:IdleTimeoutDays"];
+        if (int.TryParse(configuredIdleDays, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedIdleDays) && parsedIdleDays > 0)
+            return parsedIdleDays;
         return 7;
     }
 
     private async Task<bool> TryRefreshAsync(CancellationToken cancellationToken)
     {
-        var refresh = tokens.RefreshToken;
+        string? refresh = tokens.RefreshToken;
         if (string.IsNullOrWhiteSpace(refresh))
             return false;
 
         try
         {
-            var client = httpFactory.CreateClient(AnonymousHttpClientName);
-            using var response = await client
-                .PostAsJsonAsync("api/v1/auth/refresh", new RefreshTokenRequestBody(refresh.Trim()), JsonWeb, cancellationToken)
+            HttpClient client = httpFactory.CreateClient(ANONYMOUS_HTTP_CLIENT_NAME);
+            using HttpResponseMessage response = await client
+                .PostAsJsonAsync("api/v1/auth/refresh", new RefreshTokenRequestBody(refresh.Trim()), _jsonWeb, cancellationToken)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 return false;
 
-            var body = await response.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonWeb, cancellationToken).ConfigureAwait(false);
+            AuthLoginResponse? body = await response.Content.ReadFromJsonAsync<AuthLoginResponse>(_jsonWeb, cancellationToken).ConfigureAwait(false);
             if (body is null || string.IsNullOrEmpty(body.AccessToken) || string.IsNullOrEmpty(body.RefreshToken))
                 return false;
 

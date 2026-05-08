@@ -29,35 +29,35 @@ public sealed class NewsletterDigestService(
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
         if(newsId <= 0)
             throw new ArgumentOutOfRangeException(nameof(newsId), "News ID must be positive.");
-        var apiKey = newsDataOptions.Value.ApiKey?.Trim();
+        string? apiKey = newsDataOptions.Value.ApiKey?.Trim();
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new InvalidOperationException("Configure NewsDataIo:ApiKey.");
 
-        var windowStart = DateTime.SpecifyKind(digestSlotStartUtc, DateTimeKind.Utc);
+        DateTime windowStart = DateTime.SpecifyKind(digestSlotStartUtc, DateTimeKind.Utc);
         windowStart = new DateTime(windowStart.Year, windowStart.Month, windowStart.Day, windowStart.Hour, windowStart.Minute, 0, DateTimeKind.Utc);
-        var windowEnd = windowStart.AddMinutes(1);
+        DateTime windowEnd = windowStart.AddMinutes(1);
 
-        var duplicate = await dataStore
+        bool duplicate = await dataStore
             .ExistsSentNotificationInWindowAsync(userId, newsId, windowStart, windowEnd, cancellationToken)
             .ConfigureAwait(false);
         if (duplicate)
             return;
 
-        var user = await dataStore.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
+        User? user = await dataStore.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email))
             return;
 
-        var news = await dataStore.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+        News? news = await dataStore.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
         if (news is null)
             return;
 
-        var query = BuildArticleQuery(apiKey, news);
+        NewsArticleQuery? query = BuildArticleQuery(apiKey, news);
         if (query is null)
             return;
 
-        var articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
-        var subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", _digestCulture)}";
-        var body = await BuildNewsletterBodyAsync(user.Name, articles, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<NewsArticle> articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
+        string? subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", _digestCulture)}";
+        string? body = await BuildNewsletterBodyAsync(user.Name, articles, cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -99,20 +99,20 @@ public sealed class NewsletterDigestService(
 
     private static NewsArticleQuery? BuildArticleQuery(string apiKey, News news)
     {
-        var countries = news.Countries is { Count: > 0 }
+        List<string>? countries = news.Countries is { Count: > 0 }
             ? news.Countries.Select(CountryIsoCodeMapper.ToIso3166Alpha2).ToList()
             : null;
-        var languages = news.Languages is { Count: > 0 }
+        List<string>? languages = news.Languages is { Count: > 0 }
             ? news.Languages.Select(LanguageIsoCodeMapper.ToIso639Code).ToList()
             : null;
-        var categories = news.Category is { Count: > 0 }
-            ? news.Category.Select(c => c.ToString().ToLowerInvariant()).ToList()
+        List<string>? categories = news.Category is { Count: > 0 }
+            ? news.Category.Select(category => category.ToString().ToLowerInvariant()).ToList()
             : null;
 
         string? keywordsQuery = null;
         if (news.Keywords is { Count: > 0 })
         {
-            var terms = news.Keywords.Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()).ToList();
+            List<string> terms = news.Keywords.Where(keyword => !string.IsNullOrWhiteSpace(keyword)).Select(keyword => keyword.Trim()).ToList();
             if (terms.Count > 0)
                 keywordsQuery = string.Join(" OR ", terms);
         }
@@ -136,37 +136,37 @@ public sealed class NewsletterDigestService(
         CancellationToken cancellationToken)
     {
         const int MAX_TEXT_LENGTH = 150;
-        var composer = new NewsletterHtmlComposer();
-        var dateDisplay = DateTime.UtcNow.ToString("dddd, dd. MMMM yyyy", _digestCulture);
+        NewsletterHtmlComposer composer = new();
+        string? dateDisplay = DateTime.UtcNow.ToString("dddd, dd. MMMM yyyy", _digestCulture);
 
-        var greetings = DateTime.UtcNow.Hour switch
+        string? greetings = DateTime.UtcNow.Hour switch
         {
             < 12 => "Guten Morgen",
             < 18 => "Guten Tag",
             _ => "Guten Abend"
         };
 
-        var intro = string.IsNullOrWhiteSpace(userDisplayName)
+        string? intro = string.IsNullOrWhiteSpace(userDisplayName)
             ? $"{greetings}! Hier sind die wichtigsten Nachrichten."
             : $"{greetings}, {userDisplayName}! Hier sind die wichtigsten Nachrichten.";
 
-        var header = new NewsletterHeaderContent(
+        NewsletterHeaderContent header = new(
             Header: "HERMES",
             Header2: "Dein täglicher News-Überblick",
             DateDisplay: dateDisplay,
             Intro: intro);
 
-        var itemModels = articles
+        List<NewsletterItemContent> itemModels = articles
             .Take(MAX_ARTICLES_IN_NEWSLETTER)
-            .Select(a => new NewsletterItemContent(
-                Category: a.Category?.FirstOrDefault() ?? "News",
-                Title: a.Title ?? string.Empty,
-                Content: TruncatePlainText(a.Description, MAX_TEXT_LENGTH),
-                Url: a.Link ?? "#",
-                ImageUrl: a.ImageUrl ?? string.Empty))
+            .Select(article => new NewsletterItemContent(
+                Category: article.Category?.FirstOrDefault() ?? "News",
+                Title: article.Title ?? string.Empty,
+                Content: TruncatePlainText(article.Description, MAX_TEXT_LENGTH),
+                Url: article.Link ?? "#",
+                ImageUrl: article.ImageUrl ?? string.Empty))
             .ToList();
 
-        var footer = new NewsletterFooterContent(
+        NewsletterFooterContent footer = new(
             InfoFooter: "Du erhältst diese E-Mail, weil du den Hermes Newsletter abonniert hast.",
             DeaboUrl: "#",
             SettingsUrl: "#");

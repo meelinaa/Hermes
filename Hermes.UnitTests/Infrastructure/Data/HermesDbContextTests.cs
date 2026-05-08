@@ -25,15 +25,15 @@ public sealed class HermesDbContextTests
 
     private static async Task<User> SeedUserAsync(HermesDbContext ctx)
     {
-        User u = new()
+        User seededUser = new()
         {
             Name = "Tester",
             Email = "db@test.example",
             PasswordHash = "$2a$placeholder",
         };
-        ctx.Users.Add(u);
+        ctx.Users.Add(seededUser);
         await ctx.SaveChangesAsync().ConfigureAwait(false);
-        return u;
+        return seededUser;
     }
 
     /// <summary>
@@ -138,8 +138,8 @@ public sealed class HermesDbContextTests
         Assert.True(oldToken.RevokedAt.HasValue);
         Assert.Equal(newToken.Id, oldToken.ReplacedByTokenId);
 
-        RefreshToken persistedOld = await ctx.RefreshTokens.AsNoTracking().FirstAsync(r => r.Id == oldToken.Id);
-        RefreshToken persistedNew = await ctx.RefreshTokens.AsNoTracking().FirstAsync(r => r.Id == newToken.Id);
+        RefreshToken persistedOld = await ctx.RefreshTokens.AsNoTracking().FirstAsync(refreshToken => refreshToken.Id == oldToken.Id);
+        RefreshToken persistedNew = await ctx.RefreshTokens.AsNoTracking().FirstAsync(refreshToken => refreshToken.Id == newToken.Id);
 
         Assert.True(persistedOld.RevokedAt.HasValue);
         Assert.Equal(persistedNew.Id, persistedOld.ReplacedByTokenId);
@@ -177,7 +177,7 @@ public sealed class HermesDbContextTests
 
         await ctx.UpdateUserAsync(patch, CancellationToken.None);
 
-        User? reloaded = await ctx.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == user.Id);
+        User? reloaded = await ctx.Users.AsNoTracking().FirstOrDefaultAsync(userEntity => userEntity.Id == user.Id);
         Assert.NotNull(reloaded);
         Assert.Equal("new-email@test.example", reloaded!.Email);
         Assert.False(reloaded.IsEmailVerified);

@@ -29,7 +29,7 @@ public sealed class UserProfileRefreshNotifier
         lock (_gate)
             snapshot = _handlers.ToList();
 
-        foreach (var h in snapshot)
+        foreach (Func<Task> h in snapshot)
         {
             try
             {

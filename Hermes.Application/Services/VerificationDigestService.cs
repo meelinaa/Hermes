@@ -3,7 +3,8 @@ using System.Security.Cryptography;
 using Hermes.Application.Models.Email;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
-using Hermes.Notifications.Sending;
+using Hermes.Domain.Entities;
+using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Notifications.Sending.HtmlLayout.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,21 +28,21 @@ public sealed class VerificationDigestService(
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
-        var user = await dataStore.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
+        User? user = await dataStore.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email))
             return;
 
-        var code = GenerateNumericVerificationCode();
-        var expiresAt = DateTime.UtcNow.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
+        string? code = GenerateNumericVerificationCode();
+        DateTime expiresAt = DateTime.UtcNow.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
 
         await dataStore
             .SetUserEmailVerificationChallengeAsync(userId, code, expiresAt, cancellationToken)
             .ConfigureAwait(false);
 
-        var site = siteUrlsOptions.Value;
-        var baseUrl = (site.PublicBaseUrl ?? "https://hermes.de").TrimEnd('/');
-        var supportEmail = (site.SupportEmail ?? "support@hermes.de").Trim();
-        var body = await BuildVerificationBodyAsync(
+        HermesSiteUrlsOptions site = siteUrlsOptions.Value;
+        string? baseUrl = (site.PublicBaseUrl ?? "https://hermes.de").TrimEnd('/');
+        string? supportEmail = (site.SupportEmail ?? "support@hermes.de").Trim();
+        string? body = await BuildVerificationBodyAsync(
                 user.Name,
                 user.Email.Trim(),
                 code,
@@ -51,7 +52,7 @@ public sealed class VerificationDigestService(
                 cancellationToken)
             .ConfigureAwait(false);
 
-        var subject = $"Hermes — Konto-Verifizierung";
+        string? subject = $"Hermes — Konto-Verifizierung";
 
         try
         {
@@ -73,8 +74,8 @@ public sealed class VerificationDigestService(
 
     private static string GenerateNumericVerificationCode()
     {
-        var n = RandomNumberGenerator.GetInt32(0, 1_000_000);
-        return n.ToString("D6", CultureInfo.InvariantCulture);
+        int randomNumber = RandomNumberGenerator.GetInt32(0, 1_000_000);
+        return randomNumber.ToString("D6", CultureInfo.InvariantCulture);
     }
 
     private static async Task<string> BuildVerificationBodyAsync(
@@ -86,18 +87,18 @@ public sealed class VerificationDigestService(
         string settingsUrl,
         CancellationToken cancellationToken)
     {
-        var dateDisplay = DateTime.UtcNow.ToString("dd. MMMM yyyy", _digestCulture);
+        string? dateDisplay = DateTime.UtcNow.ToString("dd. MMMM yyyy", _digestCulture);
 
-        var intro = string.IsNullOrWhiteSpace(userDisplayName)
+        string? intro = string.IsNullOrWhiteSpace(userDisplayName)
             ? "Hallo,"
             : $"Hallo {userDisplayName.Trim()},";
 
         const string INTRO_2 =
             "Vielen Dank für Ihre Registrierung bei Hermes. Um Ihr Konto zu verifizieren, verwenden Sie bitte den folgenden Verifizierungscode:";
 
-        var infoFooter = $"Diese E-Mail wurde an {recipientEmail} gesendet";
+        string? infoFooter = $"Diese E-Mail wurde an {recipientEmail} gesendet";
 
-        var content = new VerificationContent(
+        VerificationContent content = new(
             Header: "Hermes",
             Header2: "Konto-Verifizierung",
             DateDisplay: dateDisplay,

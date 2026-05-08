@@ -1,4 +1,6 @@
 using Hermes.Application.Ports;
+using Hermes.Domain.DTOs;
+using Hermes.Domain.Enums;
 using Hermes.Domain.Mapping;
 
 namespace Hermes.Application.Services;
@@ -7,12 +9,12 @@ public sealed class NewsletterScheduleService(IHermesDataStore dataStore) : INew
 {
     public async Task<IReadOnlyList<(int NewsId, int UserId)>> GetDueItemsAsync(DateTime nowLocal, CancellationToken cancellationToken = default)
     {
-        var nowTime = TimeOnly.FromDateTime(nowLocal);
-        var todayWeekday = WeekdayConverter.ToHermesWeekday(nowLocal);
-        var rows = await dataStore.GetNewsScheduleRowsAsync(cancellationToken).ConfigureAwait(false);
+        TimeOnly nowTime = TimeOnly.FromDateTime(nowLocal);
+        Weekdays todayWeekday = WeekdayConverter.ToHermesWeekday(nowLocal);
+        List<NewsScheduleRow> rows = await dataStore.GetNewsScheduleRowsAsync(cancellationToken).ConfigureAwait(false);
 
-        var due = new List<(int NewsId, int UserId)>();
-        foreach (var row in rows)
+        List<(int NewsId, int UserId)> due = [];
+        foreach (NewsScheduleRow row in rows)
         {
             if (row.NewsId <= 0 || row.UserId <= 0)
                 continue;
@@ -20,7 +22,7 @@ public sealed class NewsletterScheduleService(IHermesDataStore dataStore) : INew
                 continue;
             if (row.SendAtTimes is not { Count: > 0 })
                 continue;
-            if (!row.SendAtTimes.Any(t => t.Hour == nowTime.Hour && t.Minute == nowTime.Minute))
+            if (!row.SendAtTimes.Any(scheduledTime => scheduledTime.Hour == nowTime.Hour && scheduledTime.Minute == nowTime.Minute))
                 continue;
 
             due.Add((row.NewsId, row.UserId));

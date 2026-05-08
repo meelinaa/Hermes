@@ -34,18 +34,18 @@ public sealed class NewsSubscriptionListCache
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var response = await http
+            HttpResponseMessage response = await http
                 .GetAsync($"api/v1/users/news/{userId}/list", cancellationToken)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 _lastError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
                 _freshUserId = null;
-                _items = new List<News>();
+                _items = [];
                 return (_items, _lastError);
             }
 
-            var list = await response.Content
+            List<News>? list = await response.Content
                 .ReadFromJsonAsync<List<News>>(HermesNewsJson.Options, cancellationToken)
                 .ConfigureAwait(false);
             _items = list ?? [];
@@ -57,7 +57,7 @@ public sealed class NewsSubscriptionListCache
         {
             _lastError = $"Laden fehlgeschlagen: {ex.Message}";
             _freshUserId = null;
-            _items = new List<News>();
+            _items = [];
             return (_items, _lastError);
         }
     }
@@ -68,9 +68,9 @@ public sealed class NewsSubscriptionListCache
     {
         try
         {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+            using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out JsonElement d) && d.ValueKind == JsonValueKind.String)
                 return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
         }
         catch

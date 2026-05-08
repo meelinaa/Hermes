@@ -89,7 +89,7 @@
         isBusy = true;
         try
         {
-            var response = await Http.PostAsJsonAsync(
+            HttpResponseMessage response = await Http.PostAsJsonAsync(
                 "api/v1/auth/login",
                 new LoginRequest { NameOrEmail = userName.Trim(), Password = password },
                 JsonSerializerOptions.Web);
@@ -100,7 +100,7 @@
                 return;
             }
 
-            var body = await response.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonSerializerOptions.Web).ConfigureAwait(false);
+            AuthLoginResponse? body = await response.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonSerializerOptions.Web).ConfigureAwait(false);
             if (body is null || string.IsNullOrEmpty(body.AccessToken) || string.IsNullOrEmpty(body.RefreshToken))
             {
                 loginError = "Unerwartete Antwort vom Server.";
@@ -128,9 +128,9 @@
     {
         try
         {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("detail", out var d))
+            using Stream? stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out JsonElement d))
                 return d.GetString();
         }
         catch

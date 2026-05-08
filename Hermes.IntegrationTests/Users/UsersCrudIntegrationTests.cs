@@ -28,7 +28,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             id = 0,
             name = "Integration Users Test",
             email,
-            passwordHash = AuthIntegrationFlows.DefaultPassword,
+            password = AuthIntegrationFlows.DEFAULT_PASSWORD,
             isEmailVerified = false,
             twoFactorCode = (string?)null,
             twoFactorExpiry = (DateTime?)null,
@@ -52,7 +52,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             id = 0,
             name = "No Password User",
             email = $"nopwd-{Guid.NewGuid():N}@integration.hermes",
-            passwordHash = "", // An empty passwordHash is used here.
+            password = "", // Empty password should be rejected by API validation.
             isEmailVerified = false,
             twoFactorCode = (string?)null,
             twoFactorExpiry = (DateTime?)null,
@@ -68,7 +68,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage response = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access)); // Send an authorized GET request to the user profile endpoint using the access token obtained from logging in; this should return the user's profile information, which is then asserted to confirm that the correct data is returned and that the authentication mechanism is functioning properly.
 
@@ -83,7 +83,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         string path = $"/api/v1/users/by-email/{Uri.EscapeDataString(email)}"; // Construct the API endpoint path for retrieving the user profile by email, ensuring that the email is properly URL-encoded to handle any special characters; this allows the test to verify that the API correctly processes email-based queries and returns the expected user information when accessed with valid authentication.
         using HttpResponseMessage response = await client.SendAsync(AuthorizedGet(path, access));
@@ -98,7 +98,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         object body = new
         {
@@ -118,7 +118,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using JsonDocument doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         JsonElement root = doc.RootElement;
-        Assert.Equal(HermesProblemTypes.WrongCurrentPassword, root.GetProperty("type").GetString());
+        Assert.Equal(HermesProblemTypes.WRONG_CURRENT_PASSWORD, root.GetProperty("type").GetString());
         Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
     }
 
@@ -127,7 +127,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         const string NEW_PASSWORD = "Replacement_Valid_8$";
         object body = new
@@ -135,8 +135,8 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             id = userId,
             name = "Renamed After Pwd",
             email,
-            NEW_PASSWORD,
-            currentPassword = AuthIntegrationFlows.DefaultPassword,
+            newPassword = NEW_PASSWORD,
+            currentPassword = AuthIntegrationFlows.DEFAULT_PASSWORD,
         };
 
         using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users");
@@ -146,7 +146,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         using HttpResponseMessage putResp = await client.SendAsync(put);
         Assert.Equal(HttpStatusCode.OK, putResp.StatusCode);
 
-        using HttpResponseMessage oldLogin = await AuthIntegrationFlows.LoginResponseAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        using HttpResponseMessage oldLogin = await AuthIntegrationFlows.LoginResponseAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
         Assert.Equal(HttpStatusCode.Unauthorized, oldLogin.StatusCode);
 
         using HttpResponseMessage newLogin = await AuthIntegrationFlows.LoginResponseAsync(client, email, NEW_PASSWORD);
@@ -158,7 +158,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         string newEmail = $"renamed-{Guid.NewGuid():N}@integration.hermes";
         object body = new
@@ -189,7 +189,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage deleteResp = await client.SendAsync(AuthorizedDelete($"/api/v1/users/{userId}", access)); // Send an authorized DELETE request to the user deletion endpoint to remove the user's account; this should return a success status code, and subsequent attempts to retrieve the deleted user profile should result in a NotFound response, confirming that the deletion was effective and that the API correctly handles resource removal.
         Assert.Equal(HttpStatusCode.OK, deleteResp.StatusCode);
@@ -204,7 +204,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         using HttpClient client = fixture.Factory.CreateClient();
         (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DefaultPassword);
+        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage response = await client.SendAsync(AuthorizedGet($"/api/v1/users/{victimId}", attackerAccess));
 
@@ -217,7 +217,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         using HttpClient client = fixture.Factory.CreateClient();
         (int victimId, string victimEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DefaultPassword);
+        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         object body = new
         {
@@ -243,7 +243,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         using HttpClient client = fixture.Factory.CreateClient();
         (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DefaultPassword);
+        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage response = await client.SendAsync(AuthorizedDelete($"/api/v1/users/{victimId}", attackerAccess));
 
@@ -256,7 +256,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string victimEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DefaultPassword);
+        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         string path = $"/api/v1/users/by-email/{Uri.EscapeDataString(victimEmail)}";
         using HttpResponseMessage response = await client.SendAsync(AuthorizedGet(path, attackerAccess));
@@ -289,7 +289,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         string ghost = $"ghost-{Guid.NewGuid():N}@integration.hermes";
         string path = $"/api/v1/users/by-email/{Uri.EscapeDataString(ghost)}";

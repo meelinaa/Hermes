@@ -16,9 +16,9 @@ public sealed class HangfireVerificationMailJobTrigger(JobStorage jobStorage)
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User id must be positive.");
 
-        var client = new BackgroundJobClient(jobStorage);
-        var jobId = client.Enqueue<NotificationJobs>(j =>
-            j.SendVerificationMailAsync(userId, CancellationToken.None));
+        BackgroundJobClient client = new(jobStorage);
+        string? jobId = client.Enqueue<NotificationJobs>(notificationJobs =>
+            notificationJobs.SendVerificationMailAsync(userId, CancellationToken.None));
         return jobId;
     }
 }

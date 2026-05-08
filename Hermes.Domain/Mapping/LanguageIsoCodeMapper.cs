@@ -8,8 +8,8 @@ namespace Hermes.Domain.Mapping;
 /// </summary>
 public static class LanguageIsoCodeMapper
 {
-    private static readonly IReadOnlyDictionary<Language, string> ToCode = BuildForward();
-    private static readonly IReadOnlyDictionary<string, Language> FromCode = BuildReverse();
+    private static readonly IReadOnlyDictionary<Language, string> _toCode = BuildForward();
+    private static readonly IReadOnlyDictionary<string, Language> _fromCode = BuildReverse();
 
     /// <summary>
     /// Returns the ISO 639-1 code (lowercase) for the given language.
@@ -17,7 +17,7 @@ public static class LanguageIsoCodeMapper
     /// <exception cref="InvalidOperationException">Thrown when the enum member has no attribute.</exception>
     public static string ToIso639Code(Language language)
     {
-        if (!ToCode.TryGetValue(language, out var code))
+        if (!_toCode.TryGetValue(language, out string? code))
             throw new InvalidOperationException($"No ISO 639-1 code defined for {language}.");
         
         return code;
@@ -32,7 +32,7 @@ public static class LanguageIsoCodeMapper
         if (string.IsNullOrWhiteSpace(iso639Code))
             return false;
 
-        return FromCode.TryGetValue(iso639Code.Trim().ToLowerInvariant(), out language);
+        return _fromCode.TryGetValue(iso639Code.Trim().ToLowerInvariant(), out language);
     }
 
     /// <summary>
@@ -40,7 +40,7 @@ public static class LanguageIsoCodeMapper
     /// </summary>
     public static Language ParseLanguage(string iso639Code)
     {
-        if (TryGetLanguage(iso639Code, out var language))
+        if (TryGetLanguage(iso639Code, out Language language))
             return language;
         
         throw new ArgumentException($"Unknown ISO 639-1 code: {iso639Code}", nameof(iso639Code));
@@ -48,11 +48,11 @@ public static class LanguageIsoCodeMapper
 
     private static Dictionary<Language, string> BuildForward()
     {
-        var map = new Dictionary<Language, string>();
-        foreach (var value in Enum.GetValues<Language>())
+        Dictionary<Language, string> map = [];
+        foreach (Language value in Enum.GetValues<Language>())
         {
-            var field = typeof(Language).GetField(value.ToString());
-            var attr = field?.GetCustomAttribute<LanguageIsoCodeAttribute>();
+            FieldInfo? field = typeof(Language).GetField(value.ToString());
+            LanguageIsoCodeAttribute? attr = field?.GetCustomAttribute<LanguageIsoCodeAttribute>();
             if (attr is null)
                 throw new InvalidOperationException($"Language.{value} is missing [{nameof(LanguageIsoCodeAttribute)}].");
             
@@ -64,8 +64,8 @@ public static class LanguageIsoCodeMapper
 
     private static Dictionary<string, Language> BuildReverse()
     {
-        var map = new Dictionary<string, Language>(StringComparer.Ordinal);
-        foreach (var kv in ToCode)
+        Dictionary<string, Language> map = new(StringComparer.Ordinal);
+        foreach (KeyValuePair<Language, string> kv in _toCode)
         {
             if (map.TryGetValue(kv.Value, out Language value))
             {

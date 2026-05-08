@@ -238,7 +238,7 @@
         get => _oldPassword;
         set
         {
-            var v = value ?? string.Empty;
+            string v = value ?? string.Empty;
             if (string.Equals(_oldPassword, v, StringComparison.Ordinal))
                 return;
             _oldPassword = v;
@@ -304,8 +304,8 @@
 
     private static string FormatMmSs(int totalSeconds)
     {
-        var m = totalSeconds / 60;
-        var s = totalSeconds % 60;
+        int m = totalSeconds / 60;
+        int s = totalSeconds % 60;
         return string.Create(CultureInfo.InvariantCulture, $"{m}:{s:D2}");
     }
 
@@ -313,7 +313,7 @@
     {
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
 
-        var userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
         if (userId is null)
         {
             profileFeedback = "Benutzer konnte nicht ermittelt werden. Bitte erneut anmelden.";
@@ -337,14 +337,14 @@
 
         try
         {
-            var response = await Http.GetAsync($"api/v1/users/{profileUserId.Value}").ConfigureAwait(false);
+            HttpResponseMessage response = await Http.GetAsync($"api/v1/users/{profileUserId.Value}").ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 profileFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);
                 return;
             }
 
-            var scope = await response.Content.ReadFromJsonAsync<UserScope>(JsonSerializerOptions.Web).ConfigureAwait(false);
+            UserScope? scope = await response.Content.ReadFromJsonAsync<UserScope>(JsonSerializerOptions.Web).ConfigureAwait(false);
             if (scope is not null)
             {
                 profileName = scope.Name ?? string.Empty;
@@ -364,17 +364,17 @@
     {
         try
         {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            var root = doc.RootElement;
+            using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            JsonElement root = doc.RootElement;
             string? type = null;
             string? title = null;
             string? detail = null;
-            if (root.TryGetProperty("type", out var ty) && ty.ValueKind == JsonValueKind.String)
+            if (root.TryGetProperty("type", out JsonElement ty) && ty.ValueKind == JsonValueKind.String)
                 type = ty.GetString();
-            if (root.TryGetProperty("title", out var ti) && ti.ValueKind == JsonValueKind.String)
+            if (root.TryGetProperty("title", out JsonElement ti) && ti.ValueKind == JsonValueKind.String)
                 title = ti.GetString();
-            if (root.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+            if (root.TryGetProperty("detail", out JsonElement d) && d.ValueKind == JsonValueKind.String)
                 detail = d.GetString();
             return new ProblemRead(type, title, detail);
         }
@@ -397,18 +397,18 @@
     {
         try
         {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            var root = doc.RootElement;
-            if (root.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+            using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            JsonElement root = doc.RootElement;
+            if (root.TryGetProperty("detail", out JsonElement d) && d.ValueKind == JsonValueKind.String)
             {
-                var ds = d.GetString();
+                string? ds = d.GetString();
                 if (!string.IsNullOrWhiteSpace(ds))
                     return ds!;
             }
-            if (root.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
+            if (root.TryGetProperty("title", out JsonElement t) && t.ValueKind == JsonValueKind.String)
             {
-                var ts = t.GetString();
+                string? ts = t.GetString();
                 if (!string.IsNullOrWhiteSpace(ts))
                     return ts!;
             }
@@ -500,7 +500,7 @@
 
         try
         {
-            var ok = await SendVerificationEmailAsync().ConfigureAwait(false);
+            bool ok = await SendVerificationEmailAsync().ConfigureAwait(false);
             if (ok)
             {
                 resendCooldownSecondsRemaining = ResendCooldownTotalSeconds;
@@ -525,7 +525,7 @@
         StateHasChanged();
         try
         {
-            var ok = await SendVerificationEmailAsync().ConfigureAwait(false);
+            bool ok = await SendVerificationEmailAsync().ConfigureAwait(false);
             if (ok)
             {
                 resendCooldownSecondsRemaining = ResendCooldownTotalSeconds;
@@ -549,7 +549,7 @@
 
         try
         {
-            var response = await Http.PostAsync($"api/v1/users/{profileUserId.Value}/verify", null).ConfigureAwait(false);
+            HttpResponseMessage response = await Http.PostAsync($"api/v1/users/{profileUserId.Value}/verify", null).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 verificationSendError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
@@ -575,8 +575,8 @@
             return;
         }
 
-        var digits = new string((verificationCodeInput ?? string.Empty).Where(char.IsDigit).ToArray());
-        if (digits.Length is < 6 or > 6 || !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var code))
+        string digits = new string((verificationCodeInput ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (digits.Length is < 6 or > 6 || !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out int code))
         {
             verificationCodeError =
                 "Bitte geben Sie den sechsstelligen Code aus der E-Mail ein. Achten Sie auf alle Ziffern; Sie können es danach erneut versuchen oder eine neue E-Mail anfordern.";
@@ -588,7 +588,7 @@
         try
         {
             var body = new { userId = profileUserId.Value, code };
-            var response = await Http.PostAsJsonAsync("api/v1/users/verify/code", body, JsonSerializerOptions.Web).ConfigureAwait(false);
+            HttpResponseMessage response = await Http.PostAsJsonAsync("api/v1/users/verify/code", body, JsonSerializerOptions.Web).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 if ((int)response.StatusCode == 400)
@@ -635,8 +635,8 @@
             return;
         }
 
-        var newPw = string.IsNullOrWhiteSpace(newPassword) ? null : newPassword;
-        var curPw = string.IsNullOrWhiteSpace(oldPassword) ? null : oldPassword;
+        string? newPw = string.IsNullOrWhiteSpace(newPassword) ? null : newPassword;
+        string? curPw = string.IsNullOrWhiteSpace(oldPassword) ? null : oldPassword;
         if (newPw is not null && curPw is null)
         {
             profileFeedback = "Bitte das aktuelle Passwort eingeben, wenn du ein neues Passwort setzen möchtest.";
@@ -662,13 +662,13 @@
                 currentPassword = curPw
             };
 
-            var response = await Http.PutAsJsonAsync("api/v1/users", body, JsonSerializerOptions.Web).ConfigureAwait(false);
+            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users", body, JsonSerializerOptions.Web).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                var problem = await TryReadProblemAsync(response).ConfigureAwait(false);
-                var msg = ProblemUserMessage(problem, response);
+                ProblemRead problem = await TryReadProblemAsync(response).ConfigureAwait(false);
+                string? msg = ProblemUserMessage(problem, response);
                 if (newPw is not null
-                    && string.Equals(problem.Type, HermesProblemTypes.WrongCurrentPassword, StringComparison.Ordinal))
+                    && string.Equals(problem.Type, HermesProblemTypes.WRONG_CURRENT_PASSWORD, StringComparison.Ordinal))
                 {
                     oldPasswordFieldError = msg;
                     profileFeedback = null;

@@ -50,7 +50,7 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         if (string.IsNullOrEmpty(password))
             return new LoginResult(false, "Password is required.", null);
 
-        var key = nameOrEmail.Trim();
+        string? key = nameOrEmail.Trim();
         User? user = key.Contains('@', StringComparison.Ordinal)
             ? await db.GetUserEntityForAuthenticationByEmailAsync(key, cancellationToken).ConfigureAwait(false)
             : await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
@@ -85,14 +85,14 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         if (!string.IsNullOrWhiteSpace(user.Email))
             user.Email = user.Email.Trim().ToLowerInvariant();
 
-        var newPlain = user.PasswordHash;
+        string? newPlain = user.PasswordHash;
         string? hashedForDb = null;
         if (!string.IsNullOrWhiteSpace(newPlain))
         {
             if (string.IsNullOrWhiteSpace(currentPasswordPlain))
                 throw new ArgumentException("Current password is required when setting a new password.", nameof(currentPasswordPlain));
 
-            var existing = await db.GetUserEntityByIdAsync(user.Id, cancellationToken).ConfigureAwait(false);
+            User? existing = await db.GetUserEntityByIdAsync(user.Id, cancellationToken).ConfigureAwait(false);
             if (existing is null)
                 throw new UserNotFoundException($"User with id {user.Id} was not found.");
             if (string.IsNullOrEmpty(existing.PasswordHash))
@@ -150,8 +150,8 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
 
-        var normalized = email.Trim().ToLowerInvariant();
-        var user = await db.GetUserEntityForAuthenticationByEmailAsync(normalized, cancellationToken).ConfigureAwait(false);
+        string? normalized = email.Trim().ToLowerInvariant();
+        User? user = await db.GetUserEntityForAuthenticationByEmailAsync(normalized, cancellationToken).ConfigureAwait(false);
         if (user is null)
             throw new UserNotFoundException($"User with email '{normalized}' was not found.");
 
@@ -165,21 +165,21 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         if (code is < 0 or > 999_999)
             throw new ArgumentOutOfRangeException(nameof(code), "Verification code must be a six-digit value.");
 
-        var user = await db.GetUserEntityForAuthenticationByIdAsync(userId, cancellationToken).ConfigureAwait(false)
+        User? user = await db.GetUserEntityForAuthenticationByIdAsync(userId, cancellationToken).ConfigureAwait(false)
             ?? throw new UserNotFoundException($"User with id {userId} was not found.");
-        var stored = user.TwoFactorCode;
-        var expiry = user.TwoFactorExpiry;
+        string? stored = user.TwoFactorCode;
+        DateTime? expiry = user.TwoFactorExpiry;
         if (string.IsNullOrWhiteSpace(stored) || !expiry.HasValue)
             throw new VerificationCodeMismatchException();
 
-        var expiresUtc = expiry.Value.Kind == DateTimeKind.Unspecified
+        DateTime expiresUtc = expiry.Value.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(expiry.Value, DateTimeKind.Utc)
             : expiry.Value.ToUniversalTime();
 
         if (DateTime.UtcNow >= expiresUtc)
             throw new VerificationCodeMismatchException();
 
-        var provided = code.ToString("D6", CultureInfo.InvariantCulture);
+        string? provided = code.ToString("D6", CultureInfo.InvariantCulture);
         if (!string.Equals(stored.Trim(), provided, StringComparison.Ordinal))
             throw new VerificationCodeMismatchException();
 

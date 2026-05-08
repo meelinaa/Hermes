@@ -1,4 +1,5 @@
 using FluentValidation;
+using FluentValidation.Results;
 using Hermes.Api.Http;
 using Hermes.Api.Validation;
 using Hermes.Application.Scheduling;
@@ -26,7 +27,7 @@ public class NewsController(
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        var list = await newsService.GetAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        List<News> list = await newsService.GetAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
         return Ok(list);
     }
 
@@ -42,7 +43,7 @@ public class NewsController(
 
         try
         {
-            var news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+            News? news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
             return news is null ? this.NotFoundProblem() : Ok(news);
         }
         catch (NewsNotFoundException)
@@ -58,7 +59,7 @@ public class NewsController(
     [HttpPost]
     public async Task<ActionResult<NewsScope>> SetNews([FromBody] News news, CancellationToken cancellationToken)
     {
-        if (!this.TryGetCurrentUserId(out var currentUserId))
+        if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
         if (news.UserId <= 0)
@@ -79,7 +80,7 @@ public class NewsController(
         [FromServices] IValidator<News> validator,
         CancellationToken cancellationToken)
     {
-        if (!this.TryGetCurrentUserId(out var currentUserId))
+        if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
         if (news.UserId <= 0)
@@ -87,7 +88,7 @@ public class NewsController(
         else if (news.UserId != currentUserId)
             return this.ForbiddenProblem("Body userId must match the authenticated user (or omit/zero to use your account).");
 
-        var fv = await validator.ValidateAsync(news, cancellationToken).ConfigureAwait(false);
+        ValidationResult fv = await validator.ValidateAsync(news, cancellationToken).ConfigureAwait(false);
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
@@ -103,7 +104,7 @@ public class NewsController(
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        var deleted = await newsService.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        int deleted = await newsService.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
         return Ok(new { deleted });
     }
 

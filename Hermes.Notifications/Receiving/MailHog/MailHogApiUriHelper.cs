@@ -10,11 +10,11 @@ internal sealed class MailHogApiUriHelper
     /// <summary>
     /// Returns an absolute base URI ending with a slash so relative paths like <c>api/v2/messages</c> resolve correctly.
     /// </summary>
-    public Uri CreateBaseUri(MailHogSettings settings)
+    public static Uri CreateBaseUri(MailHogSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        var trimmed = settings.BaseUrl.TrimEnd('/');
+        string? trimmed = settings.BaseUrl.TrimEnd('/');
         return new Uri(trimmed + "/", UriKind.Absolute);
     }
 }

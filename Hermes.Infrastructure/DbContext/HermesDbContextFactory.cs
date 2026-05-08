@@ -19,12 +19,12 @@ public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesD
     /// <inheritdoc />
     public HermesDbContext CreateDbContext(string[] args)
     {
-        var connectionString = ResolveConnectionString();
+        string connectionString = ResolveConnectionString();
 
         // Fixed server version avoids contacting the server during design-time model build.
-        var serverVersion = new MySqlServerVersion(new Version(8, 0, 36));
+        MySqlServerVersion serverVersion = new(new Version(8, 0, 36));
 
-        var optionsBuilder = new DbContextOptionsBuilder<HermesDbContext>();
+        DbContextOptionsBuilder<HermesDbContext> optionsBuilder = new();
         optionsBuilder.UseMySql(connectionString, serverVersion);
         return new HermesDbContext(optionsBuilder.Options);
     }
@@ -36,28 +36,28 @@ public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesD
     /// <exception cref="InvalidOperationException">Thrown when no connection string is found.</exception>
     private static string ResolveConnectionString()
     {
-        var fromEnv = Environment.GetEnvironmentVariable("HERMES_CONNECTION_STRING")
+        string? fromEnv = Environment.GetEnvironmentVariable("HERMES_CONNECTION_STRING")
             ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
         if (!string.IsNullOrWhiteSpace(fromEnv))
         {
             return fromEnv;
         }
 
-        foreach (var path in EnumerateAppsettingsPaths())
+        foreach (string path in EnumerateAppsettingsPaths())
         {
             if (!File.Exists(path))
             {
                 continue;
             }
 
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
-            if (doc.RootElement.TryGetProperty("ConnectionStrings", out var cs)
-                && cs.TryGetProperty("DefaultConnection", out var el))
+            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(path));
+            if (doc.RootElement.TryGetProperty("ConnectionStrings", out JsonElement cs)
+                && cs.TryGetProperty("DefaultConnection", out JsonElement el))
             {
-                var s = el.GetString();
-                if (!string.IsNullOrWhiteSpace(s))
+                string? connectionString = el.GetString();
+                if (!string.IsNullOrWhiteSpace(connectionString))
                 {
-                    return s;
+                    return connectionString;
                 }
             }
         }
@@ -73,11 +73,11 @@ public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesD
     /// <returns></returns>
     private static IEnumerable<string> EnumerateAppsettingsPaths()
     {
-        var cwd = Directory.GetCurrentDirectory();
+        string cwd = Directory.GetCurrentDirectory();
         yield return Path.Combine(cwd, "appsettings.json");
         yield return Path.Combine(cwd, "Hermes", "appsettings.json");
 
-        var dir = new DirectoryInfo(cwd);
+        DirectoryInfo? dir = new(cwd);
         while (dir?.Parent != null)
         {
             dir = dir.Parent;

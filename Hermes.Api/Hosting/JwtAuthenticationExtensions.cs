@@ -21,23 +21,23 @@ public static class JwtAuthenticationExtensions
     public static IServiceCollection AddHermesJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         // Values merge from appsettings*.json, then environment (e.g. Jwt__SigningKey). Do not commit production secrets.
-        var jwtSection = configuration.GetSection(JwtOptions.SectionName);
+        IConfigurationSection jwtSection = configuration.GetSection(JwtOptions.SECTION_NAME);
         services.Configure<JwtOptions>(jwtSection);
 
-        var jwt = jwtSection.Get<JwtOptions>()
-            ?? throw new InvalidOperationException($"Missing configuration section '{JwtOptions.SectionName}'.");
+        JwtOptions jwt = jwtSection.Get<JwtOptions>()
+            ?? throw new InvalidOperationException($"Missing configuration section '{JwtOptions.SECTION_NAME}'.");
 
         // HS256 needs enough key material; require at least 32 characters (set Jwt:SigningKey in Development or Jwt__SigningKey in Production).
         if (string.IsNullOrWhiteSpace(jwt.SigningKey) || jwt.SigningKey.Length < 32)
         {
             throw new InvalidOperationException(
-                $"{JwtOptions.SectionName}:SigningKey must be at least 32 characters (256-bit entropy for HS256).");
+                $"{JwtOptions.SECTION_NAME}:SigningKey must be at least 32 characters (256-bit entropy for HS256).");
         }
 
         if (string.IsNullOrWhiteSpace(jwt.Issuer) || string.IsNullOrWhiteSpace(jwt.Audience))
         {
             throw new InvalidOperationException(
-                $"{JwtOptions.SectionName}:Issuer and Audience must be set.");
+                $"{JwtOptions.SECTION_NAME}:Issuer and Audience must be set.");
         }
 
         // Stateless signing service: same key as TokenValidationParameters below.

@@ -19,12 +19,12 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssu
         if(userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
-        var o = options.Value;
-        var id = userId.ToString(CultureInfo.InvariantCulture);
+        JwtOptions jwtOptions = options.Value;
+        string? id = userId.ToString(CultureInfo.InvariantCulture);
 
         // Claims become part of the signed payload; clients can read them (JWT is only signed, not encrypted).
-        var claims = new List<Claim>
-        {
+        List<Claim> claims =
+        [
             // Standard subject: who the token is about (we store the numeric user id as string).
             new(JwtRegisteredClaimNames.Sub, id),
             // ASP.NET maps this to NameIdentifier for User.Identity.
@@ -33,7 +33,7 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssu
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             // Issued-at time (Unix seconds).
             new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
-        };
+        ];
 
         if (!string.IsNullOrWhiteSpace(email))
             claims.Add(new Claim(ClaimTypes.Email, email.Trim()));
@@ -41,19 +41,19 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssu
             claims.Add(new Claim(ClaimTypes.Name, name.Trim()));
 
         // Same key bytes the API uses in JwtBearer TokenValidationParameters.
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(o.SigningKey));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expires = DateTime.UtcNow.AddMinutes(o.AccessTokenMinutes);
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(jwtOptions.SigningKey));
+        SigningCredentials creds = new(key, SecurityAlgorithms.HmacSha256);
+        DateTime expires = DateTime.UtcNow.AddMinutes(jwtOptions.AccessTokenMinutes);
 
-        var token = new JwtSecurityToken(
-            issuer: o.Issuer,
-            audience: o.Audience,
+        JwtSecurityToken token = new(
+            issuer: jwtOptions.Issuer,
+            audience: jwtOptions.Audience,
             claims: claims,
             notBefore: DateTime.UtcNow,
             expires: expires,
             signingCredentials: creds);
 
-        var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+        string? jwt = new JwtSecurityTokenHandler().WriteToken(token);
         return new JwtAccessTokenResult(jwt, new DateTimeOffset(expires, TimeSpan.Zero));
     }
 }

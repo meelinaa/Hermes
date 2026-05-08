@@ -8,19 +8,16 @@ namespace Hermes.WebFrontend.Client.Services.Auth;
 /// </summary>
 public sealed class AuthTokenStore(ILocalStorageService localStorage)
 {
-    private const string AccessKey = "hermes.auth.accessToken";
-    private const string RefreshKey = "hermes.auth.refreshToken";
-    private const string LastActivityKey = "hermes.auth.lastActivityUtc";
+    private const string ACCESS_KEY = "hermes.auth.accessToken";
+    private const string REFRESH_KEY = "hermes.auth.refreshToken";
+    private const string LAST_ACTIVITY_KEY = "hermes.auth.lastActivityUtc";
     private bool _loaded;
-    private string? _accessToken;
-    private string? _refreshToken;
-    private DateTimeOffset? _lastActivityUtc;
 
-    public string? AccessToken => _accessToken;
-    public string? RefreshToken => _refreshToken;
+    public string? AccessToken { get; private set; }
+    public string? RefreshToken { get; private set; }
 
     /// <summary>Last user activity in the app (UTC), for sliding idle timeout.</summary>
-    public DateTimeOffset? LastActivityUtc => _lastActivityUtc;
+    public DateTimeOffset? LastActivityUtc { get; private set; }
 
     public async Task EnsureLoadedFromStorageAsync(CancellationToken cancellationToken = default)
     {
@@ -28,48 +25,48 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
             return;
         _loaded = true;
         cancellationToken.ThrowIfCancellationRequested();
-        _accessToken = await localStorage.GetItemAsync<string>(AccessKey, cancellationToken).ConfigureAwait(false);
-        _refreshToken = await localStorage.GetItemAsync<string>(RefreshKey, cancellationToken).ConfigureAwait(false);
-        var activityRaw = await localStorage.GetItemAsync<string>(LastActivityKey, cancellationToken).ConfigureAwait(false);
-        _lastActivityUtc = ParseActivity(activityRaw);
+        AccessToken = await localStorage.GetItemAsync<string>(ACCESS_KEY, cancellationToken).ConfigureAwait(false);
+        RefreshToken = await localStorage.GetItemAsync<string>(REFRESH_KEY, cancellationToken).ConfigureAwait(false);
+        string? activityRaw = await localStorage.GetItemAsync<string>(LAST_ACTIVITY_KEY, cancellationToken).ConfigureAwait(false);
+        LastActivityUtc = ParseActivity(activityRaw);
     }
 
     public async Task TouchActivityAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _lastActivityUtc = DateTimeOffset.UtcNow;
-        await localStorage.SetItemAsync(LastActivityKey, _lastActivityUtc.Value.ToString("O", CultureInfo.InvariantCulture), cancellationToken)
+        LastActivityUtc = DateTimeOffset.UtcNow;
+        await localStorage.SetItemAsync(LAST_ACTIVITY_KEY, LastActivityUtc.Value.ToString("O", CultureInfo.InvariantCulture), cancellationToken)
             .ConfigureAwait(false);
     }
 
     public async Task PersistAsync(string accessToken, string refreshToken, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _accessToken = accessToken;
-        _refreshToken = refreshToken;
+        AccessToken = accessToken;
+        RefreshToken = refreshToken;
         _loaded = true;
-        await localStorage.SetItemAsync(AccessKey, accessToken, cancellationToken).ConfigureAwait(false);
-        await localStorage.SetItemAsync(RefreshKey, refreshToken, cancellationToken).ConfigureAwait(false);
+        await localStorage.SetItemAsync(ACCESS_KEY, accessToken, cancellationToken).ConfigureAwait(false);
+        await localStorage.SetItemAsync(REFRESH_KEY, refreshToken, cancellationToken).ConfigureAwait(false);
         await TouchActivityAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _accessToken = null;
-        _refreshToken = null;
-        _lastActivityUtc = null;
+        AccessToken = null;
+        RefreshToken = null;
+        LastActivityUtc = null;
         _loaded = false;
-        await localStorage.RemoveItemAsync(AccessKey, cancellationToken).ConfigureAwait(false);
-        await localStorage.RemoveItemAsync(RefreshKey, cancellationToken).ConfigureAwait(false);
-        await localStorage.RemoveItemAsync(LastActivityKey, cancellationToken).ConfigureAwait(false);
+        await localStorage.RemoveItemAsync(ACCESS_KEY, cancellationToken).ConfigureAwait(false);
+        await localStorage.RemoveItemAsync(REFRESH_KEY, cancellationToken).ConfigureAwait(false);
+        await localStorage.RemoveItemAsync(LAST_ACTIVITY_KEY, cancellationToken).ConfigureAwait(false);
     }
 
     private static DateTimeOffset? ParseActivity(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
             return null;
-        return DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto)
+        return DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset dto)
             ? dto
             : null;
     }

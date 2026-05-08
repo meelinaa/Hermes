@@ -9,8 +9,8 @@ namespace Hermes.Domain.Mapping;
 /// </summary>
 public static class CountryIsoCodeMapper
 {
-    private static readonly IReadOnlyDictionary<Country, string> ToCode = BuildForward();
-    private static readonly IReadOnlyDictionary<string, Country> FromCode = BuildReverse();
+    private static readonly IReadOnlyDictionary<Country, string> _toCode = BuildForward();
+    private static readonly IReadOnlyDictionary<string, Country> _fromCode = BuildReverse();
 
     /// <summary>
     /// Returns the ISO 3166-1 alpha-2 code (lowercase) for the given country.
@@ -18,7 +18,7 @@ public static class CountryIsoCodeMapper
     /// <exception cref="InvalidOperationException">Thrown when the enum member has no attribute.</exception>
     public static string ToIso3166Alpha2(Country country)
     {
-        if (!ToCode.TryGetValue(country, out var code))
+        if (!_toCode.TryGetValue(country, out string? code))
             throw new InvalidOperationException($"No ISO 3166-1 code defined for {country}.");
         
         return code;
@@ -33,11 +33,11 @@ public static class CountryIsoCodeMapper
         if (string.IsNullOrWhiteSpace(iso3166Alpha2))
             return false;
         
-        var normalized = iso3166Alpha2.Trim();
+        string? normalized = iso3166Alpha2.Trim();
         if (normalized.Length != 2)
             return false;
        
-        return FromCode.TryGetValue(normalized.ToLowerInvariant(), out country);
+        return _fromCode.TryGetValue(normalized.ToLowerInvariant(), out country);
     }
 
     /// <summary>
@@ -45,7 +45,7 @@ public static class CountryIsoCodeMapper
     /// </summary>
     public static Country ParseCountry(string iso3166Alpha2)
     {
-        if (TryGetCountry(iso3166Alpha2, out var country))
+        if (TryGetCountry(iso3166Alpha2, out Country country))
             return country;
         
         throw new ArgumentException($"Unknown ISO 3166-1 alpha-2 code: {iso3166Alpha2}", nameof(iso3166Alpha2));
@@ -53,11 +53,11 @@ public static class CountryIsoCodeMapper
 
     private static Dictionary<Country, string> BuildForward()
     {
-        var map = new Dictionary<Country, string>();
-        foreach (var value in Enum.GetValues<Country>())
+        Dictionary<Country, string> map = [];
+        foreach (Country value in Enum.GetValues<Country>())
         {
-            var field = typeof(Country).GetField(value.ToString());
-            var attr = field?.GetCustomAttribute<CountryIsoCodeAttribute>();
+            FieldInfo? field = typeof(Country).GetField(value.ToString());
+            CountryIsoCodeAttribute? attr = field?.GetCustomAttribute<CountryIsoCodeAttribute>();
             if (attr is null)
                 throw new InvalidOperationException($"Country.{value} is missing [{nameof(CountryIsoCodeAttribute)}].");
             
@@ -69,8 +69,8 @@ public static class CountryIsoCodeMapper
 
     private static Dictionary<string, Country> BuildReverse()
     {
-        var map = new Dictionary<string, Country>(StringComparer.Ordinal);
-        foreach (var kv in ToCode)
+        Dictionary<string, Country> map = new(StringComparer.Ordinal);
+        foreach (KeyValuePair<Country, string> kv in _toCode)
         {
             if (map.TryGetValue(kv.Value, out Country value))
                 throw new InvalidOperationException($"Duplicate ISO 3166-1 code '{kv.Value}' for {kv.Key} and {value}.");

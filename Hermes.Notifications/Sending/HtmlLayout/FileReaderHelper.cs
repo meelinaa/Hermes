@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Text;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;
@@ -21,9 +21,9 @@ public static class FileReaderHelper
         string fileName,
         CancellationToken cancellationToken)
     {
-        var resourceName = assembly
+        string? resourceName = assembly
             .GetManifestResourceNames()
-            .FirstOrDefault(n => n.EndsWith(fileName, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(resource => resource.EndsWith(fileName, StringComparison.OrdinalIgnoreCase));
 
         if (resourceName is null)
         {
@@ -31,13 +31,13 @@ public static class FileReaderHelper
                 $"Embedded resource ending with '{fileName}' was not found. Available: {string.Join(", ", assembly.GetManifestResourceNames())}");
         }
 
-        await using var stream = assembly.GetManifestResourceStream(resourceName);
+        await using Stream? stream = assembly.GetManifestResourceStream(resourceName);
         if (stream is null)
         {
             throw new InvalidOperationException($"Could not open embedded resource '{resourceName}'.");
         }
 
-        using var reader = new StreamReader(stream, Encoding.UTF8);
+        using StreamReader reader = new(stream, Encoding.UTF8);
         return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 }

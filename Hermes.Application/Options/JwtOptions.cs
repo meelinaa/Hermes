@@ -7,7 +7,7 @@ namespace Hermes.Application.Options;
 public sealed class JwtOptions
 {
     /// <summary>Configuration section name (e.g. <c>Jwt</c> in appsettings.json).</summary>
-    public const string SectionName = "Jwt";
+    public const string SECTION_NAME = "Jwt";
 
     /// <summary>Value for the JWT <c>iss</c> claim and for <see cref="Microsoft.IdentityModel.Tokens.TokenValidationParameters.ValidIssuer"/>.</summary>
     public string Issuer { get; set; } = "";

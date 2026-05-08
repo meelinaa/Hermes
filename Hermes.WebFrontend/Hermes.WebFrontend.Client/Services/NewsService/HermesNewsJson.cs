@@ -9,7 +9,7 @@ public static class HermesNewsJson
 
     private static JsonSerializerOptions Create()
     {
-        var o = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        JsonSerializerOptions o = new(JsonSerializerDefaults.Web);
         o.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true));
         return o;
     }

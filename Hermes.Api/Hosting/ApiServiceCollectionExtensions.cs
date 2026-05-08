@@ -33,7 +33,7 @@ public static class ApiServiceCollectionExtensions
     /// <param name="configuration">Application configuration (appsettings, environment variables).</param>
     public static void AddHermesApiServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
+        string? connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
 
@@ -46,7 +46,7 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsService, NewsService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
-        services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SectionName));
+        services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
 
@@ -69,7 +69,7 @@ public static class ApiServiceCollectionExtensions
         services.AddProblemDetails();
 
         // CORS: allowed origins from Cors:AllowedOrigins (array in appsettings); default for local SPA dev.
-        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"];
+        string[]? allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"];
         services.AddCors(options =>
         {
             options.AddPolicy("FrontendPolicy", policy =>
@@ -107,16 +107,17 @@ public static class ApiServiceCollectionExtensions
             };
         });
 
+        bool rateLimitingEnabled = configuration.GetValue("RateLimiting:Enabled", true);
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
-                var problemDetailsService = context.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
+                IProblemDetailsService problemDetailsService = context.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
                 context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
-                    context.HttpContext.Response.Headers["Retry-After"] = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+                    context.HttpContext.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
 
                 await problemDetailsService.WriteAsync(new ProblemDetailsContext
                 {
@@ -130,23 +131,31 @@ public static class ApiServiceCollectionExtensions
                 });
             };
 
-            options.AddPolicy("AuthLoginPolicy", httpContext =>
-                CreateAuthPartition(httpContext, permitLimit: 8, window: TimeSpan.FromMinutes(1)));
+            if (rateLimitingEnabled)
+            {
+                options.AddPolicy("AuthLoginPolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 8, window: TimeSpan.FromMinutes(1)));
 
-            options.AddPolicy("AuthRefreshPolicy", httpContext =>
-                CreateAuthPartition(httpContext, permitLimit: 30, window: TimeSpan.FromMinutes(1)));
+                options.AddPolicy("AuthRefreshPolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 30, window: TimeSpan.FromMinutes(1)));
+                return;
+            }
+
+            // Keep policy names available for endpoint attributes, but effectively disable throttling.
+            options.AddPolicy("AuthLoginPolicy", _ => RateLimitPartition.GetNoLimiter("testing-login"));
+            options.AddPolicy("AuthRefreshPolicy", _ => RateLimitPartition.GetNoLimiter("testing-refresh"));
         });
     }
 
     private static RateLimitPartition<string> CreateAuthPartition(HttpContext httpContext, int permitLimit, TimeSpan window)
     {
-        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
-        var clientKey = httpContext.Request.Headers["X-Client-Key"].FirstOrDefault();
+        string? ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
+        string? clientKey = httpContext.Request.Headers["X-Client-Key"].FirstOrDefault();
         if (string.IsNullOrWhiteSpace(clientKey))
             clientKey = "anonymous-client";
 
         // Partition by both dimensions so callers are naturally segmented by source and client identity.
-        var partitionKey = $"ip:{ip}|client:{clientKey.Trim()}";
+        string partitionKey = $"ip:{ip}|client:{clientKey.Trim()}";
 
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: partitionKey,
@@ -161,11 +170,11 @@ public static class ApiServiceCollectionExtensions
 
     private static JobStorage CreateHangfireJobStorage(IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
+        string connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
-        var hangfireConnectionRaw = configuration.GetConnectionString("Hangfire");
-        var hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
+        string? hangfireConnectionRaw = configuration.GetConnectionString("Hangfire");
+        string? hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
             ? connectionString
             : hangfireConnectionRaw;
         return new MySqlStorage(hangfireConnection, new MySqlStorageOptions

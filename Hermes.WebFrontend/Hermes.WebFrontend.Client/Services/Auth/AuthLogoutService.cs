@@ -18,7 +18,7 @@ public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, Ne
         await tokens.EnsureLoadedFromStorageAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            using var response = await http
+            using HttpResponseMessage response = await http
                 .PostAsJsonAsync("api/v1/auth/logout", new { }, JsonWeb, cancellationToken)
                 .ConfigureAwait(false);
             _ = response;

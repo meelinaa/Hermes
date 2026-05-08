@@ -7,8 +7,8 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        var ok = await Session.EnsureSessionAsync();
-        var dest = ok ? "/home" : "/login";
+        bool ok = await Session.EnsureSessionAsync();
+        string dest = ok ? "/home" : "/login";
         Nav.NavigateTo(dest, forceLoad: false, replace: true);
     }
 }

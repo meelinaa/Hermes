@@ -202,7 +202,7 @@ public sealed class HealthProbeIntegrationTests(MySqlApiFixture fixture)
     public async Task Scoped_db_context_can_connect_to_mysql_using_application_registration()
     {
         using IServiceScope scope = fixture.Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HermesDbContext>();
+        HermesDbContext db = scope.ServiceProvider.GetRequiredService<HermesDbContext>();
 
         bool canConnect = await db.Database.CanConnectAsync();
 

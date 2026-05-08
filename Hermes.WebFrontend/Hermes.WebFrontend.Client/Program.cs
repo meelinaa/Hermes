@@ -4,7 +4,7 @@ using Hermes.WebFrontend.Client.Services.NewsService;
 using Hermes.WebFrontend.Client.Services.User;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
+WebAssemblyHostBuilder? builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
 builder.Configuration.AddJsonFile($"appsettings.{builder.HostEnvironment.Environment}.json", optional: true, reloadOnChange: false);
@@ -17,14 +17,14 @@ builder.Services.AddSingleton<UserProfileRefreshNotifier>();
 builder.Services.AddScoped<NewsSubscriptionListCache>();
 
 // Anonymous client for auth/refresh only (no Bearer). Named client avoids handler pooling issues on the authorized pipeline.
-builder.Services.AddHttpClient(AuthSessionService.AnonymousHttpClientName, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
+builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
 
 // One HttpClient + handler chain per scope — always uses current AuthTokenStore (no IHttpClientFactory pooling of DelegatingHandler).
 builder.Services.AddScoped(sp =>
 {
-    var store = sp.GetRequiredService<AuthTokenStore>();
-    var pipeline = new AuthMessageHandler(store) { InnerHandler = new HttpClientHandler() };
-    var client = new HttpClient(pipeline);
+    AuthTokenStore store = sp.GetRequiredService<AuthTokenStore>();
+    AuthMessageHandler pipeline = new(store) { InnerHandler = new HttpClientHandler() };
+    HttpClient client = new(pipeline);
     HermesApiHttp.ConfigureBaseAddress(client, sp);
     return client;
 });
@@ -35,9 +35,9 @@ internal static class HermesApiHttp
 {
     public static void ConfigureBaseAddress(HttpClient client, IServiceProvider sp)
     {
-        var config = sp.GetRequiredService<IConfiguration>();
-        var env = sp.GetRequiredService<IWebAssemblyHostEnvironment>();
-        var baseUrl = config["ApiBaseUrl"]?.Trim();
+        IConfiguration config = sp.GetRequiredService<IConfiguration>();
+        IWebAssemblyHostEnvironment env = sp.GetRequiredService<IWebAssemblyHostEnvironment>();
+        string? baseUrl = config["ApiBaseUrl"]?.Trim();
         if (string.IsNullOrWhiteSpace(baseUrl))
             baseUrl = env.BaseAddress;
         if (!baseUrl.EndsWith('/'))

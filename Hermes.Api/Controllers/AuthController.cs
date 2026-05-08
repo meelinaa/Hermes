@@ -1,4 +1,5 @@
 using FluentValidation;
+using FluentValidation.Results;
 using Hermes.Api.Http;
 using Hermes.Api.Validation;
 using Hermes.Application.Models;
@@ -47,17 +48,17 @@ public class AuthController(IUserService userService) : ControllerBase
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        var fv = await loginValidator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
+        ValidationResult fv = await loginValidator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
         // Credential check only; no tokens until this succeeds.
-        var result = await userService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
+        LoginResult result = await userService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
 
         // Persist refresh (hash) and return JWT + plain refresh once.
-        var tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
+        AuthTokensResult tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
         return Ok(new
         {
             success = true,
@@ -80,12 +81,12 @@ public class AuthController(IUserService userService) : ControllerBase
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        var fv = await refreshValidator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
+        ValidationResult fv = await refreshValidator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
         // No Bearer header required: the refresh body proves the session. Old refresh is revoked server-side.
-        var next = await authTokens.RotateAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
+        AuthTokensResult? next = await authTokens.RotateAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
         if (next is null)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
 
@@ -112,7 +113,7 @@ public class AuthController(IUserService userService) : ControllerBase
         CancellationToken cancellationToken)
     {
         // User id comes from the validated JWT, not from the client body (prevents cross-user revoke).
-        if (!this.TryGetCurrentUserId(out var userId))
+        if (!this.TryGetCurrentUserId(out int userId))
             return this.UnauthorizedProblem("Missing user identity.");
 
         if (string.IsNullOrWhiteSpace(body?.RefreshToken))
@@ -121,7 +122,7 @@ public class AuthController(IUserService userService) : ControllerBase
             return NoContent();
         }
 
-        var ok = await authTokens.TryRevokeRefreshForUserAsync(body.RefreshToken, userId, cancellationToken).ConfigureAwait(false);
+        bool ok = await authTokens.TryRevokeRefreshForUserAsync(body.RefreshToken, userId, cancellationToken).ConfigureAwait(false);
         if (!ok)
             return this.BadRequestProblem("Invalid or expired refresh token.");
 

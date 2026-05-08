@@ -34,7 +34,7 @@ public sealed class JwtTokenIssuerTests
     /// </summary>
     private static TokenValidationParameters CreateValidation(JwtOptions o, JwtSecurityTokenHandler handler)
     {
-        var p = new TokenValidationParameters
+        TokenValidationParameters p = new()
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(o.SigningKey)),

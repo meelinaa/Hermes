@@ -8,8 +8,8 @@ public static class ValidationResultExtensions
 {
     public static ActionResult ToValidationProblem(this ValidationResult result, ControllerBase controller)
     {
-        foreach (var e in result.Errors)
-            controller.ModelState.AddModelError(e.PropertyName ?? string.Empty, e.ErrorMessage);
+        foreach (var validationError in result.Errors)
+            controller.ModelState.AddModelError(validationError.PropertyName ?? string.Empty, validationError.ErrorMessage);
 
         return controller.ValidationProblem(controller.ModelState);
     }

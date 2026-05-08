@@ -8,7 +8,8 @@ namespace Hermes.UnitTests.Security;
 /// </summary>
 public sealed class RefreshTokenHasherTests
 {
-    private const string Sha256AbcLowerHex = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+    private const string SHA_256_ABC_LOWER_HEX = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+    private const string PLAIN = "refresh-material";
 
     /// <summary>
     /// Hash output must be 64 uppercase hex chars matching SHA-256 of the plaintext (deterministic reference vector for <c>abc</c>).
@@ -17,35 +18,25 @@ public sealed class RefreshTokenHasherTests
     public void Hash_Should_ReturnUppercaseHex64_ForDeterministicSha256()
     {
         // Act
-        string h = RefreshTokenHasher.Hash("abc");
+        string hashedToken = RefreshTokenHasher.Hash("abc");
 
         // Assert
-        Assert.Equal(64, h.Length);
-        Assert.Equal(Sha256AbcLowerHex.ToUpperInvariant(), h);
-        Assert.Matches("^[0-9A-F]{64}$", h);
+        Assert.Equal(64, hashedToken.Length);
+        Assert.Equal(SHA_256_ABC_LOWER_HEX.ToUpperInvariant(), hashedToken);
+        Assert.Matches("^[0-9A-F]{64}$", hashedToken);
     }
 
     /// <summary>
     /// Same plaintext must always yield the same stored hash (idempotent hashing for lookups).
     /// </summary>
     [Fact]
-    public void Hash_Should_BeDeterministic_ForSamePlaintext()
-    {
-        // Arrange
-        const string plain = "refresh-material";
-
-        // Act / Assert
-        Assert.Equal(RefreshTokenHasher.Hash(plain), RefreshTokenHasher.Hash(plain));
-    }
+    public void Hash_Should_BeDeterministic_ForSamePlaintext() => Assert.Equal(RefreshTokenHasher.Hash(PLAIN), RefreshTokenHasher.Hash(PLAIN));
 
     /// <summary>
     /// Different plaintexts must produce different hashes (collision resistance at application level).
     /// </summary>
     [Fact]
-    public void Hash_Should_Differ_ForDifferentPlaintext()
-    {
-        Assert.NotEqual(RefreshTokenHasher.Hash("a"), RefreshTokenHasher.Hash("b"));
-    }
+    public void Hash_Should_Differ_ForDifferentPlaintext() => Assert.NotEqual(RefreshTokenHasher.Hash("a"), RefreshTokenHasher.Hash("b"));
 
     /// <summary>
     /// Hashing uses UTF-8 bytes, so visually similar ASCII vs Unicode strings must not collide.
@@ -64,8 +55,5 @@ public sealed class RefreshTokenHasherTests
     /// Null plaintext is rejected explicitly (<see cref="ArgumentNullException"/>).
     /// </summary>
     [Fact]
-    public void Hash_Should_ThrowArgumentNull_WhenPlainTokenNull()
-    {
-        Assert.Throws<ArgumentNullException>(() => RefreshTokenHasher.Hash(null!));
-    }
+    public void Hash_Should_ThrowArgumentNull_WhenPlainTokenNull() => Assert.Throws<ArgumentNullException>(() => RefreshTokenHasher.Hash(null!));
 }

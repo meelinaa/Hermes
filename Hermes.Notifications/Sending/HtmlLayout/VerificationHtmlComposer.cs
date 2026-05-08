@@ -1,8 +1,8 @@
-using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Notifications.Sending.HtmlLayout.Models;
 using System.Net;
+using System.Reflection;
 
-namespace Hermes.Notifications.Sending;
+namespace Hermes.Notifications.Sending.HtmlLayout;
 
 /// <summary>Loads <c>Verification.html</c> and replaces template tokens with escaped values.</summary>
 public class VerificationHtmlComposer
@@ -16,9 +16,9 @@ public class VerificationHtmlComposer
     {
         ArgumentNullException.ThrowIfNull(verificationContent);
 
-        var assembly = typeof(VerificationHtmlComposer).Assembly;
+        Assembly assembly = typeof(VerificationHtmlComposer).Assembly;
 
-        var verificationTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "Verification.html", cancellationToken).ConfigureAwait(false);
+        string? verificationTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "Verification.html", cancellationToken).ConfigureAwait(false);
 
         static string Enc(string? s) => WebUtility.HtmlEncode(s ?? string.Empty);
 
