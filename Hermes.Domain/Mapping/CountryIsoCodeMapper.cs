@@ -51,6 +51,7 @@ public static class CountryIsoCodeMapper
         throw new ArgumentException($"Unknown ISO 3166-1 alpha-2 code: {iso3166Alpha2}", nameof(iso3166Alpha2));
     }
 
+    /// <summary>Builds the mapping from <see cref="Country"/> enum values to ISO codes.</summary>
     private static Dictionary<Country, string> BuildForward()
     {
         Dictionary<Country, string> map = [];
@@ -67,6 +68,7 @@ public static class CountryIsoCodeMapper
         return map;
     }
 
+    /// <summary>Builds the reverse mapping from ISO codes to <see cref="Country"/> values.</summary>
     private static Dictionary<string, Country> BuildReverse()
     {
         Dictionary<string, Country> map = new(StringComparer.Ordinal);

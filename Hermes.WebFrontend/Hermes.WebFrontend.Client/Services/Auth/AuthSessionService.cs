@@ -62,7 +62,6 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
                 return false;
             }
 
-            // PersistAsync already updates last activity.
             return true;
         }
         finally
@@ -71,6 +70,7 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
         }
     }
 
+    /// <summary>Checks whether the access token is still valid considering a small clock-skew safety window.</summary>
     private static bool IsAccessTokenAlive(string? accessToken)
     {
         DateTimeOffset? exp = JwtPayloadDisplayName.TryGetExpiresAtUtc(accessToken);
@@ -79,6 +79,7 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
         return exp.Value > DateTimeOffset.UtcNow.Add(_expirationClockSkew);
     }
 
+    /// <summary>Returns the configured idle-timeout days or the default value.</summary>
     private int GetIdleTimeoutDays()
     {
         string? configuredIdleDays = config["Session:IdleTimeoutDays"];
@@ -87,6 +88,7 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
         return 7;
     }
 
+    /// <summary>Attempts token refresh and persists new tokens when successful.</summary>
     private async Task<bool> TryRefreshAsync(CancellationToken cancellationToken)
     {
         string? refresh = tokens.RefreshToken;

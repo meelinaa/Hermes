@@ -14,6 +14,7 @@ public sealed class NewsSubscriptionListCache
     private List<News> _items = [];
     private string? _lastError;
 
+    /// <summary>Clears cache content and error state.</summary>
     public void Invalidate()
     {
         _freshUserId = null;
@@ -22,6 +23,7 @@ public sealed class NewsSubscriptionListCache
     }
 
     /// <param name="forceReload">When true, always calls the API (after create/update/delete).</param>
+    /// <summary>Returns cached items or reloads the current user's list from the API.</summary>
     public async Task<(List<News> Items, string? Error)> GetOrLoadAsync(
         int userId,
         HttpClient http,
@@ -62,8 +64,10 @@ public sealed class NewsSubscriptionListCache
         }
     }
 
+    /// <summary>Returns a detached copy of cached items.</summary>
     private List<News> Snapshot() => _items.Count == 0 ? [] : new List<News>(_items);
 
+    /// <summary>Attempts to extract a problem-details message from a failed API response.</summary>
     private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
     {
         try
@@ -75,7 +79,6 @@ public sealed class NewsSubscriptionListCache
         }
         catch
         {
-            // ignore
         }
 
         return $"Anfrage fehlgeschlagen ({(int)response.StatusCode}).";

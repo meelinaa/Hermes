@@ -19,6 +19,7 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
     /// <summary>Last user activity in the app (UTC), for sliding idle timeout.</summary>
     public DateTimeOffset? LastActivityUtc { get; private set; }
 
+    /// <summary>Loads tokens and session metadata from browser storage once per instance.</summary>
     public async Task EnsureLoadedFromStorageAsync(CancellationToken cancellationToken = default)
     {
         if (_loaded)
@@ -31,6 +32,7 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
         LastActivityUtc = ParseActivity(activityRaw);
     }
 
+    /// <summary>Updates and persists the last user-activity timestamp.</summary>
     public async Task TouchActivityAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -39,6 +41,7 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
             .ConfigureAwait(false);
     }
 
+    /// <summary>Persists access and refresh tokens and updates activity timestamp.</summary>
     public async Task PersistAsync(string accessToken, string refreshToken, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -50,6 +53,7 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
         await TouchActivityAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Clears all stored authentication and session values.</summary>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -62,6 +66,7 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
         await localStorage.RemoveItemAsync(LAST_ACTIVITY_KEY, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Parses a round-trip timestamp string into UTC activity value.</summary>
     private static DateTimeOffset? ParseActivity(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))

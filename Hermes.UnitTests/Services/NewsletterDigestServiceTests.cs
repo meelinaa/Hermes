@@ -58,7 +58,7 @@ public sealed class NewsletterDigestServiceTests
         NewsletterDigestService sutEmpty = CreateSut(Mock.Of<IHermesDataStore>(), newsOptions: Options.Create(new NewsDataIoOptions { ApiKey = "" }));
         NewsletterDigestService sutWs = CreateSut(Mock.Of<IHermesDataStore>(), newsOptions: Options.Create(new NewsDataIoOptions { ApiKey = "   " }));
 
-        // Act / Assert
+        // Act
         InvalidOperationException ex1 = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sutEmpty.SendAsync(1, 1, new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)));
         Assert.Equal("Configure NewsDataIo:ApiKey.", ex1.Message);
@@ -73,7 +73,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_NotLoadUserOrNews_WhenDuplicateAlreadySentInWindow()
     {
-        // Arrange — duplicate check returns true immediately
+        // Arrange
         Mock<IHermesDataStore> store = new();
         store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
@@ -88,7 +88,7 @@ public sealed class NewsletterDigestServiceTests
         // Act
         await sut.SendAsync(5, 10, new DateTime(2026, 6, 15, 14, 30, 22, DateTimeKind.Utc));
 
-        // Assert — heavier store queries never run
+        // Assert
         store.Verify(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         store.Verify(dataStore => dataStore.GetNewsByIdAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -215,7 +215,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_NotCallNewsApi_WhenFiltersProduceNoQuery()
     {
-        // Arrange — news row exists but yields empty effective query after trimming/filtering
+        // Arrange
         News news = new()
         {
             Id = 3,
@@ -298,7 +298,7 @@ public sealed class NewsletterDigestServiceTests
         // Act
         await sut.SendAsync(2, 12, new DateTime(2026, 8, 1, 11, 0, 0, DateTimeKind.Utc));
 
-        // Assert — query carries API key and keyword; log marks Sent
+        // Assert
         Assert.NotNull(capturedQuery);
         Assert.Equal("integration-test-api-key", capturedQuery!.ApiKey);
         Assert.Equal("Berlin", capturedQuery.KeywordsQuery);

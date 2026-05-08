@@ -489,7 +489,6 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             entity.Property(notificationLog => notificationLog.Channel).HasConversion<string>();
         });
 
-        // Long-lived sessions: one row per issued refresh token; TokenHash is unique for lookup after client sends plain token.
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.ToTable("refresh_tokens");
@@ -541,10 +540,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         {
             if (ex.InnerException is MySqlException mysql)
             {
-                // 1452: cannot add/update child row (FK to missing parent)
                 if (mysql.Number == 1452)
                     throw new UserNotFoundException("A related record was not found (foreign key constraint).");
-                // 1062: duplicate entry (unique index, e.g. email race)
                 if (mysql.Number == 1062)
                     throw new EmailAlreadyExistsException("A unique constraint was violated.");
             }

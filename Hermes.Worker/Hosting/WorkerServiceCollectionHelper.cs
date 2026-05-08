@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Worker.Hosting;
 
+/// <summary>Helper methods for worker configuration binding, environment discovery, and startup diagnostics.</summary>
 public class WorkerServiceCollectionHelper
 {
     /// <summary>
@@ -24,6 +25,7 @@ public class WorkerServiceCollectionHelper
         return null;
     }
 
+    /// <summary>Enumerates candidate <c>.env</c> file paths by traversing known start directories and parent folders.</summary>
     private static IEnumerable<string> EnumerateEnvFilePaths(string contentRootPath)
     {
         string? exeDir = Path.GetDirectoryName(Environment.ProcessPath);
@@ -44,6 +46,7 @@ public class WorkerServiceCollectionHelper
         }
     }
 
+    /// <summary>Parses a NewsData.io API key from one <c>.env</c> file using supported key formats.</summary>
     private static string? TryParseNewsDataIoKeyFromEnvFile(string envFilePath)
     {
         const string COLON_PREFIX = "NEWSDATA.IO:";
@@ -76,6 +79,7 @@ public class WorkerServiceCollectionHelper
         return null;
     }
 
+    /// <summary>Removes matching wrapping single or double quotes from a value.</summary>
     private static string StripOptionalQuotes(string value)
     {
         if (value.Length >= 2 &&
@@ -84,6 +88,7 @@ public class WorkerServiceCollectionHelper
         return value;
     }
 
+    /// <summary>Binds SMTP mail settings from configuration and validates required fields.</summary>
     internal static EmailSettings BindEmailSettings(IConfiguration configuration)
     {
         IConfigurationSection section = configuration.GetSection("Email");

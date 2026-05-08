@@ -7,6 +7,7 @@ namespace Hermes.WebFrontend.Client.Services.Auth;
 /// </summary>
 public sealed class AuthMessageHandler(AuthTokenStore tokens) : DelegatingHandler
 {
+    /// <summary>Attaches bearer authorization from the token store before forwarding the HTTP request.</summary>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         await tokens.EnsureLoadedFromStorageAsync(cancellationToken).ConfigureAwait(false);

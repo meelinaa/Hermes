@@ -2,10 +2,12 @@ using System.Text;
 
 namespace Hermes.Infrastructure.NewsDataIo;
 
+/// <summary>Builds query URLs for the NewsData.io latest endpoint from structured request parts.</summary>
 public static class NewsDataIoUrlBuilder
 {
     private const string BASE_URL = "https://newsdata.io/api/1/latest?";
 
+    /// <summary>Builds a full NewsData.io request URL for the provided API parts.</summary>
     public static string Build(ApiUrlParts parts)
     {
         ArgumentNullException.ThrowIfNull(parts);
@@ -29,6 +31,7 @@ public static class NewsDataIoUrlBuilder
         return sb.ToString();
     }
 
+    /// <summary>Appends a comma-separated query parameter when at least one non-empty value is available.</summary>
     private static void AppendCommaSeparated(StringBuilder sb, string queryName, IEnumerable<string>? values)
     {
         if (values is null)
@@ -39,6 +42,7 @@ public static class NewsDataIoUrlBuilder
         sb.Append('&').Append(queryName).Append('=').Append(Uri.EscapeDataString(string.Join(",", filteredValues)));
     }
 
+    /// <summary>Appends an escaped query parameter for a non-empty string value.</summary>
     private static void AppendOptionalString(StringBuilder sb, string queryName, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -46,6 +50,7 @@ public static class NewsDataIoUrlBuilder
         sb.Append('&').Append(queryName).Append('=').Append(Uri.EscapeDataString(value));
     }
 
+    /// <summary>Appends a query parameter for a nullable integer value when provided.</summary>
     private static void AppendOptionalInt(StringBuilder sb, string queryName, int? value)
     {
         if (value is null)

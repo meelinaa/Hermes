@@ -60,15 +60,12 @@ public static class ApiServiceCollectionExtensions
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
         services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
-        // JWT bearer validation + symmetric signing options; registers IJwtTokenIssuer for access tokens at login/refresh.
         services.AddHermesJwtAuthentication(configuration);
         services.AddOpenApi();
         Log.Information("Added controllers, JWT authentication, FluentValidation, and OpenAPI services");
 
-        // RFC 7807 ProblemDetails for validation errors and exception handler integration.
         services.AddProblemDetails();
 
-        // CORS: allowed origins from Cors:AllowedOrigins (array in appsettings); default for local SPA dev.
         string[]? allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"];
         services.AddCors(options =>
         {
@@ -81,12 +78,10 @@ public static class ApiServiceCollectionExtensions
         });
         Log.Information("Configured CORS with allowed origins: {AllowedOrigins}", string.Join(", ", allowedOrigins));
 
-        // Kubernetes-style probes: "ready" tag limits which checks run on /health/ready.
         services.AddHealthChecks()
             .AddDbContextCheck<HermesDbContext>("database", failureStatus: HealthStatus.Unhealthy, tags: ["ready"]);
         Log.Information("Added health checks: database with 'ready' tag");
 
-        // Per-request timeouts: named policies for future endpoint-specific limits; default applies to all requests.
         services.AddRequestTimeouts(options =>
         {
             options.AddPolicy("Strict", TimeSpan.FromSeconds(5));
@@ -141,12 +136,14 @@ public static class ApiServiceCollectionExtensions
                 return;
             }
 
-            // Keep policy names available for endpoint attributes, but effectively disable throttling.
             options.AddPolicy("AuthLoginPolicy", _ => RateLimitPartition.GetNoLimiter("testing-login"));
             options.AddPolicy("AuthRefreshPolicy", _ => RateLimitPartition.GetNoLimiter("testing-refresh"));
         });
     }
 
+    /// <summary>
+    /// Builds a fixed-window rate-limiter partition key from caller identity attributes and creates the limiter policy.
+    /// </summary>
     private static RateLimitPartition<string> CreateAuthPartition(HttpContext httpContext, int permitLimit, TimeSpan window)
     {
         string? ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
@@ -154,7 +151,6 @@ public static class ApiServiceCollectionExtensions
         if (string.IsNullOrWhiteSpace(clientKey))
             clientKey = "anonymous-client";
 
-        // Partition by both dimensions so callers are naturally segmented by source and client identity.
         string partitionKey = $"ip:{ip}|client:{clientKey.Trim()}";
 
         return RateLimitPartition.GetFixedWindowLimiter(
@@ -168,6 +164,9 @@ public static class ApiServiceCollectionExtensions
             });
     }
 
+    /// <summary>
+    /// Creates Hangfire storage backed by MySQL using the configured connection string.
+    /// </summary>
     private static JobStorage CreateHangfireJobStorage(IConfiguration configuration)
     {
         string connectionString = configuration.GetConnectionString("DefaultConnection")

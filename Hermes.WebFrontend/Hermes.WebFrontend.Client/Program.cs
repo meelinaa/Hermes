@@ -16,10 +16,8 @@ builder.Services.AddScoped<AuthLogoutService>();
 builder.Services.AddSingleton<UserProfileRefreshNotifier>();
 builder.Services.AddScoped<NewsSubscriptionListCache>();
 
-// Anonymous client for auth/refresh only (no Bearer). Named client avoids handler pooling issues on the authorized pipeline.
 builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
 
-// One HttpClient + handler chain per scope — always uses current AuthTokenStore (no IHttpClientFactory pooling of DelegatingHandler).
 builder.Services.AddScoped(sp =>
 {
     AuthTokenStore store = sp.GetRequiredService<AuthTokenStore>();
@@ -33,6 +31,7 @@ await builder.Build().RunAsync();
 
 internal static class HermesApiHttp
 {
+    /// <summary>Sets the API base address from configuration or falls back to the current host base address.</summary>
     public static void ConfigureBaseAddress(HttpClient client, IServiceProvider sp)
     {
         IConfiguration config = sp.GetRequiredService<IConfiguration>();

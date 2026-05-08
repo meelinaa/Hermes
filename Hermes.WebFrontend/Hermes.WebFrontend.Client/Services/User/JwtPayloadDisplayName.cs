@@ -15,6 +15,7 @@ public static class JwtPayloadDisplayName
     private const string CLAIM_EMAIL =
         "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress";
 
+    /// <summary>Returns display name or fallback e-mail from JWT payload claims.</summary>
     public static string? TryGet(string? accessToken)
     {
         string? json = DecodePayloadJson(accessToken);
@@ -38,7 +39,6 @@ public static class JwtPayloadDisplayName
         }
         catch
         {
-            // ignore
         }
 
         return null;
@@ -69,7 +69,6 @@ public static class JwtPayloadDisplayName
         }
         catch
         {
-            // ignore
         }
 
         return null;
@@ -98,12 +97,12 @@ public static class JwtPayloadDisplayName
         }
         catch
         {
-            // ignore
         }
 
         return null;
     }
 
+    /// <summary>Decodes the JWT payload segment into JSON text without signature validation.</summary>
     private static string? DecodePayloadJson(string? accessToken)
     {
         if (string.IsNullOrWhiteSpace(accessToken))
@@ -121,6 +120,7 @@ public static class JwtPayloadDisplayName
         }
     }
 
+    /// <summary>Reads a non-empty string claim value from the payload.</summary>
     private static bool TryString(JsonElement payloadElement, string property, out string? value)
     {
         value = null;
@@ -132,6 +132,7 @@ public static class JwtPayloadDisplayName
         return !string.IsNullOrWhiteSpace(value);
     }
 
+    /// <summary>Decodes Base64URL-encoded JWT payload bytes.</summary>
     private static byte[] Base64UrlDecode(string input)
     {
         string normalized = input.Replace('-', '+').Replace('_', '/');

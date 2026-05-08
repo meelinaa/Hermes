@@ -4,8 +4,10 @@ using Hermes.Application.Ports;
 
 namespace Hermes.Infrastructure.NewsDataIo;
 
+/// <summary>HTTP client adapter for retrieving latest articles from NewsData.io.</summary>
 public sealed class NewsDataIoClient(HttpClient httpClient) : INewsArticleProvider
 {
+    /// <summary>Fetches latest articles for the supplied query and maps them into application news article models.</summary>
     public async Task<IReadOnlyList<NewsArticle>> GetLatestAsync(NewsArticleQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);

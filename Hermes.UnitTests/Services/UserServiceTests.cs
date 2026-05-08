@@ -225,14 +225,14 @@ public sealed class UserServiceTests
     public async Task UpdateUserAsync_Should_ThrowUserNotFound_WhenChangingPassword_AndUserMissing()
     {
         Mock<IHermesDataStore> db = new();
-        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(404, It.IsAny<CancellationToken>())) // User does not exist.
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(404, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
         UserService sut = CreateUserService(db.Object);
-        User patch = new() { Id = 404, Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" }; // New password is not relevant for this test.
+        User patch = new() { Id = 404, Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" };
 
         await Assert.ThrowsAsync<UserNotFoundException>(() =>
-            sut.UpdateUserAsync(patch, currentPasswordPlain: "old")); // Current password is not relevant for this test.
+            sut.UpdateUserAsync(patch, currentPasswordPlain: "old"));
     }
 
     /// <summary>Cannot set new password if stored hash is missing (account without password).</summary>
@@ -241,7 +241,7 @@ public sealed class UserServiceTests
     {
         Mock<IHermesDataStore> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = null }); // Stored password hash is empty.
+            .ReturnsAsync(new User { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = null });
 
         UserService sut = CreateUserService(db.Object);
         User patch = new() { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" };
@@ -255,7 +255,7 @@ public sealed class UserServiceTests
     public async Task UpdateUserAsync_Should_UpdateWithoutPassword_WhenNewPasswordOmitted()
     {
         Mock<IHermesDataStore> db = new();
-        db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask); // Update user does not require password verification.
+        db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);
         User patch = new() { Id = 2, Email = "u@x.y", Name = "OnlyName", PasswordHash = null };
@@ -271,13 +271,13 @@ public sealed class UserServiceTests
     [Fact]
     public async Task GetUserByNameAsync_Should_ReturnScope_FromStore()
     {
-        UserScope expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" }; // User exists.
+        UserScope expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" };
         Mock<IHermesDataStore> db = new();
         db.Setup(dataStore => dataStore.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync(expected); 
 
         UserService sut = CreateUserService(db.Object);
 
-        UserScope? r = await sut.GetUserByNameAsync("sam"); // User exists.
+        UserScope? r = await sut.GetUserByNameAsync("sam");
 
         Assert.Same(expected, r);
     }
@@ -286,7 +286,7 @@ public sealed class UserServiceTests
     public async Task GetUserByNameAsync_Should_RejectBlankName()
     {
         UserService sut = CreateUserService(Mock.Of<IHermesDataStore>());
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByNameAsync("  ")); // Blank name. This should be rejected before querying the database.
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByNameAsync("  "));
     }
 
     /// <summary>Positive id delegates to store.</summary>
@@ -298,7 +298,7 @@ public sealed class UserServiceTests
         db.Setup(dataStore => dataStore.GetUserByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
-        UserScope? r = await sut.GetUserByIdAsync(3); // User exists.
+        UserScope? r = await sut.GetUserByIdAsync(3);
 
         Assert.Same(expected, r);
     }
@@ -311,7 +311,7 @@ public sealed class UserServiceTests
         db.Setup(dataStore => dataStore.GetUserByEmailAsync("a@b.c", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
-        UserScope? r = await sut.GetUserByEmailAsync("a@b.c"); // User exists.
+        UserScope? r = await sut.GetUserByEmailAsync("a@b.c");
 
         Assert.Same(expected, r);
     }
@@ -330,7 +330,7 @@ public sealed class UserServiceTests
 
         await sut.SendVerificationMailAsync("  U@Test.dev ", CancellationToken.None);
 
-        trigger.Verify(jobTrigger => jobTrigger.EnqueueSendVerificationMail(42), Times.Once); // Verification mail job should be enqueued.
+        trigger.Verify(jobTrigger => jobTrigger.EnqueueSendVerificationMail(42), Times.Once);
     }
 
     [Fact]
@@ -342,7 +342,7 @@ public sealed class UserServiceTests
 
         UserService sut = CreateUserService(db.Object);
 
-        await Assert.ThrowsAsync<UserNotFoundException>(() => sut.SendVerificationMailAsync("ghost@test.dev", CancellationToken.None)); // User does not exist. 
+        await Assert.ThrowsAsync<UserNotFoundException>(() => sut.SendVerificationMailAsync("ghost@test.dev", CancellationToken.None));
     }
 
     [Fact]

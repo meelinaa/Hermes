@@ -11,6 +11,7 @@ namespace Hermes.Infrastructure.Email;
 /// </summary>
 public sealed class SmtpEmailSender(EmailSettings settings) : IEmailSender
 {
+    /// <summary>Sends an e-mail message via SMTP using configured sender defaults.</summary>
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         using SmtpClient smtp = CreateSmtpClient();
@@ -18,6 +19,7 @@ public sealed class SmtpEmailSender(EmailSettings settings) : IEmailSender
         await smtp.SendMailAsync(mail, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Creates and configures an SMTP client instance from configured settings.</summary>
     private SmtpClient CreateSmtpClient()
     {
         SmtpClient client = new(settings.Host, settings.Port)
@@ -31,6 +33,7 @@ public sealed class SmtpEmailSender(EmailSettings settings) : IEmailSender
         return client;
     }
 
+    /// <summary>Builds a mail message with headers, reply-to, and optional attachments.</summary>
     private MailMessage CreateMailMessage(EmailMessage message)
     {
         MailAddress from = new(settings.DefaultFromAddress, settings.DefaultFromName);

@@ -20,6 +20,7 @@ public sealed class NewsletterScheduler(
     EmailSettings emailSettings,
     IOptions<MailHogSettings> mailHogOptions)
 {
+    /// <summary>Evaluates due newsletter items for the current minute and enqueues one Hangfire job per due row.</summary>
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         DateTime now = DateTime.Now;

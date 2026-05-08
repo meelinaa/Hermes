@@ -20,7 +20,7 @@ public class UsersController(IUserService userService) : ControllerBase
     private static readonly TimeSpan _verificationMailCooldown = TimeSpan.FromSeconds(60);
     private static readonly ConcurrentDictionary<int, DateTimeOffset> _lastVerificationMailByUserId = new();
 
-    /// <summary>Register a new user. Plain password is sent in <c>passwordHash</c>; it is hashed before storage.</summary>
+    /// <summary>Register a new user with a plain password that is hashed before storage.</summary>
     /// <remarks>
     /// <b>POST</b> <c>api/v1/users</c> — Body (application/json):
     /// <code>
@@ -28,7 +28,7 @@ public class UsersController(IUserService userService) : ControllerBase
     ///   "id": 0,
     ///   "name": "Max Mustermann",
     ///   "email": "max@example.com",
-    ///   "passwordHash": "plain-password-here",
+    ///   "password": "plain-password-here",
     ///   "isEmailVerified": false,
     ///   "twoFactorCode": null,
     ///   "twoFactorExpiry": null
@@ -169,6 +169,7 @@ public class UsersController(IUserService userService) : ControllerBase
         return Ok(user);
     }
 
+    /// <summary>Sends a verification email to the authenticated user identified by <paramref name="id"/>.</summary>
     [HttpPost("{id:int}/verify")]
     public async Task<ActionResult> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
@@ -219,6 +220,9 @@ public class UsersController(IUserService userService) : ControllerBase
         return Ok();
     }
 
+    /// <summary>
+    /// Returns a cooldown error response when a verification e-mail was requested too recently; otherwise returns <c>null</c>.
+    /// </summary>
     private ActionResult? TryGetVerificationMailCooldownResponse(int userId)
     {
         if (!_lastVerificationMailByUserId.TryGetValue(userId, out DateTimeOffset lastSentAt))
@@ -233,6 +237,7 @@ public class UsersController(IUserService userService) : ControllerBase
         return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
     }
 
+    /// <summary>Stores the timestamp of the latest verification mail request for a user.</summary>
     private static void RegisterVerificationMailSend(int userId)
         => _lastVerificationMailByUserId[userId] = DateTimeOffset.UtcNow;
 }

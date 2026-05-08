@@ -20,13 +20,10 @@ public static class ApiApplicationPipelineExtensions
     /// </summary>
     public static void UseHermesApiPipeline(this WebApplication app)
     {
-        // Propagate or generate X-Correlation-ID for distributed tracing in logs.
         app.UseMiddleware<CorrelationIdMiddleware>();
 
-        // Enforce request timeout policies registered in DI.
         app.UseRequestTimeouts();
 
-        // One-line HTTP request logs with optional CorrelationId enrichment.
         app.UseSerilogRequestLogging(options =>
         {
             options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
@@ -38,8 +35,6 @@ public static class ApiApplicationPipelineExtensions
             };
         });
 
-        // JSON ProblemDetails for all environments. Do not register UseDeveloperExceptionPage here — it runs inside
-        // the exception handler pipeline and would return verbose 500 HTML/JSON before domain exceptions map to 4xx.
         app.UseExceptionHandler(exceptionHandlerApp =>
         {
             exceptionHandlerApp.Run(async context =>
@@ -153,26 +148,20 @@ public static class ApiApplicationPipelineExtensions
             app.UseHttpsRedirection();
         }
 
-        // Origins from configuration (Cors:AllowedOrigins), e.g. Hermes.WebFrontend (Blazor) URLs.
         app.UseCors("FrontendPolicy");
 
-        // Endpoint-level rate limiting policies (e.g., stricter auth login/refresh throttling).
         app.UseRateLimiter();
 
-        // Validates JWT on incoming requests (Bearer) before authorization policies run.
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // Return a small HTML or plain body for 404/405 etc. instead of an empty response body.
         app.UseStatusCodePages();
 
-        // Liveness: always 200 (no DB check) — used by orchestrators that only need process-up.
         app.MapHealthChecks("/health/live", new HealthCheckOptions
         {
             Predicate = _ => false
         });
 
-        // Readiness: runs checks tagged "ready" (database).
         app.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("ready"),

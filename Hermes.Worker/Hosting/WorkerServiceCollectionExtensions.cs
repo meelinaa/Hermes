@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Worker.Hosting;
 
+/// <summary>Registers worker infrastructure, application services, and Hangfire processing components.</summary>
 public static class WorkerServiceCollectionExtensions
 {
     /// <summary>

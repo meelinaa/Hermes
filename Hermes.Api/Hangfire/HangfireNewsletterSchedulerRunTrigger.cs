@@ -10,6 +10,7 @@ namespace Hermes.Api.Hangfire;
 public sealed class HangfireNewsletterSchedulerRunTrigger(JobStorage jobStorage, ILogger<HangfireNewsletterSchedulerRunTrigger> logger)
     : INewsletterSchedulerRunTrigger
 {
+    /// <summary>Requests immediate execution of the recurring newsletter scheduler after a news mutation.</summary>
     public void RequestRunAfterNewsMutation()
     {
         try

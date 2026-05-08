@@ -20,6 +20,7 @@ public class NewsController(
     INewsService newsService,
     INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger) : ControllerBase
 {
+    /// <summary>Returns all news entries for the authenticated user.</summary>
     /// <remarks><b>GET</b> <c>api/v1/users/news/{userId}/list</c> — no body.</remarks>
     [HttpGet("{userId}/list")]
     public async Task<ActionResult<List<News>>> GetNewsList(int userId, CancellationToken cancellationToken)
@@ -31,6 +32,7 @@ public class NewsController(
         return Ok(list);
     }
 
+    /// <summary>Returns a single news entry by user and news identifier.</summary>
     /// <remarks>
     /// <b>GET</b> <c>api/v1/users/news/userId={userId}/newsId={newsId}</c> — no body.
     /// Uses composite path segments (literal + value) so ids are named in the URL; e.g. <c>…/userId=1/newsId=5</c>.

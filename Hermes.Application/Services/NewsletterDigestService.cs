@@ -23,6 +23,7 @@ public sealed class NewsletterDigestService(
     private const int MAX_ARTICLES_IN_NEWSLETTER = 10;
     private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
+    /// <summary>Sends one newsletter digest for a due news configuration and records the delivery result.</summary>
     public async Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
         if(userId <= 0)
@@ -97,6 +98,7 @@ public sealed class NewsletterDigestService(
         }
     }
 
+    /// <summary>Builds a provider query from persisted news filters; returns <c>null</c> when no usable filter exists.</summary>
     private static NewsArticleQuery? BuildArticleQuery(string apiKey, News news)
     {
         List<string>? countries = news.Countries is { Count: > 0 }
@@ -130,6 +132,7 @@ public sealed class NewsletterDigestService(
         };
     }
 
+    /// <summary>Builds the newsletter HTML body for the selected article set.</summary>
     private static async Task<string> BuildNewsletterBodyAsync(
         string? userDisplayName,
         IReadOnlyList<NewsArticle> articles,
@@ -174,6 +177,7 @@ public sealed class NewsletterDigestService(
         return await NewsletterHtmlComposer.BuildAsync(header, itemModels, footer, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Truncates plain text to a maximum length and appends a suffix when shortened.</summary>
     private static string TruncatePlainText(string? value, int maxLength, string suffix = "...")
     {
         if (string.IsNullOrEmpty(value))

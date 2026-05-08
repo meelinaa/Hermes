@@ -47,7 +47,7 @@ public sealed class RefreshTokenHasherTests
         // Arrange
         string umlaut = "straße";
 
-        // Act / Assert
+        // Act
         Assert.NotEqual(RefreshTokenHasher.Hash("strasse"), RefreshTokenHasher.Hash(umlaut));
     }
 

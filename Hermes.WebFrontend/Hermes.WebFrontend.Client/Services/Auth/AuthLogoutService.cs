@@ -13,6 +13,7 @@ public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, Ne
 {
     private static readonly JsonSerializerOptions JsonWeb = JsonSerializerOptions.Web;
 
+    /// <summary>Performs logout, clears local auth state, and forces navigation to the login page.</summary>
     public async Task SignOutAndReloadAsync(CancellationToken cancellationToken = default)
     {
         await tokens.EnsureLoadedFromStorageAsync(cancellationToken).ConfigureAwait(false);
@@ -25,7 +26,6 @@ public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, Ne
         }
         catch
         {
-            // Still clear client state if API is unreachable.
         }
 
         await tokens.ClearAsync(cancellationToken).ConfigureAwait(false);

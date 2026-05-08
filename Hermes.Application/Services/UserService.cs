@@ -11,6 +11,7 @@ namespace Hermes.Application.Services;
 
 public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger verificationMailJobTrigger) : IUserService
 {
+    /// <summary>Registers a new user, normalizes fields, hashes the plain password, and returns the created user scope.</summary>
     public async Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -20,7 +21,6 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
 
         if (!string.IsNullOrEmpty(request.Email))
             request.Email = request.Email.Trim().ToLowerInvariant();
-        // API sends plain password in PasswordHash field; store BCrypt hash only.
         request.Password = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "");
         User user = new()
         {
@@ -43,6 +43,7 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         return userScope;
     }
 
+    /// <summary>Authenticates a user by e-mail or name and verifies the supplied plain password.</summary>
     public async Task<LoginResult> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(nameOrEmail))
@@ -74,6 +75,7 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         return new LoginResult(true, null, user.Id, user.Email, user.Name);
     }
 
+    /// <summary>Updates user profile data and optionally changes the password after current-password verification.</summary>
     public async Task UpdateUserAsync(User user, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -118,12 +120,14 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         await db.UpdateUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Deletes the specified user scope.</summary>
     public async Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         await db.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Returns a user scope by display name.</summary>
     public async Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -131,6 +135,7 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         return await db.GetUserByNameAsync(name, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Returns a user scope by user identifier.</summary>
     public async Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
@@ -138,6 +143,7 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         return await db.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Returns a user scope by e-mail address.</summary>
     public async Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -145,6 +151,7 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         return await db.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Enqueues a verification e-mail for the user identified by e-mail address.</summary>
     public async Task SendVerificationMailAsync(string email, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -158,6 +165,7 @@ public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger
         verificationMailJobTrigger.EnqueueSendVerificationMail(user.Id);
     }
 
+    /// <summary>Validates and consumes a six-digit verification code for the specified user.</summary>
     public async Task CheckVerificationCodeAsync(int userId, int code, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)

@@ -7,6 +7,7 @@ namespace Hermes.Application.Services;
 
 public sealed class NewsletterScheduleService(IHermesDataStore dataStore) : INewsletterScheduleService
 {
+    /// <summary>Returns all (news,user) pairs that are due for dispatch at the provided local time.</summary>
     public async Task<IReadOnlyList<(int NewsId, int UserId)>> GetDueItemsAsync(DateTime nowLocal, CancellationToken cancellationToken = default)
     {
         TimeOnly nowTime = TimeOnly.FromDateTime(nowLocal);

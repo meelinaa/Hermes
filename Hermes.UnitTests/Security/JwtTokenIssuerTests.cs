@@ -62,7 +62,7 @@ public sealed class JwtTokenIssuerTests
         // Act
         JwtAccessTokenResult result = issuer.Issue(42, "user@site.test", "  Name  ");
 
-        // Assert — validate signature/issuer/audience and inspect claims
+        // Assert
         JwtSecurityTokenHandler handler = new();
         ClaimsPrincipal principal = handler.ValidateToken(result.Token, CreateValidation(o, handler), out SecurityToken validatedToken);
         JwtSecurityToken jwt = Assert.IsType<JwtSecurityToken>(validatedToken);
@@ -152,7 +152,7 @@ public sealed class JwtTokenIssuerTests
         // Arrange
         JwtTokenIssuer issuer = new(Options.Create(CreateValidOptions()));
 
-        // Act / Assert
+        // Act
         Assert.Throws<ArgumentOutOfRangeException>(() => issuer.Issue(invalidUserId, null, null));
     }
 }

@@ -44,7 +44,7 @@ public sealed class AuthTokenServiceTests
         // Act
         AuthTokensResult result = await sut.IssueTokensAsync(3, "a@test.example", "Alice");
 
-        // Assert — plain refresh matches persisted SHA-256 hex via RefreshTokenHasher
+        // Assert
         Assert.Equal("access-jwt", result.AccessToken);
         Assert.False(string.IsNullOrEmpty(result.RefreshToken));
         Assert.NotNull(captured);

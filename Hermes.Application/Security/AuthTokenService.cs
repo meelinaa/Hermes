@@ -16,15 +16,13 @@ public sealed class AuthTokenService(
 {
     private readonly JwtOptions _o = options.Value;
 
-    /// <inheritdoc />
+    /// <summary>Issues a new access token and stores a hashed refresh token for the authenticated user.</summary>
     public async Task<AuthTokensResult> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
         if(userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
-        // Access: stateless JWT for API authorization.
         JwtAccessTokenResult access = jwt.Issue(userId, email, name);
-        // Refresh: high-entropy random string shown once; only its hash is stored.
         string? plain = CreateRefreshPlain();
         RefreshToken row = new()
         {
@@ -41,7 +39,7 @@ public sealed class AuthTokenService(
             new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero));
     }
 
-    /// <inheritdoc />
+    /// <summary>Rotates a valid refresh token and returns the next access/refresh token pair.</summary>
     public async Task<AuthTokensResult?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
@@ -52,7 +50,6 @@ public sealed class AuthTokenService(
         if (old is null || old.User is null)
             return null;
 
-        // New access token for the same user (claims refreshed from current user row).
         JwtAccessTokenResult access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
         string? newPlain = CreateRefreshPlain();
         RefreshToken newRow = new()
@@ -62,7 +59,6 @@ public sealed class AuthTokenService(
             ExpiresAt = DateTime.UtcNow.AddDays(_o.RefreshTokenDays),
             CreatedAt = DateTime.UtcNow,
         };
-        // Old refresh must be revoked so the same token cannot be used twice (detect theft/replay).
         await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
         return new AuthTokensResult(
             access.Token,
@@ -71,7 +67,7 @@ public sealed class AuthTokenService(
             new DateTimeOffset(newRow.ExpiresAt, TimeSpan.Zero));
     }
 
-    /// <inheritdoc />
+    /// <summary>Revokes one refresh token if it belongs to the specified user.</summary>
     public async Task<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, int userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
@@ -79,7 +75,6 @@ public sealed class AuthTokenService(
 
         string? hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
         RefreshToken? row = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
-        // Ensure the refresh belongs to the authenticated user (JWT sub) so users cannot revoke others' sessions.
         if (row is null || row.UserId != userId)
             return false;
 
@@ -87,7 +82,7 @@ public sealed class AuthTokenService(
         return true;
     }
 
-    /// <inheritdoc />
+    /// <summary>Revokes all active refresh tokens for the specified user.</summary>
     public Task RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default) =>
         db.RevokeAllRefreshTokensForUserAsync(userId, cancellationToken);
 

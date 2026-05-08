@@ -8,6 +8,7 @@ public sealed class UserProfileRefreshNotifier
     private readonly object _gate = new();
     private readonly List<Func<Task>> _handlers = new();
 
+    /// <summary>Registers a refresh callback listener if it is not already registered.</summary>
     public void Subscribe(Func<Task> handler)
     {
         lock (_gate)
@@ -17,12 +18,14 @@ public sealed class UserProfileRefreshNotifier
         }
     }
 
+    /// <summary>Unregisters a previously registered refresh callback listener.</summary>
     public void Unsubscribe(Func<Task> handler)
     {
         lock (_gate)
             _handlers.Remove(handler);
     }
 
+    /// <summary>Invokes all registered listeners in sequence.</summary>
     public async Task NotifyAsync()
     {
         List<Func<Task>> snapshot;
@@ -37,7 +40,6 @@ public sealed class UserProfileRefreshNotifier
             }
             catch
             {
-                // einzelne Listener dürfen die Kette nicht abbrechen
             }
         }
     }

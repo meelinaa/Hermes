@@ -46,6 +46,7 @@ public static class LanguageIsoCodeMapper
         throw new ArgumentException($"Unknown ISO 639-1 code: {iso639Code}", nameof(iso639Code));
     }
 
+    /// <summary>Builds the mapping from <see cref="Language"/> enum values to ISO codes.</summary>
     private static Dictionary<Language, string> BuildForward()
     {
         Dictionary<Language, string> map = [];
@@ -62,6 +63,7 @@ public static class LanguageIsoCodeMapper
         return map;
     }
 
+    /// <summary>Builds the reverse mapping from ISO codes to <see cref="Language"/> values.</summary>
     private static Dictionary<string, Language> BuildReverse()
     {
         Dictionary<string, Language> map = new(StringComparer.Ordinal);

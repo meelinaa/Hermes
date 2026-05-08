@@ -3,25 +3,17 @@ using Microsoft.EntityFrameworkCore.Design;
 using System.Text.Json;
 
 namespace Hermes.Infrastructure.Data;
-// Example CLI Command: dotnet ef migrations add InitialCreate --project Hermes.Infrastructure --startup-project Hermes
-// Example CLI Command with Connection String: dotnet ef migrations add InitialCreate --project Hermes.Infrastructure --startup-project Hermes --connection "Server=localhost;Port=3308;Database=hermes;User=root;Password=password1234!;"
-// Example update command: dotnet ef database update --project Hermes.Infrastructure --startup-project Hermes
-// Example update command with Connection String: dotnet ef database update --project Hermes.Infrastructure --startup-project Hermes --connection "Server=localhost;Port=3308;Database=hermes;User=root;Password=password1234!;"
-// Example remove command: dotnet ef migrations remove --project Hermes.Infrastructure --startup-project Hermes
-// Example remove command with Connection String: dotnet ef migrations remove --project Hermes.Infrastructure --startup-project Hermes --connection "Server=localhost;Port=3308;Database=hermes;User=root;Password=password1234!;"
 
 /// <summary>
 /// Design-time factory for <see cref="HermesDbContext"/> so <c>dotnet ef</c> can create migrations without DI / Program.cs.
-/// This is used by the CLI to create migrations.
 /// </summary>
 public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesDbContext>
 {
-    /// <inheritdoc />
+    /// <summary>Creates a configured <see cref="HermesDbContext"/> for design-time tooling.</summary>
     public HermesDbContext CreateDbContext(string[] args)
     {
         string connectionString = ResolveConnectionString();
 
-        // Fixed server version avoids contacting the server during design-time model build.
         MySqlServerVersion serverVersion = new(new Version(8, 0, 36));
 
         DbContextOptionsBuilder<HermesDbContext> optionsBuilder = new();
@@ -29,11 +21,7 @@ public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesD
         return new HermesDbContext(optionsBuilder.Options);
     }
 
-    /// <summary>
-    /// Resolve the connection string from the environment variables or the appsettings.json file.
-    /// </summary>
-    /// <returns>The connection string.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when no connection string is found.</exception>
+    /// <summary>Resolves the design-time connection string from environment variables or appsettings files.</summary>
     private static string ResolveConnectionString()
     {
         string? fromEnv = Environment.GetEnvironmentVariable("HERMES_CONNECTION_STRING")
@@ -67,10 +55,7 @@ public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesD
             "or add ConnectionStrings:DefaultConnection to Hermes/appsettings.json.");
     }
 
-    /// <summary>
-    /// Enumerate the appsettings.json files in the current directory and the parent directories.
-    /// </summary>
-    /// <returns></returns>
+    /// <summary>Enumerates likely appsettings file locations for design-time connection string discovery.</summary>
     private static IEnumerable<string> EnumerateAppsettingsPaths()
     {
         string cwd = Directory.GetCurrentDirectory();

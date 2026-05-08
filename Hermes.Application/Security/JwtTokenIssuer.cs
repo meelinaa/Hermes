@@ -13,7 +13,7 @@ namespace Hermes.Application.Security;
 /// </summary>
 public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
 {
-    /// <inheritdoc />
+    /// <summary>Creates and signs a JWT access token for the specified user identity data.</summary>
     public JwtAccessTokenResult Issue(int userId, string? email, string? name)
     {
         if(userId <= 0)
@@ -22,16 +22,11 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssu
         JwtOptions jwtOptions = options.Value;
         string? id = userId.ToString(CultureInfo.InvariantCulture);
 
-        // Claims become part of the signed payload; clients can read them (JWT is only signed, not encrypted).
         List<Claim> claims =
         [
-            // Standard subject: who the token is about (we store the numeric user id as string).
             new(JwtRegisteredClaimNames.Sub, id),
-            // ASP.NET maps this to NameIdentifier for User.Identity.
             new(ClaimTypes.NameIdentifier, id),
-            // New unique id per token issuance — helps distinguish tokens and supports revocation patterns on the client.
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
-            // Issued-at time (Unix seconds).
             new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
         ];
 
@@ -40,7 +35,6 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssu
         if (!string.IsNullOrWhiteSpace(name))
             claims.Add(new Claim(ClaimTypes.Name, name.Trim()));
 
-        // Same key bytes the API uses in JwtBearer TokenValidationParameters.
         SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(jwtOptions.SigningKey));
         SigningCredentials creds = new(key, SecurityAlgorithms.HmacSha256);
         DateTime expires = DateTime.UtcNow.AddMinutes(jwtOptions.AccessTokenMinutes);

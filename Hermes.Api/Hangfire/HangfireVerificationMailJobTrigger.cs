@@ -11,6 +11,7 @@ namespace Hermes.Api.Hangfire;
 public sealed class HangfireVerificationMailJobTrigger(JobStorage jobStorage)
     : IVerificationMailJobTrigger
 {
+    /// <summary>Enqueues a background verification mail job for the given user and returns the Hangfire job id.</summary>
     public string? EnqueueSendVerificationMail(int userId)
     {
         if (userId <= 0)

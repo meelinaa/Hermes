@@ -20,14 +20,12 @@ public static class JwtAuthenticationExtensions
     /// </summary>
     public static IServiceCollection AddHermesJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        // Values merge from appsettings*.json, then environment (e.g. Jwt__SigningKey). Do not commit production secrets.
         IConfigurationSection jwtSection = configuration.GetSection(JwtOptions.SECTION_NAME);
         services.Configure<JwtOptions>(jwtSection);
 
         JwtOptions jwt = jwtSection.Get<JwtOptions>()
             ?? throw new InvalidOperationException($"Missing configuration section '{JwtOptions.SECTION_NAME}'.");
 
-        // HS256 needs enough key material; require at least 32 characters (set Jwt:SigningKey in Development or Jwt__SigningKey in Production).
         if (string.IsNullOrWhiteSpace(jwt.SigningKey) || jwt.SigningKey.Length < 32)
         {
             throw new InvalidOperationException(
@@ -40,29 +38,21 @@ public static class JwtAuthenticationExtensions
                 $"{JwtOptions.SECTION_NAME}:Issuer and Audience must be set.");
         }
 
-        // Stateless signing service: same key as TokenValidationParameters below.
         services.AddSingleton<IJwtTokenIssuer, JwtTokenIssuer>();
 
-        // Default scheme = Bearer; middleware will parse JWT, validate signature/lifetime/iss/aud, and populate HttpContext.User.
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    // Signature must match our SigningKey; tampered tokens fail here.
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
-                    // Must match the "iss" claim we put in the token when issuing.
                     ValidateIssuer = true,
                     ValidIssuer = jwt.Issuer,
-                    // Must match the "aud" claim.
                     ValidateAudience = true,
                     ValidAudience = jwt.Audience,
-                    // Reject expired tokens (exp claim).
                     ValidateLifetime = true,
-                    // Small clock tolerance so minor skew between servers does not reject valid tokens.
                     ClockSkew = TimeSpan.FromMinutes(1),
-                    // Maps the name identifier claim so User.FindFirstValue(ClaimTypes.NameIdentifier) returns the user id.
                     NameClaimType = ClaimTypes.NameIdentifier,
                 };
             });

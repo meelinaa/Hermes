@@ -52,12 +52,10 @@ public class AuthController(IUserService userService) : ControllerBase
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
-        // Credential check only; no tokens until this succeeds.
         LoginResult result = await userService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
 
-        // Persist refresh (hash) and return JWT + plain refresh once.
         AuthTokensResult tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
         return Ok(new
         {
@@ -85,7 +83,6 @@ public class AuthController(IUserService userService) : ControllerBase
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
-        // No Bearer header required: the refresh body proves the session. Old refresh is revoked server-side.
         AuthTokensResult? next = await authTokens.RotateAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
         if (next is null)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
@@ -112,7 +109,6 @@ public class AuthController(IUserService userService) : ControllerBase
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        // User id comes from the validated JWT, not from the client body (prevents cross-user revoke).
         if (!this.TryGetCurrentUserId(out int userId))
             return this.UnauthorizedProblem("Missing user identity.");
 

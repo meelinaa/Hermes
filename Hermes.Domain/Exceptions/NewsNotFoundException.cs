@@ -5,16 +5,19 @@ namespace Hermes.Domain.Exceptions;
 /// </summary>
 public sealed class NewsNotFoundException : Exception
 {
+    /// <summary>Initializes the exception with a default message.</summary>
     public NewsNotFoundException()
         : base("The requested news entry was not found.")
     {
     }
 
+    /// <summary>Initializes the exception with a custom message.</summary>
     public NewsNotFoundException(string message)
         : base(message)
     {
     }
 
+    /// <summary>Initializes the exception with a custom message and inner exception.</summary>
     public NewsNotFoundException(string message, Exception innerException)
         : base(message, innerException)
     {
