@@ -12,6 +12,7 @@
     <EmbeddedResource Include="Sending\HtmlLayout\NewsletterHeader.html" />
     <EmbeddedResource Include="Sending\HtmlLayout\NewsletterItem.html" />
     <EmbeddedResource Include="Sending\HtmlLayout\NewsletterFooter.html" />
+    <EmbeddedResource Include="Sending\HtmlLayout\Verification.html" />
   </ItemGroup>
 
 </Project>

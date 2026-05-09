@@ -36,7 +36,7 @@ public sealed class NewsletterSchedulerTests
     {
         // Arrange
         Mock<INewsletterScheduleService> schedule = new();
-        schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<(int NewsId, int UserId)>());
 
         Mock<IEmailSender> emailSender = new();
@@ -53,10 +53,10 @@ public sealed class NewsletterSchedulerTests
 
         // Assert
         schedule.Verify(
-            x => x.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            scheduleService => scheduleService.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Once);
         emailSender.Verify(
-            x => x.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
+            sender => sender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -69,7 +69,7 @@ public sealed class NewsletterSchedulerTests
         // Arrange
         CancellationToken? captured = null;
         Mock<INewsletterScheduleService> schedule = new();
-        schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Callback<DateTime, CancellationToken>((_, ct) => captured = ct)
             .ReturnsAsync([]);
 

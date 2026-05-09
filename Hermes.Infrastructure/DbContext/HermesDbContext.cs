@@ -14,10 +14,6 @@ namespace Hermes.Infrastructure.Data;
 /// </summary>
 public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbContext(options), IHermesDataStore
 {
-    // TODO: Use this in Programm.cs
-    //var connectionString = builder.Configuration.GetConnectionString("Hermes")!;
-    //builder.Services.AddHermesDbContext(connectionString);
-
     /// <inheritdoc />
     public DbSet<User> Users { get; set; } = null!;
 
@@ -39,10 +35,10 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
         if (!string.IsNullOrWhiteSpace(user.Email))
         {
-            var normalized = user.Email.Trim().ToLowerInvariant();
+            string normalized = user.Email.Trim().ToLowerInvariant();
             user.Email = normalized;
-            var exists = await Users.AsNoTracking()
-                .AnyAsync(u => u.Email == normalized, cancellationToken)
+            bool exists = await Users.AsNoTracking()
+                .AnyAsync(userEntity => userEntity.Email == normalized, cancellationToken)
                 .ConfigureAwait(false);
             if (exists)
                 throw new EmailAlreadyExistsException();
@@ -58,8 +54,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty.", nameof(name));
 
-        var user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Name == name, cancellationToken)
+        User? user = await Users.AsNoTracking()
+            .FirstOrDefaultAsync(userEntity => userEntity.Name == name, cancellationToken)
             .ConfigureAwait(false);
 
         return user is null ? throw new UserNotFoundException($"User with name '{name}' was not found.") : MapToUserScope(user);
@@ -71,9 +67,9 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be empty.", nameof(email));
 
-        var normalized = email.Trim().ToLowerInvariant();
-        var user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
+        string normalized = email.Trim().ToLowerInvariant();
+        User? user = await Users.AsNoTracking()
+            .FirstOrDefaultAsync(userEntity => userEntity.Email != null && userEntity.Email == normalized, cancellationToken)
             .ConfigureAwait(false);
 
         return user is null ? throw new UserNotFoundException($"User with email '{email}' was not found.") : MapToUserScope(user);
@@ -85,19 +81,19 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (id <= 0)
             throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
 
-        var user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken)
+        User? user = await Users.AsNoTracking()
+            .FirstOrDefaultAsync(userEntity => userEntity.Id == id, cancellationToken)
             .ConfigureAwait(false);
         return user is null ? throw new UserNotFoundException($"User with id '{id}' was not found.") : MapToUserScope(user);
     }
 
     /// <inheritdoc />
-    public async Task<User?> GetUserEntityForAuthenticationByNameAsync(string name, CancellationToken cancellationToken = default) // This method is used for authentication, so it returns the full User entity (including password hash), not just the UserScope.
+    public async Task<User?> GetUserEntityForAuthenticationByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             return null;
         User? user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Name == name, cancellationToken)
+            .FirstOrDefaultAsync(userEntity => userEntity.Name == name, cancellationToken)
             .ConfigureAwait(false);
         return user is null ? throw new UserNotFoundException() : user;
     }
@@ -107,13 +103,27 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     {
         if (string.IsNullOrWhiteSpace(email))
             return null;
-        var normalized = email.Trim().ToLowerInvariant();
+
+        string normalized = email.Trim().ToLowerInvariant();
+
         User? user = await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalized, cancellationToken)
+            .FirstOrDefaultAsync(userEntity => userEntity.Email == normalized, cancellationToken)
             .ConfigureAwait(false);
-        return user is null ? throw new UserNotFoundException() : user;
 
+        return user ?? throw new UserNotFoundException();
+    }
 
+    /// <inheritdoc />
+    public async Task<User?> GetUserEntityForAuthenticationByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        if (id <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
+
+        User? user = await Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(userEntity => userEntity.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        return user ?? throw new UserNotFoundException();
     }
 
     /// <inheritdoc />
@@ -122,7 +132,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (id <= 0)
             return null;
         return await Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken)
+            .FirstOrDefaultAsync(userEntity => userEntity.Id == id, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -133,13 +143,15 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (user.Id <= 0)
             throw new ArgumentException("User id must be greater than zero for update.", nameof(user));
 
-        var entity = await Users.FirstOrDefaultAsync(u => u.Id == user.Id, cancellationToken).ConfigureAwait(false);
+        User? entity = await Users.FirstOrDefaultAsync(userEntity => userEntity.Id == user.Id, cancellationToken).ConfigureAwait(false);
         if (entity is null)
             throw new UserNotFoundException($"User with id {user.Id} was not found.");
 
         entity.Name = user.Name;
+
+        if (entity.Email != user.Email)
+            entity.IsEmailVerified = false;
         entity.Email = user.Email;
-        // IsEmailVerified / 2FA fields are not changed via profile PUT (separate flows).
 
         if (!string.IsNullOrWhiteSpace(user.PasswordHash))
             entity.PasswordHash = user.PasswordHash;
@@ -154,8 +166,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (user.UserId <= 0)
             throw new ArgumentException("User id must be greater than zero.", nameof(user));
 
-        var exists = await Users.AsNoTracking()
-            .AnyAsync(u => u.Id == user.UserId, cancellationToken)
+        bool exists = await Users.AsNoTracking()
+            .AnyAsync(userEntity => userEntity.Id == user.UserId, cancellationToken)
             .ConfigureAwait(false);
         if (!exists)
             throw new UserNotFoundException($"User with id {user.UserId} was not found.");
@@ -186,8 +198,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (news.Id <= 0)
             throw new NewsNotFoundException("A valid news id is required for update.");
 
-        var existing = await News.AsNoTracking()
-            .FirstOrDefaultAsync(n => n.Id == news.Id, cancellationToken)
+        News? existing = await News.AsNoTracking()
+            .FirstOrDefaultAsync(newsEntity => newsEntity.Id == news.Id, cancellationToken)
             .ConfigureAwait(false);
         if (existing is null)
             throw new NewsNotFoundException($"News with id {news.Id} was not found.");
@@ -208,8 +220,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         if (news.UserId <= 0)
             throw new ArgumentException("News.UserId must be greater than zero.", nameof(news));
 
-        var exists = await News.AsNoTracking()
-            .AnyAsync(n => n.Id == news.Id && n.UserId == news.UserId, cancellationToken)
+        bool exists = await News.AsNoTracking()
+            .AnyAsync(newsEntity => newsEntity.Id == news.Id && newsEntity.UserId == news.UserId, cancellationToken)
             .ConfigureAwait(false);
         if (!exists)
             throw new NewsNotFoundException($"News with id {news.Id} was not found for user {news.UserId}.");
@@ -227,7 +239,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         await EnsureUserExistsAsync(userId, cancellationToken).ConfigureAwait(false);
 
         List<News> news = await News.AsNoTracking()
-            .Where(n => n.UserId == userId)
+            .Where(newsEntity => newsEntity.UserId == userId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return news is null ? throw new NewsNotFoundException() : news;
@@ -237,7 +249,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public async Task<List<NewsScheduleRow>> GetNewsScheduleRowsAsync(CancellationToken cancellationToken = default)
     {
         return await News.AsNoTracking()
-            .Select(n => new NewsScheduleRow(n.Id, n.UserId, n.SendOnWeekdays, n.SendAtTimes))
+            .Select(newsEntity => new NewsScheduleRow(newsEntity.Id, newsEntity.UserId, newsEntity.SendOnWeekdays, newsEntity.SendAtTimes))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }
@@ -245,11 +257,13 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     /// <inheritdoc />
     public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0 || id <= 0)
-            throw new ArgumentOutOfRangeException();
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+        if (id <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id, "News id must be greater than zero.");
 
-        var news = await News.AsNoTracking()
-            .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId, cancellationToken)
+        News? news = await News.AsNoTracking()
+            .FirstOrDefaultAsync(newsEntity => newsEntity.Id == id && newsEntity.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
         return news is null ? throw new NewsNotFoundException() : news;
 
@@ -260,7 +274,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     {
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User id must be greater than zero.");
-        return await News.Where(n => n.UserId == userId)
+        return await News.Where(newsEntity => newsEntity.UserId == userId)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
     }
@@ -285,7 +299,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             return null;
 
         return await NotificationLogs.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == log.Id, cancellationToken)
+            .FirstOrDefaultAsync(notificationLog => notificationLog.Id == log.Id, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -302,11 +316,11 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     {
         if (string.IsNullOrEmpty(tokenHash))
             return null;
-        var utc = DateTime.UtcNow;
+        DateTime utc = DateTime.UtcNow;
         return await RefreshTokens
-            .Include(r => r.User)
+            .Include(refreshToken => refreshToken.User)
             .FirstOrDefaultAsync(
-                r => r.TokenHash == tokenHash && r.RevokedAt == null && r.ExpiresAt > utc,
+                refreshToken => refreshToken.TokenHash == tokenHash && refreshToken.RevokedAt == null && refreshToken.ExpiresAt > utc,
                 cancellationToken)
             .ConfigureAwait(false);
     }
@@ -334,13 +348,13 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     /// <inheritdoc cref="IHermesDataStore.RevokeAllRefreshTokensForUserAsync" />
     public async Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default)
     {
-        var utc = DateTime.UtcNow;
-        var active = await RefreshTokens
-            .Where(r => r.UserId == userId && r.RevokedAt == null && r.ExpiresAt > utc)
+        DateTime utc = DateTime.UtcNow;
+        List<RefreshToken> active = await RefreshTokens
+            .Where(refreshToken => refreshToken.UserId == userId && refreshToken.RevokedAt == null && refreshToken.ExpiresAt > utc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        foreach (var r in active)
-            r.RevokedAt = utc;
+        foreach (RefreshToken activeToken in active)
+            activeToken.RevokedAt = utc;
         if (active.Count > 0)
             await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -354,14 +368,52 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     {
         return await NotificationLogs.AsNoTracking()
             .AnyAsync(
-                l => l.UserId == userId
-                     && l.NewsId == newsId
-                     && l.Channel == DeliveryChannel.Email
-                     && l.Status == NotificationStatus.Sent
-                     && l.SentAt >= windowStartUtc
-                     && l.SentAt < windowEndUtc,
+                notificationLog => notificationLog.UserId == userId
+                                   && notificationLog.NewsId == newsId
+                                   && notificationLog.Channel == DeliveryChannel.Email
+                                   && notificationLog.Status == NotificationStatus.Sent
+                                   && notificationLog.SentAt >= windowStartUtc
+                                   && notificationLog.SentAt < windowEndUtc,
                 cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task SetUserEmailVerificationChallengeAsync(
+        int userId,
+        string verificationCode,
+        DateTime expiresAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+        if (string.IsNullOrWhiteSpace(verificationCode))
+            throw new ArgumentException("Verification code is required.", nameof(verificationCode));
+
+        DateTime expires = DateTime.SpecifyKind(expiresAtUtc, DateTimeKind.Utc);
+        User? user = await Users.FirstOrDefaultAsync(userEntity => userEntity.Id == userId, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            throw new UserNotFoundException($"User with id {userId} was not found.");
+
+        user.TwoFactorCode = verificationCode.Trim();
+        user.TwoFactorExpiry = expires;
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task CompleteUserEmailVerificationAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+
+        User? user = await Users.FirstOrDefaultAsync(userEntity => userEntity.Id == userId, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            throw new UserNotFoundException($"User with id {userId} was not found.");
+
+        user.IsEmailVerified = true;
+        user.TwoFactorCode = null;
+        user.TwoFactorExpiry = null;
+        await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -370,84 +422,83 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         modelBuilder.Entity<User>(entity =>
         {
             entity.ToTable("users");
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(u => u.Email).IsUnique();
+            entity.HasKey(userEntity => userEntity.Id);
+            entity.HasIndex(userEntity => userEntity.Email).IsUnique();
         });
 
         modelBuilder.Entity<News>(entity =>
         {
             entity.ToTable("news");
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.UserId);
+            entity.HasKey(newsEntity => newsEntity.Id);
+            entity.HasIndex(newsEntity => newsEntity.UserId);
 
             entity.HasOne<User>()
-                .WithMany(u => u.News)
-                .HasForeignKey(n => n.UserId)
+                .WithMany(userEntity => userEntity.News)
+                .HasForeignKey(newsEntity => newsEntity.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.Property(e => e.Keywords)
+            entity.Property(newsEntity => newsEntity.Keywords)
                 .HasConversion(
-                    v => v == null ? null : JsonSerializer.Serialize(v),
-                    v => string.IsNullOrEmpty(v) ? null : JsonSerializer.Deserialize<List<string>>(v));
+                    keywordValues => keywordValues == null ? null : JsonSerializer.Serialize(keywordValues, (JsonSerializerOptions?)null),
+                    serializedKeywords => string.IsNullOrEmpty(serializedKeywords) ? null : JsonSerializer.Deserialize<List<string>>(serializedKeywords, (JsonSerializerOptions?)null));
 
-            entity.Property(e => e.Category)
+            entity.Property(newsEntity => newsEntity.Category)
                 .HasConversion(
-                    v => v == null ? null : JsonSerializer.Serialize(v, HermesJsonOptions.ForEnums),
-                    v => string.IsNullOrEmpty(v)
+                    categoryValues => categoryValues == null ? null : JsonSerializer.Serialize(categoryValues, HermesJsonOptions.ForEnums),
+                    serializedCategories => string.IsNullOrEmpty(serializedCategories)
                         ? null
-                        : JsonSerializer.Deserialize<List<NewsCategory>>(v, HermesJsonOptions.ForEnums));
+                        : JsonSerializer.Deserialize<List<NewsCategory>>(serializedCategories, HermesJsonOptions.ForEnums));
 
-            entity.Property(e => e.Languages)
+            entity.Property(newsEntity => newsEntity.Languages)
                 .HasConversion(
-                    v => v == null ? null : JsonSerializer.Serialize(v, HermesJsonOptions.ForEnums),
-                    v => string.IsNullOrEmpty(v)
+                    languageValues => languageValues == null ? null : JsonSerializer.Serialize(languageValues, HermesJsonOptions.ForEnums),
+                    serializedLanguages => string.IsNullOrEmpty(serializedLanguages)
                         ? null
-                        : JsonSerializer.Deserialize<List<Language>>(v, HermesJsonOptions.ForEnums));
+                        : JsonSerializer.Deserialize<List<Language>>(serializedLanguages, HermesJsonOptions.ForEnums));
 
-            entity.Property(e => e.Countries)
+            entity.Property(newsEntity => newsEntity.Countries)
                 .HasConversion(
-                    v => v == null ? null : JsonSerializer.Serialize(v, HermesJsonOptions.ForEnums),
-                    v => string.IsNullOrEmpty(v)
+                    countryValues => countryValues == null ? null : JsonSerializer.Serialize(countryValues, HermesJsonOptions.ForEnums),
+                    serializedCountries => string.IsNullOrEmpty(serializedCountries)
                         ? null
-                        : JsonSerializer.Deserialize<List<Country>>(v, HermesJsonOptions.ForEnums));
+                        : JsonSerializer.Deserialize<List<Country>>(serializedCountries, HermesJsonOptions.ForEnums));
 
-            entity.Property(e => e.SendOnWeekdays)
+            entity.Property(newsEntity => newsEntity.SendOnWeekdays)
                 .HasConversion(
-                    v => JsonSerializer.Serialize(v, HermesJsonOptions.ForEnums),
-                    v => JsonSerializer.Deserialize<List<Weekdays>>(v, HermesJsonOptions.ForEnums) ?? new List<Weekdays>());
+                    weekdayValues => JsonSerializer.Serialize(weekdayValues, HermesJsonOptions.ForEnums),
+                    serializedWeekdays => JsonSerializer.Deserialize<List<Weekdays>>(serializedWeekdays, HermesJsonOptions.ForEnums) ?? new List<Weekdays>());
 
-            entity.Property(e => e.SendAtTimes)
+            entity.Property(newsEntity => newsEntity.SendAtTimes)
                 .HasConversion(
-                    v => JsonSerializer.Serialize(v),
-                    v => JsonSerializer.Deserialize<List<TimeOnly>>(v) ?? new List<TimeOnly>());
+                    sendAtTimes => JsonSerializer.Serialize(sendAtTimes, (JsonSerializerOptions?)null),
+                    serializedSendAtTimes => JsonSerializer.Deserialize<List<TimeOnly>>(serializedSendAtTimes, (JsonSerializerOptions?)null) ?? new List<TimeOnly>());
         });
 
         modelBuilder.Entity<NotificationLog>(entity =>
         {
             entity.ToTable("notification_logs");
-            entity.HasKey(e => e.Id);
+            entity.HasKey(notificationLog => notificationLog.Id);
 
-            entity.HasOne(n => n.User)
-                .WithMany(u => u.NotificationLogs)
-                .HasForeignKey(n => n.UserId)
+            entity.HasOne(notificationLog => notificationLog.User)
+                .WithMany(userEntity => userEntity.NotificationLogs)
+                .HasForeignKey(notificationLog => notificationLog.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.Property(e => e.NewsId);
-            entity.Property(e => e.Status).HasConversion<string>();
-            entity.Property(e => e.Channel).HasConversion<string>();
+            entity.Property(notificationLog => notificationLog.NewsId);
+            entity.Property(notificationLog => notificationLog.Status).HasConversion<string>();
+            entity.Property(notificationLog => notificationLog.Channel).HasConversion<string>();
         });
 
-        // Long-lived sessions: one row per issued refresh token; TokenHash is unique for lookup after client sends plain token.
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.ToTable("refresh_tokens");
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.TokenHash).IsUnique();
-            entity.HasIndex(e => e.UserId);
+            entity.HasKey(refreshToken => refreshToken.Id);
+            entity.HasIndex(refreshToken => refreshToken.TokenHash).IsUnique();
+            entity.HasIndex(refreshToken => refreshToken.UserId);
 
-            entity.HasOne(e => e.User)
-                .WithMany(u => u.RefreshTokens)
-                .HasForeignKey(e => e.UserId)
+            entity.HasOne(refreshToken => refreshToken.User)
+                .WithMany(userEntity => userEntity.RefreshTokens)
+                .HasForeignKey(refreshToken => refreshToken.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
@@ -456,7 +507,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     {
         UserId = user.Id,
         Name = user.Name ?? string.Empty,
-        Email = user.Email ?? string.Empty
+        Email = user.Email ?? string.Empty,
+        IsEmailVerified = user.IsEmailVerified
     };
 
     private static User MapToUserEntity(UserScope scope) => new()
@@ -470,8 +522,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     {
         if (userId <= 0)
             throw new UserNotFoundException($"No user with id {userId} exists.");
-        var exists = await Users.AsNoTracking()
-            .AnyAsync(u => u.Id == userId, cancellationToken)
+        bool exists = await Users.AsNoTracking()
+            .AnyAsync(userEntity => userEntity.Id == userId, cancellationToken)
             .ConfigureAwait(false);
         if (!exists)
             throw new UserNotFoundException($"No user with id {userId} exists.");
@@ -488,10 +540,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         {
             if (ex.InnerException is MySqlException mysql)
             {
-                // 1452: cannot add/update child row (FK to missing parent)
                 if (mysql.Number == 1452)
                     throw new UserNotFoundException("A related record was not found (foreign key constraint).");
-                // 1062: duplicate entry (unique index, e.g. email race)
                 if (mysql.Number == 1062)
                     throw new EmailAlreadyExistsException("A unique constraint was violated.");
             }

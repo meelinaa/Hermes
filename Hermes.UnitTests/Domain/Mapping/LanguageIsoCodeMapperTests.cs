@@ -1,5 +1,5 @@
+using Hermes.Application.Mapping;
 using Hermes.Domain.Enums;
-using Hermes.Domain.Mapping;
 using Xunit;
 
 namespace Hermes.UnitTests.Domain.Mapping;
@@ -25,8 +25,8 @@ public sealed class LanguageIsoCodeMapperTests
     [Fact]
     public void TryGetLanguage_ReturnsTrue_ForNormalizedCode()
     {
-        Assert.True(LanguageIsoCodeMapper.TryGetLanguage("EN", out var lang));
-        Assert.Equal(Language.English, lang);
+        Assert.True(LanguageIsoCodeMapper.TryGetLanguage("EN", out Language language));
+        Assert.Equal(Language.English, language);
     }
 
     /// <summary>
@@ -40,10 +40,7 @@ public sealed class LanguageIsoCodeMapperTests
     }
 
     [Fact]
-    public void ParseLanguage_ReturnsEnum_WhenKnown()
-    {
-        Assert.Equal(Language.English, LanguageIsoCodeMapper.ParseLanguage("en"));
-    }
+    public void ParseLanguage_ReturnsEnum_WhenKnown() => Assert.Equal(Language.English, LanguageIsoCodeMapper.ParseLanguage("en"));
 
     /// <summary>
     /// Parse throws <see cref="ArgumentException"/> with consistent parameter name for unknown ISO codes.

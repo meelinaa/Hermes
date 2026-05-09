@@ -1,10 +1,13 @@
 using Hermes.Api.Http;
 using Hermes.Application.Models;
+using Hermes.Application.Models.User;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Exceptions;
 using Hermes.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Concurrent;
 
 namespace Hermes.Api.Controllers;
 
@@ -14,7 +17,10 @@ namespace Hermes.Api.Controllers;
 [Route("api/v1/users")]
 public class UsersController(IUserService userService) : ControllerBase
 {
-    /// <summary>Register a new user. Plain password is sent in <c>passwordHash</c>; it is hashed before storage.</summary>
+    private static readonly TimeSpan _verificationMailCooldown = TimeSpan.FromSeconds(60);
+    private static readonly ConcurrentDictionary<int, DateTimeOffset> _lastVerificationMailByUserId = new();
+
+    /// <summary>Register a new user with a plain password that is hashed before storage.</summary>
     /// <remarks>
     /// <b>POST</b> <c>api/v1/users</c> — Body (application/json):
     /// <code>
@@ -22,7 +28,7 @@ public class UsersController(IUserService userService) : ControllerBase
     ///   "id": 0,
     ///   "name": "Max Mustermann",
     ///   "email": "max@example.com",
-    ///   "passwordHash": "plain-password-here",
+    ///   "password": "plain-password-here",
     ///   "isEmailVerified": false,
     ///   "twoFactorCode": null,
     ///   "twoFactorExpiry": null
@@ -31,11 +37,11 @@ public class UsersController(IUserService userService) : ControllerBase
     /// </remarks>
     [AllowAnonymous]
     [HttpPost]
-    public async Task<ActionResult<UserScope>> SetNewUser([FromBody] User request, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserScope>> SetNewUser([FromBody] RegisterUserRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.Name))
             return this.BadRequestProblem("Name is required.");
-        if (string.IsNullOrEmpty(request.PasswordHash))
+        if (string.IsNullOrEmpty(request.Password))
             return this.BadRequestProblem("Password is required.");
 
         UserScope userScope = await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
@@ -72,7 +78,7 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(request.Id) is { } denied)
             return denied;
 
-        var user = new User
+        User user = new() 
         {
             Id = request.Id,
             Name = request.Name,
@@ -100,7 +106,16 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        UserScope? user;
+        try
+        {
+            user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
         if (user is null)
             return this.NotFoundProblem();
 
@@ -116,8 +131,15 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        var user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
-        return user is null ? this.NotFoundProblem() : Ok(user);
+        try
+        {
+            UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+            return user is null ? this.NotFoundProblem() : Ok(user);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
     }
 
     /// <summary>Get user by e-mail address (path segment).</summary>
@@ -128,7 +150,16 @@ public class UsersController(IUserService userService) : ControllerBase
         if (string.IsNullOrWhiteSpace(email))
             return this.BadRequestProblem("Path segment 'email' is required.");
 
-        UserScope? user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        UserScope? user;
+        try
+        {
+            user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
         if (user is null)
             return this.NotFoundProblem();
 
@@ -138,14 +169,75 @@ public class UsersController(IUserService userService) : ControllerBase
         return Ok(user);
     }
 
-    [HttpGet("verify/{email}")]
-    public async Task<ActionResult> SendVerificationMail(string email, CancellationToken cancellationToken)
+    /// <summary>Sends a verification email to the authenticated user identified by <paramref name="id"/>.</summary>
+    [HttpPost("{id:int}/verify")]
+    public async Task<ActionResult> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
-        if(string.IsNullOrWhiteSpace(email) || email.Length == 0)
-            return this.BadRequestProblem("Path segment 'email' is required.");
+        if (id <= 0)
+            return this.BadRequestProblem("A valid user id is required.");
 
-        await userService.SendVerificationMailAsync(email, cancellationToken).ConfigureAwait(false);
+        if (this.WhenCannotAccessUser(id) is { } denied)
+            return denied;
 
-        return Ok(email);
+        UserScope? user;
+        try
+        {
+            user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
+        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+            return this.NotFoundProblem();
+
+        if (TryGetVerificationMailCooldownResponse(id) is { } cooldownResult)
+            return cooldownResult;
+
+        await userService.SendVerificationMailAsync(user.Email, cancellationToken).ConfigureAwait(false);
+        RegisterVerificationMailSend(id);
+        return Ok(new { userId = id, email = user.Email });
     }
+
+    /// <summary>Submit e-mail verification code (six-digit). Returns 200 when the account is marked verified.</summary>
+    [HttpPost("verify/code")]
+    public async Task<ActionResult> CheckVerificationCode([FromBody] UserVerificationCodeRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null)
+            return this.BadRequestProblem("Request body is required.");
+
+        if (request.UserId <= 0)
+            return this.BadRequestProblem("A valid user id is required.");
+
+        if (request.Code is < 0 or > 999_999)
+            return this.BadRequestProblem("Verification code must be between 0 and 999999.");
+
+        if (this.WhenCannotAccessUser(request.UserId) is { } denied)
+            return denied;
+
+        await userService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
+        return Ok();
+    }
+
+    /// <summary>
+    /// Returns a cooldown error response when a verification e-mail was requested too recently; otherwise returns <c>null</c>.
+    /// </summary>
+    private ActionResult? TryGetVerificationMailCooldownResponse(int userId)
+    {
+        if (!_lastVerificationMailByUserId.TryGetValue(userId, out DateTimeOffset lastSentAt))
+            return null;
+
+        TimeSpan elapsed = DateTimeOffset.UtcNow - lastSentAt;
+        if (elapsed >= _verificationMailCooldown)
+            return null;
+
+        int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
+        Response.Headers["Retry-After"] = remainingSeconds.ToString();
+        return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
+    }
+
+    /// <summary>Stores the timestamp of the latest verification mail request for a user.</summary>
+    private static void RegisterVerificationMailSend(int userId)
+        => _lastVerificationMailByUserId[userId] = DateTimeOffset.UtcNow;
 }

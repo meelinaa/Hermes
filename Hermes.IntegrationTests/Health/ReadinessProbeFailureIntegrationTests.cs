@@ -61,7 +61,7 @@ public sealed class ReadinessProbeFailureIntegrationTests : IAsyncLifetime
     {
         Assert.NotNull(_mysql); // sanity check to avoid null reference if the fixture setup failed
 
-        await using var factory = new HermesApiWebApplicationFactory(_mysql.GetConnectionString()); // create a new API factory with the connection string of the isolated MySQL instance; this ensures the API's health checks target our test container, not any shared fixture
+        await using HermesApiWebApplicationFactory factory = new(_mysql.GetConnectionString()); // create a new API factory with the connection string of the isolated MySQL instance; this ensures the API's health checks target our test container, not any shared fixture
         using HttpClient client = factory.CreateClient();
 
         using (HttpResponseMessage healthyResponse = await client.GetAsync(new Uri("/health/ready", UriKind.Relative)))
@@ -71,7 +71,7 @@ public sealed class ReadinessProbeFailureIntegrationTests : IAsyncLifetime
         _mysql = null;
 
         HttpStatusCode? lastCode = null;
-        for (var attempt = 0; attempt < 20; attempt++)
+        for (int attempt = 0; attempt < 20; attempt++)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(150));
             HttpResponseMessage probe = await client.GetAsync(new Uri("/health/ready", UriKind.Relative));

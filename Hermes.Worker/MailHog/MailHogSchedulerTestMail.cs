@@ -18,8 +18,8 @@ public static class MailHogSchedulerTestMail
         ILogger logger,
         CancellationToken cancellationToken = default)
     {
-        var to = new EmailRecipient(smtp.DefaultFromAddress, smtp.DefaultFromName);
-        var body =
+        EmailRecipient to = new(smtp.DefaultFromAddress, smtp.DefaultFromName);
+        string body =
             $"<p>Hermes Worker – Scheduler-Lauf (MailHog-Test)</p>" +
             $"<p>Lokal: {schedulerRunAt.LocalDateTime:O}<br/>UTC: {schedulerRunAt.UtcDateTime:O}</p>" +
             "<p>Wenn du das in MailHog siehst, ist SMTP ok.</p>";

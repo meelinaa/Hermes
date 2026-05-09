@@ -4,7 +4,6 @@ namespace Hermes.Domain.Entities;
 
 public class NotificationLog
 {
-    // User
     public int Id { get; set; }
     public int UserId { get; set; }
 
@@ -14,7 +13,6 @@ public class NotificationLog
     /// <summary>When set, this log row refers to a single <see cref="News"/> digest send (one e-mail per news profile).</summary>
     public int? NewsId { get; set; }
 
-    // Infos
     public DateTime SentAt { get; set; }
     public NotificationStatus Status { get; set; } 
     public DeliveryChannel Channel { get; set; } 

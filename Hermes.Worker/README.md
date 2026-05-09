@@ -2,7 +2,7 @@
 
 **Hermes.Worker** is a **.NET Worker Service** that runs the **scheduled newsletter pipeline** for Hermes: it wakes up on a timer, finds user **news digest profiles** that are due, fetches articles from **NewsData.io**, composes **HTML email** via `Hermes.Notifications`, sends through **SMTP**, and records results in the database (`NotificationLog` and related persistence through `Hermes.Infrastructure`).
 
-The API (`Hermes.Api`) and the Blazor frontend manage **who** you are and **what** you want to read; the worker is the **always-on backend process** that actually performs **time-based delivery**. It is **not** a browser service worker—it has access to the database, API keys, and mail configuration server-side.
+The API (`Hermes.Api`) and the Blazor frontend manage **who** you are, **what** digest profiles you want, **profile and password updates** (current-password checks; API may return a typed `ProblemDetails` **`type`** when the current password is wrong), and **e-mail verification** orchestration; the worker is the **always-on backend process** that actually performs **time-based newsletter delivery**. It is **not** a browser service worker, because it has access to the database, API keys, and mail configuration server-side. Verification **e-mails** use the same mail composition/SMTP stack as digests where applicable; the verification **HTTP** API lives on the API host (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)).
 
 ---
 
@@ -26,7 +26,7 @@ The worker **reuses** the same application and infrastructure types as the API s
    On startup, `Program.cs` registers a recurring Hangfire job (`NewsletterSchedulerRecurringJob.Id` in `Hermes.Application`) that invokes `NewsletterScheduler.RunAsync` **every minute** (`Cron.Minutely()`), using the host’s **local** timezone for the recurring schedule.
 
 2. **Due detection**  
-   `NewsletterScheduler` calls `INewsletterScheduleService.GetDueItemsAsync` with the current time. Each **matching** `(userId, newsId)` pair represents **one** digest profile row—**one email per row**, not merged per user.
+   `NewsletterScheduler` calls `INewsletterScheduleService.GetDueItemsAsync` with the current time. Each **matching** `(userId, newsId)` pair represents **one** digest profile row, which means **one email per row**, not merged per user.
 
 3. **Background jobs**  
    For each due item, it **enqueues** `NotificationJobs.SendNewsDigestAsync`, which delegates to `INewsletterDigestService.SendAsync`. That method applies **idempotency** (no duplicate send for the same user/news **minute slot** in UTC, as documented in configuration comments).
@@ -38,13 +38,13 @@ The worker **reuses** the same application and infrastructure types as the API s
 
 ## Configuration
 
-Settings are read from `appsettings.json`, `appsettings.{Environment}.json`, environment variables, and optionally a **`.env`** file in the content root (or next to the executable) for `NEWSDATA.IO: <your-api-key>` (see `WorkerServiceCollectionHelper.TryReadNewsDataIoKeyFromDotEnv`).
+Settings are read from `appsettings.json`, `appsettings.{Environment}.json`, and environment variables. The **NewsData.io API key is read only from a `.env` file** (not from `appsettings`): place `.env` next to the worker project or publish folder, or use one line from `NEWSDATA.IO: <your-api-key>`, `NewsDataIo__ApiKey=<your-api-key>`, or `NEWSDATA_IO_API_KEY=<your-api-key>` (see `WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile`). Docker Compose mounts `Hermes.Worker/.env` into the container as `/app/.env`.
 
 | Section | Purpose |
 |--------|---------|
 | `ConnectionStrings:DefaultConnection` | MySQL for Hermes app data (required). |
 | `ConnectionStrings:Hangfire` | Optional; if omitted, Hangfire uses `DefaultConnection`. |
-| `NewsDataIo:ApiKey` | NewsData.io API key (required for real article fetches). |
+| `.env` (NewsData.io key) | Required for newsletter article fetches; not configured via `appsettings`. |
 | `Email` | SMTP host, port, SSL, credentials, from/reply-to (see `EmailSettings`). |
 | `MailHog` | `BaseUrl` for logging the web UI hint; `SendSchedulerTestMailEachMinute` sends a tiny test mail each tick when `true` (local dev with [MailHog](https://github.com/mailhog/MailHog)). |
 
@@ -76,7 +76,7 @@ Worker-facing behaviour is covered mainly by **`Hermes.UnitTests`**: e.g. **`New
 dotnet test Hermes.slnx
 ```
 
-**`Hermes.IntegrationTests`** exercises **`Hermes.Api`** against real MySQL (Docker); it does **not** run the worker or SMTP end-to-end. Use **`Hermes.IntegrationTests`** plus manual runs with MailHog when adding worker-level integration coverage.
+**`Hermes.IntegrationTests`** exercises **`Hermes.Api`** against real MySQL (Docker). The worker is a separate host and is not started by that suite; add worker-level integration coverage when you need full pipeline tests.
 
 ---
 

@@ -1,13 +1,13 @@
 using Hermes.Application.Models;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Exceptions;
 
 namespace Hermes.Domain.Interfaces.Services;
 
 public interface IUserService
 {
-    Task<UserScope> RegisterUserAsync(User user, CancellationToken cancellationToken = default);
-
+    Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default);
     /// <summary>Validates password against stored BCrypt hash after resolving user by email (if input contains '@') or by name.</summary>
     Task<LoginResult> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default);
     /// <param name="currentPasswordPlain">Required when <see cref="User.PasswordHash"/> carries a new plain password: current password for verification.</param>
@@ -17,4 +17,9 @@ public interface IUserService
     Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
     Task SendVerificationMailAsync(string email, CancellationToken cancellationToken);
+    /// <summary>
+    /// Validates the verification code and expiry, then marks the e-mail as verified and clears the challenge.
+    /// </summary>
+    /// <exception cref="VerificationCodeMismatchException">Code missing, wrong, or expired.</exception>
+    Task CheckVerificationCodeAsync(int userId, int code, CancellationToken cancellationToken = default);
 }

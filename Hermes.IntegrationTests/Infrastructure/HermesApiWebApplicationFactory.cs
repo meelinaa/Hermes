@@ -18,12 +18,9 @@ namespace Hermes.IntegrationTests.Infrastructure;
 /// Values here are non-secret test defaults only.
 /// </para>
 /// </remarks>
-public sealed class HermesApiWebApplicationFactory : WebApplicationFactory<Program>
+public sealed class HermesApiWebApplicationFactory(string connectionString) : WebApplicationFactory<Program>
 {
-    private readonly string _connectionString;
-
-    public HermesApiWebApplicationFactory(string connectionString) =>
-        _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+    private readonly string _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) // Runs before the real host is built, allowing us to override configuration for testing.
     {
@@ -32,10 +29,11 @@ public sealed class HermesApiWebApplicationFactory : WebApplicationFactory<Progr
         builder.UseSetting("ConnectionStrings:DefaultConnection", _connectionString);
         builder.UseSetting("ConnectionStrings:Hangfire", _connectionString);
 
-        builder.UseSetting("Jwt:Issuer", IntegrationTestAuthSettings.JwtIssuer);
-        builder.UseSetting("Jwt:Audience", IntegrationTestAuthSettings.JwtAudience);
-        builder.UseSetting("Jwt:SigningKey", IntegrationTestAuthSettings.JwtSigningKey);
+        builder.UseSetting("Jwt:Issuer", IntegrationTestAuthSettings.JWT_ISSUER);
+        builder.UseSetting("Jwt:Audience", IntegrationTestAuthSettings.JWT_AUDIENCE);
+        builder.UseSetting("Jwt:SigningKey", IntegrationTestAuthSettings.JWT_SIGNING_KEY);
         builder.UseSetting("Jwt:AccessTokenMinutes", "60");
         builder.UseSetting("Jwt:RefreshTokenDays", "14");
+        builder.UseSetting("RateLimiting:Enabled", "false");
     }
 }

@@ -11,16 +11,18 @@ namespace Hermes.Infrastructure.Email;
 /// </summary>
 public sealed class SmtpEmailSender(EmailSettings settings) : IEmailSender
 {
+    /// <summary>Sends an e-mail message via SMTP using configured sender defaults.</summary>
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
-        using var smtp = CreateSmtpClient();
-        using var mail = CreateMailMessage(message);
+        using SmtpClient smtp = CreateSmtpClient();
+        using MailMessage mail = CreateMailMessage(message);
         await smtp.SendMailAsync(mail, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Creates and configures an SMTP client instance from configured settings.</summary>
     private SmtpClient CreateSmtpClient()
     {
-        var client = new SmtpClient(settings.Host, settings.Port)
+        SmtpClient client = new(settings.Host, settings.Port)
         {
             EnableSsl = settings.EnableSsl,
         };
@@ -31,10 +33,11 @@ public sealed class SmtpEmailSender(EmailSettings settings) : IEmailSender
         return client;
     }
 
+    /// <summary>Builds a mail message with headers, reply-to, and optional attachments.</summary>
     private MailMessage CreateMailMessage(EmailMessage message)
     {
-        var from = new MailAddress(settings.DefaultFromAddress, settings.DefaultFromName);
-        var to = new MailAddress(message.To.Address, message.To.DisplayName ?? string.Empty);
+        MailAddress from = new(settings.DefaultFromAddress, settings.DefaultFromName);
+        MailAddress to = new(message.To.Address, message.To.DisplayName ?? string.Empty);
 
         MailMessage mail = new(from, to)
         {
@@ -52,7 +55,7 @@ public sealed class SmtpEmailSender(EmailSettings settings) : IEmailSender
 
         if (message.Attachments is not null)
         {
-            foreach (var attachment in message.Attachments)
+            foreach (EmailAttachment attachment in message.Attachments)
                 mail.Attachments.Add(new Attachment(attachment.Content, attachment.FileName, attachment.ContentType));
         }
 

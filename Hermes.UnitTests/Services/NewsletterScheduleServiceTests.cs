@@ -27,7 +27,7 @@ public sealed class NewsletterScheduleServiceTests
     {
         // Arrange
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         NewsletterScheduleService sut = new(store.Object);
 
@@ -51,7 +51,7 @@ public sealed class NewsletterScheduleServiceTests
             new(1, 0, [Weekdays.Monday], [new TimeOnly(9, 30)]),
         ];
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
         NewsletterScheduleService sut = new(store.Object);
 
         // Act
@@ -72,7 +72,7 @@ public sealed class NewsletterScheduleServiceTests
             new(10, 2, [Weekdays.Tuesday], [new TimeOnly(9, 30)]),
         ];
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
         NewsletterScheduleService sut = new(store.Object);
 
         Assert.Empty(await sut.GetDueItemsAsync(MondayAt(9, 30)));
@@ -89,7 +89,7 @@ public sealed class NewsletterScheduleServiceTests
             new(10, 2, [Weekdays.Monday], []),
         ];
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
         NewsletterScheduleService sut = new(store.Object);
 
         Assert.Empty(await sut.GetDueItemsAsync(MondayAt(9, 30)));
@@ -106,7 +106,7 @@ public sealed class NewsletterScheduleServiceTests
             new(10, 2, [Weekdays.Monday], [new TimeOnly(14, 0)]),
         ];
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
         NewsletterScheduleService sut = new(store.Object);
 
         Assert.Empty(await sut.GetDueItemsAsync(MondayAt(9, 30)));
@@ -123,7 +123,7 @@ public sealed class NewsletterScheduleServiceTests
             new(42, 7, [Weekdays.Monday], [new TimeOnly(9, 30)]),
         ];
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
         NewsletterScheduleService sut = new(store.Object);
 
         IReadOnlyList<(int NewsId, int UserId)> result = await sut.GetDueItemsAsync(MondayAt(9, 30));
@@ -144,7 +144,7 @@ public sealed class NewsletterScheduleServiceTests
             new(1, 99, [Weekdays.Monday], [new TimeOnly(8, 0), new TimeOnly(9, 30), new TimeOnly(12, 0)]),
         ];
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
         NewsletterScheduleService sut = new(store.Object);
 
         Assert.Single(await sut.GetDueItemsAsync(MondayAt(9, 30)));
@@ -162,7 +162,7 @@ public sealed class NewsletterScheduleServiceTests
             new(2, 10, [Weekdays.Monday], [new TimeOnly(9, 30)]),
         ];
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(rows);
         NewsletterScheduleService sut = new(store.Object);
 
         IReadOnlyList<(int NewsId, int UserId)> result = await sut.GetDueItemsAsync(MondayAt(9, 30));
@@ -180,7 +180,7 @@ public sealed class NewsletterScheduleServiceTests
     {
         // Arrange
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetNewsScheduleRowsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         NewsletterScheduleService sut = new(store.Object);
         using CancellationTokenSource cts = new();
@@ -189,6 +189,6 @@ public sealed class NewsletterScheduleServiceTests
         await sut.GetDueItemsAsync(MondayAt(9, 30), cts.Token);
 
         // Assert
-        store.Verify(s => s.GetNewsScheduleRowsAsync(cts.Token), Times.Once);
+        store.Verify(dataStore => dataStore.GetNewsScheduleRowsAsync(cts.Token), Times.Once);
     }
 }

@@ -16,17 +16,15 @@ public sealed class AuthTokenService(
 {
     private readonly JwtOptions _o = options.Value;
 
-    /// <inheritdoc />
+    /// <summary>Issues a new access token and stores a hashed refresh token for the authenticated user.</summary>
     public async Task<AuthTokensResult> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
         if(userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
-        // Access: stateless JWT for API authorization.
-        var access = jwt.Issue(userId, email, name);
-        // Refresh: high-entropy random string shown once; only its hash is stored.
-        var plain = CreateRefreshPlain();
-        var row = new RefreshToken
+        JwtAccessTokenResult access = jwt.Issue(userId, email, name);
+        string? plain = CreateRefreshPlain();
+        RefreshToken row = new()
         {
             UserId = userId,
             TokenHash = RefreshTokenHasher.Hash(plain),
@@ -41,28 +39,26 @@ public sealed class AuthTokenService(
             new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero));
     }
 
-    /// <inheritdoc />
+    /// <summary>Rotates a valid refresh token and returns the next access/refresh token pair.</summary>
     public async Task<AuthTokensResult?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return null;
 
-        var hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
-        var old = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
+        string? hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
+        RefreshToken? old = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
         if (old is null || old.User is null)
             return null;
 
-        // New access token for the same user (claims refreshed from current user row).
-        var access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
-        var newPlain = CreateRefreshPlain();
-        var newRow = new RefreshToken
+        JwtAccessTokenResult access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
+        string? newPlain = CreateRefreshPlain();
+        RefreshToken newRow = new()
         {
             UserId = old.UserId,
             TokenHash = RefreshTokenHasher.Hash(newPlain),
             ExpiresAt = DateTime.UtcNow.AddDays(_o.RefreshTokenDays),
             CreatedAt = DateTime.UtcNow,
         };
-        // Old refresh must be revoked so the same token cannot be used twice (detect theft/replay).
         await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
         return new AuthTokensResult(
             access.Token,
@@ -71,15 +67,14 @@ public sealed class AuthTokenService(
             new DateTimeOffset(newRow.ExpiresAt, TimeSpan.Zero));
     }
 
-    /// <inheritdoc />
+    /// <summary>Revokes one refresh token if it belongs to the specified user.</summary>
     public async Task<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, int userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return false;
 
-        var hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
-        var row = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
-        // Ensure the refresh belongs to the authenticated user (JWT sub) so users cannot revoke others' sessions.
+        string? hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
+        RefreshToken? row = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
         if (row is null || row.UserId != userId)
             return false;
 
@@ -87,7 +82,7 @@ public sealed class AuthTokenService(
         return true;
     }
 
-    /// <inheritdoc />
+    /// <summary>Revokes all active refresh tokens for the specified user.</summary>
     public Task RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default) =>
         db.RevokeAllRefreshTokensForUserAsync(userId, cancellationToken);
 

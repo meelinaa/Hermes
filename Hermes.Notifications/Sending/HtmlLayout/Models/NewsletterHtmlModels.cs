@@ -1,4 +1,4 @@
-namespace Hermes.Notifications.Sending.HtmlLayout;
+namespace Hermes.Notifications.Sending.HtmlLayout.Models;
 
 /// <summary>
 /// Placeholder values for the newsletter header block (<c>NewsletterHeader.html</c>).

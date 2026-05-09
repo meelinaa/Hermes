@@ -89,6 +89,10 @@
     private bool PasswordSymbolOk =>
         password.Any(static c => char.IsPunctuation(c) || char.IsSymbol(c));
 
+    /// <summary>All registration password rules satisfied (independent of username/e-mail).</summary>
+    private bool PasswordRulesSatisfied =>
+        PasswordLenOk && PasswordCaseOk && PasswordDigitOk && PasswordSymbolOk;
+
     private bool EmailFormatOk =>
         !string.IsNullOrWhiteSpace(email) && EmailValidator.IsValid(email.Trim());
 
@@ -98,10 +102,7 @@
     private bool CanRegister =>
         !string.IsNullOrWhiteSpace(username)
         && EmailFormatOk
-        && PasswordLenOk
-        && PasswordCaseOk
-        && PasswordDigitOk
-        && PasswordSymbolOk;
+        && PasswordRulesSatisfied;
 
     private static string RuleClass(bool ok) =>
         ok ? "hermes-reg-rule hermes-reg-rule--ok" : "hermes-reg-rule";
@@ -122,7 +123,7 @@
         isBusy = true;
         try
         {
-            var newUser = new User
+            User newUser = new()
             {
                 Id = 0,
                 Name = username.Trim(),
@@ -131,14 +132,14 @@
                 IsEmailVerified = false
             };
 
-            var regResponse = await Http.PostAsJsonAsync("api/v1/users", newUser, JsonSerializerOptions.Web).ConfigureAwait(false);
+            HttpResponseMessage regResponse = await Http.PostAsJsonAsync("api/v1/users", newUser, JsonSerializerOptions.Web).ConfigureAwait(false);
             if (!regResponse.IsSuccessStatusCode)
             {
                 registerError = await ReadApiErrorAsync(regResponse).ConfigureAwait(false);
                 return;
             }
 
-            var loginResponse = await Http.PostAsJsonAsync(
+            HttpResponseMessage loginResponse = await Http.PostAsJsonAsync(
                     "api/v1/auth/login",
                     new LoginRequest { NameOrEmail = email.Trim(), Password = password },
                     JsonSerializerOptions.Web)
@@ -151,7 +152,7 @@
                 return;
             }
 
-            var authBody = await loginResponse.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonSerializerOptions.Web).ConfigureAwait(false);
+            AuthLoginResponse? authBody = await loginResponse.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonSerializerOptions.Web).ConfigureAwait(false);
             if (authBody is null || string.IsNullOrEmpty(authBody.AccessToken) || string.IsNullOrEmpty(authBody.RefreshToken))
             {
                 registerError = "Konto angelegt; unerwartete Antwort beim Anmelden.";
@@ -179,11 +180,11 @@
     {
         try
         {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+            using Stream? stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out JsonElement d) && d.ValueKind == JsonValueKind.String)
                 return d.GetString();
-            if (doc.RootElement.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
+            if (doc.RootElement.TryGetProperty("title", out JsonElement t) && t.ValueKind == JsonValueKind.String)
                 return t.GetString();
         }
         catch

@@ -34,14 +34,14 @@ public sealed class NotificationLogRepository(HermesDbContext db) : INotificatio
     /// <inheritdoc />
     public async Task<IEnumerable<NotificationLog>> GetPendingAsync(CancellationToken ct = default)
     {
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         return await db.NotificationLogs
             .AsNoTracking()
-            .Where(l =>
-                l.Status == NotificationStatus.Pending
-                || (l.Status == NotificationStatus.Failed && l.NextRetryAt != null && l.NextRetryAt <= now))
-            .OrderBy(l => l.NextRetryAt ?? DateTime.MaxValue)
-            .ThenBy(l => l.Id)
+            .Where(notificationLog =>
+                notificationLog.Status == NotificationStatus.Pending
+                || (notificationLog.Status == NotificationStatus.Failed && notificationLog.NextRetryAt != null && notificationLog.NextRetryAt <= now))
+            .OrderBy(notificationLog => notificationLog.NextRetryAt ?? DateTime.MaxValue)
+            .ThenBy(notificationLog => notificationLog.Id)
             .ToListAsync(ct)
             .ConfigureAwait(false);
     }

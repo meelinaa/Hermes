@@ -1,10 +1,12 @@
 using FluentValidation;
+using FluentValidation.Results;
 using Hermes.Api.Http;
 using Hermes.Api.Validation;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +20,7 @@ public class NewsController(
     INewsService newsService,
     INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger) : ControllerBase
 {
+    /// <summary>Returns all news entries for the authenticated user.</summary>
     /// <remarks><b>GET</b> <c>api/v1/users/news/{userId}/list</c> — no body.</remarks>
     [HttpGet("{userId}/list")]
     public async Task<ActionResult<List<News>>> GetNewsList(int userId, CancellationToken cancellationToken)
@@ -25,10 +28,11 @@ public class NewsController(
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        var list = await newsService.GetAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        List<News> list = await newsService.GetAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
         return Ok(list);
     }
 
+    /// <summary>Returns a single news entry by user and news identifier.</summary>
     /// <remarks>
     /// <b>GET</b> <c>api/v1/users/news/userId={userId}/newsId={newsId}</c> — no body.
     /// Uses composite path segments (literal + value) so ids are named in the URL; e.g. <c>…/userId=1/newsId=5</c>.
@@ -39,8 +43,15 @@ public class NewsController(
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        var news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
-        return news is null ? this.NotFoundProblem() : Ok(news);
+        try
+        {
+            News? news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+            return news is null ? this.NotFoundProblem() : Ok(news);
+        }
+        catch (NewsNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
     }
 
     /// <summary>Create news for <paramref name="userId"/>.</summary>
@@ -50,7 +61,7 @@ public class NewsController(
     [HttpPost]
     public async Task<ActionResult<NewsScope>> SetNews([FromBody] News news, CancellationToken cancellationToken)
     {
-        if (!this.TryGetCurrentUserId(out var currentUserId))
+        if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
         if (news.UserId <= 0)
@@ -71,7 +82,7 @@ public class NewsController(
         [FromServices] IValidator<News> validator,
         CancellationToken cancellationToken)
     {
-        if (!this.TryGetCurrentUserId(out var currentUserId))
+        if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
         if (news.UserId <= 0)
@@ -79,7 +90,7 @@ public class NewsController(
         else if (news.UserId != currentUserId)
             return this.ForbiddenProblem("Body userId must match the authenticated user (or omit/zero to use your account).");
 
-        var fv = await validator.ValidateAsync(news, cancellationToken).ConfigureAwait(false);
+        ValidationResult fv = await validator.ValidateAsync(news, cancellationToken).ConfigureAwait(false);
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
@@ -95,7 +106,7 @@ public class NewsController(
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        var deleted = await newsService.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        int deleted = await newsService.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
         return Ok(new { deleted });
     }
 
@@ -108,7 +119,16 @@ public class NewsController(
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        var deleteNews = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+        News? deleteNews;
+        try
+        {
+            deleteNews = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (NewsNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
         if (deleteNews is null)
             return this.NotFoundProblem();
 

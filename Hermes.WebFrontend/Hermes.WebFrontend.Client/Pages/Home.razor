@@ -73,7 +73,7 @@
     private async Task LoadWelcomeAsync()
     {
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        var userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
         if (userId is null)
         {
             welcomeLine = ApplyWelcomeFromJwt();
@@ -82,10 +82,10 @@
 
         try
         {
-            var response = await Http.GetAsync($"api/v1/users/{userId.Value}").ConfigureAwait(false);
+            HttpResponseMessage response = await Http.GetAsync($"api/v1/users/{userId.Value}").ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
-                var scope = await response.Content.ReadFromJsonAsync<UserScope>(JsonSerializerOptions.Web).ConfigureAwait(false);
+                UserScope? scope = await response.Content.ReadFromJsonAsync<UserScope>(JsonSerializerOptions.Web).ConfigureAwait(false);
                 if (!string.IsNullOrWhiteSpace(scope?.Name))
                 {
                     welcomeLine = $"Willkommen {scope.Name.Trim()}.";
@@ -103,7 +103,7 @@
 
     private string? ApplyWelcomeFromJwt()
     {
-        var name = JwtPayloadDisplayName.TryGet(AuthTokens.AccessToken);
+        string? name = JwtPayloadDisplayName.TryGet(AuthTokens.AccessToken);
         return string.IsNullOrWhiteSpace(name) ? null : $"Willkommen {name.Trim()}.";
     }
 

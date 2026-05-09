@@ -3,6 +3,7 @@ using Hangfire;
 using Hangfire.MySql;
 using Hermes.Api.Hangfire;
 using Hermes.Api.Validation;
+using Hermes.Application.Options;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Security;
 using Hermes.Application.Services;
@@ -11,10 +12,12 @@ using Hermes.Domain.Interfaces.Services;
 using Hermes.Infrastructure.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 namespace Hermes.Api.Hosting;
 
@@ -30,7 +33,7 @@ public static class ApiServiceCollectionExtensions
     /// <param name="configuration">Application configuration (appsettings, environment variables).</param>
     public static void AddHermesApiServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
+        string? connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
 
@@ -43,6 +46,8 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsService, NewsService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
+        services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
+        services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
 
         services.AddSingleton(_ => CreateHangfireJobStorage(configuration));
@@ -55,16 +60,13 @@ public static class ApiServiceCollectionExtensions
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
         services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
-        // JWT bearer validation + symmetric signing options; registers IJwtTokenIssuer for access tokens at login/refresh.
         services.AddHermesJwtAuthentication(configuration);
         services.AddOpenApi();
         Log.Information("Added controllers, JWT authentication, FluentValidation, and OpenAPI services");
 
-        // RFC 7807 ProblemDetails for validation errors and exception handler integration.
         services.AddProblemDetails();
 
-        // CORS: allowed origins from Cors:AllowedOrigins (array in appsettings); default for local SPA dev.
-        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"];
+        string[]? allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"];
         services.AddCors(options =>
         {
             options.AddPolicy("FrontendPolicy", policy =>
@@ -76,12 +78,10 @@ public static class ApiServiceCollectionExtensions
         });
         Log.Information("Configured CORS with allowed origins: {AllowedOrigins}", string.Join(", ", allowedOrigins));
 
-        // Kubernetes-style probes: "ready" tag limits which checks run on /health/ready.
         services.AddHealthChecks()
             .AddDbContextCheck<HermesDbContext>("database", failureStatus: HealthStatus.Unhealthy, tags: ["ready"]);
         Log.Information("Added health checks: database with 'ready' tag");
 
-        // Per-request timeouts: named policies for future endpoint-specific limits; default applies to all requests.
         services.AddRequestTimeouts(options =>
         {
             options.AddPolicy("Strict", TimeSpan.FromSeconds(5));
@@ -101,15 +101,79 @@ public static class ApiServiceCollectionExtensions
                 }
             };
         });
+
+        bool rateLimitingEnabled = configuration.GetValue("RateLimiting:Enabled", true);
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                IProblemDetailsService problemDetailsService = context.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
+                context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
+                    context.HttpContext.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+
+                await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                {
+                    HttpContext = context.HttpContext,
+                    ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                    {
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Title = "Too many requests.",
+                        Detail = "Rate limit exceeded. Please retry later."
+                    }
+                });
+            };
+
+            if (rateLimitingEnabled)
+            {
+                options.AddPolicy("AuthLoginPolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 8, window: TimeSpan.FromMinutes(1)));
+
+                options.AddPolicy("AuthRefreshPolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 30, window: TimeSpan.FromMinutes(1)));
+                return;
+            }
+
+            options.AddPolicy("AuthLoginPolicy", _ => RateLimitPartition.GetNoLimiter("testing-login"));
+            options.AddPolicy("AuthRefreshPolicy", _ => RateLimitPartition.GetNoLimiter("testing-refresh"));
+        });
     }
 
+    /// <summary>
+    /// Builds a fixed-window rate-limiter partition key from caller identity attributes and creates the limiter policy.
+    /// </summary>
+    private static RateLimitPartition<string> CreateAuthPartition(HttpContext httpContext, int permitLimit, TimeSpan window)
+    {
+        string? ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
+        string? clientKey = httpContext.Request.Headers["X-Client-Key"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(clientKey))
+            clientKey = "anonymous-client";
+
+        string partitionKey = $"ip:{ip}|client:{clientKey.Trim()}";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = window,
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
+    }
+
+    /// <summary>
+    /// Creates Hangfire storage backed by MySQL using the configured connection string.
+    /// </summary>
     private static JobStorage CreateHangfireJobStorage(IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
+        string connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
-        var hangfireConnectionRaw = configuration.GetConnectionString("Hangfire");
-        var hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
+        string? hangfireConnectionRaw = configuration.GetConnectionString("Hangfire");
+        string? hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
             ? connectionString
             : hangfireConnectionRaw;
         return new MySqlStorage(hangfireConnection, new MySqlStorageOptions

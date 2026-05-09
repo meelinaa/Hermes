@@ -7,6 +7,7 @@ namespace Hermes.WebFrontend.Client.Enums;
 /// </summary>
 public static class NewsEnumGermanDisplay
 {
+    /// <summary>Returns a German display label for a news category enum value.</summary>
     public static string CategoryDe(NewsCategory c) => c switch
     {
         NewsCategory.Breaking => "Eilmeldung",
@@ -30,6 +31,7 @@ public static class NewsEnumGermanDisplay
         _ => c.ToString()
     };
 
+    /// <summary>Returns a German display label for a language enum value.</summary>
     public static string LanguageDe(Language l) => l switch
     {
         Language.Albanian => "Albanisch",
@@ -88,6 +90,7 @@ public static class NewsEnumGermanDisplay
         _ => l.ToString()
     };
 
+    /// <summary>Returns a German display label for a country enum value.</summary>
     public static string CountryDe(Country c) => c switch
     {
         Country.Albania => "Albanien",

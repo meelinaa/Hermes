@@ -34,7 +34,7 @@
 
     private void RefreshRouteState()
     {
-        var path = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/').ToLowerInvariant();
+        string path = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/').ToLowerInvariant();
         createMode = path.EndsWith("/news-settings/new", StringComparison.Ordinal);
         panelKey = createMode ? "news-new" : "news-list";
     }

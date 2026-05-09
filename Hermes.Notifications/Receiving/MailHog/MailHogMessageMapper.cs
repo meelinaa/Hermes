@@ -15,13 +15,12 @@ internal sealed class MailHogMessageMapper
     /// </summary>
     public EmailResult MapToEmailResult(MailHogMessageDto dto)
     {
-        var id = dto.Id ?? string.Empty;
-        var from = FormatPath(dto.From);
-        var to = FormatRecipients(dto.To);
-        var subject = GetHeaderValue(dto.Content?.HeadersDictionary, "Subject");
-        var body = dto.Content?.Body ?? string.Empty;
-        var receivedAt = ParseCreated(dto.Created);
-
+        string id = dto.Id ?? string.Empty;
+        string from = FormatPath(dto.From);
+        string to = FormatRecipients(dto.To);
+        string subject = GetHeaderValue(dto.Content?.HeadersDictionary, "Subject");
+        string body = dto.Content?.Body ?? string.Empty;
+        DateTimeOffset receivedAt = ParseCreated(dto.Created);
         return new EmailResult(id, from, to, subject, body, receivedAt);
     }
 
@@ -32,7 +31,7 @@ internal sealed class MailHogMessageMapper
             return default;
         }
 
-        if (DateTimeOffset.TryParse(created, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto))
+        if (DateTimeOffset.TryParse(created, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset dto))
         {
             return dto;
         }
@@ -57,7 +56,7 @@ internal sealed class MailHogMessageMapper
             return string.Empty;
         }
 
-        return string.Join(", ", paths.Select(FormatPath).Where(s => s.Length > 0));
+        return string.Join(", ", paths.Select(FormatPath).Where(recipient => recipient.Length > 0));
     }
 
     private static string GetHeaderValue(Dictionary<string, JsonElement>? headers, string name)
@@ -67,7 +66,7 @@ internal sealed class MailHogMessageMapper
             return string.Empty;
         }
 
-        foreach (var pair in headers)
+        foreach (KeyValuePair<string, JsonElement> pair in headers)
         {
             if (string.Equals(pair.Key, name, StringComparison.OrdinalIgnoreCase))
             {

@@ -11,7 +11,7 @@ namespace Hermes.Notifications.Receiving;
 /// </summary>
 public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
 {
-    private const int PageSize = 250;
+    private const int PAGE_SIZE = 250;
 
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -27,35 +27,35 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        var uriHelper = new MailHogApiUriHelper();
+        //MailHogApiUriHelper uriHelper = new();
 
-        _httpClient = new HttpClient
+        _httpClient = new()
         {
-            BaseAddress = uriHelper.CreateBaseUri(settings),
+            BaseAddress = MailHogApiUriHelper.CreateBaseUri(settings),
         };
 
-        _jsonOptions = new JsonSerializerOptions
+        _jsonOptions = new()
         {
             PropertyNameCaseInsensitive = true,
         };
 
-        _envelopeReader = new MailHogEnvelopeReader();
-        _messageMapper = new MailHogMessageMapper();
+        _envelopeReader = new();
+        _messageMapper = new();
     }
 
     /// <inheritdoc />
     public async Task<EmailResult> GetLatestAsync(CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync(
+        HttpResponseMessage response = await _httpClient.GetAsync(
             "api/v2/messages?start=0&limit=1",
             cancellationToken).ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
 
-        var envelope = await response.Content.ReadFromJsonAsync<MailHogMessagesEnvelope>(_jsonOptions, cancellationToken)
+        MailHogMessagesEnvelope? envelope = await response.Content.ReadFromJsonAsync<MailHogMessagesEnvelope>(_jsonOptions, cancellationToken)
             .ConfigureAwait(false);
 
-        var items = _envelopeReader.GetMessages(envelope);
+        IReadOnlyList<MailHogMessageDto> items = _envelopeReader.GetMessages(envelope);
         if (items.Count == 0)
         {
             throw new InvalidOperationException("No messages are available in MailHog.");
@@ -67,37 +67,37 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
     /// <inheritdoc />
     public async Task<IEnumerable<EmailResult>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var results = new List<EmailResult>();
-        var start = 0;
+        List<EmailResult> results = [];
+        int start = 0;
 
         while (true)
         {
-            var response = await _httpClient.GetAsync(
-                FormattableString.Invariant($"api/v2/messages?start={start}&limit={PageSize}"),
+            HttpResponseMessage response = await _httpClient.GetAsync(
+                FormattableString.Invariant($"api/v2/messages?start={start}&limit={PAGE_SIZE}"),
                 cancellationToken).ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
 
-            var envelope = await response.Content.ReadFromJsonAsync<MailHogMessagesEnvelope>(_jsonOptions, cancellationToken)
+            MailHogMessagesEnvelope? envelope = await response.Content.ReadFromJsonAsync<MailHogMessagesEnvelope>(_jsonOptions, cancellationToken)
                 .ConfigureAwait(false);
 
-            var items = _envelopeReader.GetMessages(envelope);
+            IReadOnlyList<MailHogMessageDto> items = _envelopeReader.GetMessages(envelope);
             if (items.Count == 0)
             {
                 break;
             }
 
-            foreach (var item in items)
+            foreach (MailHogMessageDto item in items)
             {
                 results.Add(_messageMapper.MapToEmailResult(item));
             }
 
-            if (items.Count < PageSize)
+            if (items.Count < PAGE_SIZE)
             {
                 break;
             }
 
-            start += PageSize;
+            start += PAGE_SIZE;
         }
 
         return results;
@@ -108,9 +108,9 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
     {
         ArgumentNullException.ThrowIfNull(subject);
 
-        var all = await GetAllAsync(cancellationToken).ConfigureAwait(false);
-        return all.Where(m =>
-            m.Subject.Contains(subject, StringComparison.OrdinalIgnoreCase)).ToList();
+        IEnumerable<EmailResult> all = await GetAllAsync(cancellationToken).ConfigureAwait(false);
+        return all.Where(emailResult =>
+            emailResult.Subject.Contains(subject, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
     /// <inheritdoc />

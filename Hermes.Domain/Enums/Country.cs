@@ -7,7 +7,6 @@ namespace Hermes.Domain.Enums;
 /// </summary>
 public enum Country
 {
-    // --- Europe (alphabetical) ---
     [CountryIsoCode("al")]
     Albania,
 
@@ -146,7 +145,6 @@ public enum Country
     [CountryIsoCode("va")]
     VaticanCity,
 
-    // --- Americas, Asia-Pacific, Middle East & Africa ---
     [CountryIsoCode("cn")]
     China,
 

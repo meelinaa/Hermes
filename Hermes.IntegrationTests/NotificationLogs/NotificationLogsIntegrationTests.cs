@@ -36,7 +36,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{userId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
@@ -57,7 +57,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{userId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
@@ -91,7 +91,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         (int userId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{userId}/notification-logs");
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MalformedJwtMaterial);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MALFORMED_JWT_MATERIAL);
         req.Content = JsonContent.Create(MinimalLogBody(), options: JsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(req);
@@ -105,7 +105,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         using HttpClient client = fixture.Factory.CreateClient();
         (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{victimId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
@@ -122,7 +122,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         using HttpClient client = fixture.Factory.CreateClient();
         (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (int attackerId, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{attackerId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
@@ -138,7 +138,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DefaultPassword);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{userId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);

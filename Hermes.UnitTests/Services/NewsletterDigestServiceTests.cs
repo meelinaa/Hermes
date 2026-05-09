@@ -58,7 +58,7 @@ public sealed class NewsletterDigestServiceTests
         NewsletterDigestService sutEmpty = CreateSut(Mock.Of<IHermesDataStore>(), newsOptions: Options.Create(new NewsDataIoOptions { ApiKey = "" }));
         NewsletterDigestService sutWs = CreateSut(Mock.Of<IHermesDataStore>(), newsOptions: Options.Create(new NewsDataIoOptions { ApiKey = "   " }));
 
-        // Act / Assert
+        // Act
         InvalidOperationException ex1 = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sutEmpty.SendAsync(1, 1, new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)));
         Assert.Equal("Configure NewsDataIo:ApiKey.", ex1.Message);
@@ -73,9 +73,9 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_NotLoadUserOrNews_WhenDuplicateAlreadySentInWindow()
     {
-        // Arrange — duplicate check returns true immediately
+        // Arrange
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.ExistsSentNotificationInWindowAsync(
+        store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<DateTime>(),
@@ -88,9 +88,9 @@ public sealed class NewsletterDigestServiceTests
         // Act
         await sut.SendAsync(5, 10, new DateTime(2026, 6, 15, 14, 30, 22, DateTimeKind.Utc));
 
-        // Assert — heavier store queries never run
-        store.Verify(s => s.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
-        store.Verify(s => s.GetNewsByIdAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        // Assert
+        store.Verify(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        store.Verify(dataStore => dataStore.GetNewsByIdAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     /// <summary>
@@ -104,7 +104,7 @@ public sealed class NewsletterDigestServiceTests
     {
         // Arrange
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.ExistsSentNotificationInWindowAsync(
+        store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<DateTime>(),
@@ -122,7 +122,7 @@ public sealed class NewsletterDigestServiceTests
 
         // Assert
         store.Verify(
-            s => s.ExistsSentNotificationInWindowAsync(1, 2, expectedStart, expectedEnd, It.IsAny<CancellationToken>()),
+            dataStore => dataStore.ExistsSentNotificationInWindowAsync(1, 2, expectedStart, expectedEnd, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -133,14 +133,14 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_AbortSilently_WhenUserMissing()
     {
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.ExistsSentNotificationInWindowAsync(
+        store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        store.Setup(s => s.GetUserEntityByIdAsync(7, It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetUserEntityByIdAsync(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
         Mock<INewsArticleProvider> articles = new();
@@ -149,7 +149,7 @@ public sealed class NewsletterDigestServiceTests
         await sut.SendAsync(7, 99, DateTime.UtcNow);
 
         articles.Verify(
-            a => a.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -160,14 +160,14 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_AbortSilently_WhenUserHasNoDeliverableEmail()
     {
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.ExistsSentNotificationInWindowAsync(
+        store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        store.Setup(s => s.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "   ", Name = "X" });
 
         Mock<INewsArticleProvider> articles = new();
@@ -176,7 +176,7 @@ public sealed class NewsletterDigestServiceTests
         await sut.SendAsync(1, 2, DateTime.UtcNow);
 
         articles.Verify(
-            a => a.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -187,16 +187,16 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_AbortSilently_WhenNewsProfileMissing()
     {
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.ExistsSentNotificationInWindowAsync(
+        store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        store.Setup(s => s.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "a@b.c", Name = "Anna" });
-        store.Setup(s => s.GetNewsByIdAsync(1, 88, It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetNewsByIdAsync(1, 88, It.IsAny<CancellationToken>()))
             .ReturnsAsync((News?)null);
 
         Mock<INewsArticleProvider> articles = new();
@@ -205,7 +205,7 @@ public sealed class NewsletterDigestServiceTests
         await sut.SendAsync(1, 88, DateTime.UtcNow);
 
         articles.Verify(
-            a => a.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -215,7 +215,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_NotCallNewsApi_WhenFiltersProduceNoQuery()
     {
-        // Arrange — news row exists but yields empty effective query after trimming/filtering
+        // Arrange
         News news = new()
         {
             Id = 3,
@@ -226,16 +226,16 @@ public sealed class NewsletterDigestServiceTests
             Category = [],
         };
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.ExistsSentNotificationInWindowAsync(
+        store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        store.Setup(s => s.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "user@test.example", Name = "U" });
-        store.Setup(s => s.GetNewsByIdAsync(1, 3, It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetNewsByIdAsync(1, 3, It.IsAny<CancellationToken>()))
             .ReturnsAsync(news);
 
         Mock<INewsArticleProvider> articles = new();
@@ -246,7 +246,7 @@ public sealed class NewsletterDigestServiceTests
 
         // Assert
         articles.Verify(
-            a => a.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -268,28 +268,28 @@ public sealed class NewsletterDigestServiceTests
         };
 
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.ExistsSentNotificationInWindowAsync(
+        store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        store.Setup(s => s.GetUserEntityByIdAsync(2, It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetUserEntityByIdAsync(2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 2, Email = "digest@test.example", Name = "Dieter" });
-        store.Setup(s => s.GetNewsByIdAsync(2, 12, It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetNewsByIdAsync(2, 12, It.IsAny<CancellationToken>()))
             .ReturnsAsync(news);
 
         Mock<INewsArticleProvider> articles = new();
-        articles.Setup(a => a.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()))
+        articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()))
             .Callback<NewsArticleQuery, CancellationToken>((q, _) => capturedQuery = q)
             .ReturnsAsync([]);
 
         Mock<IEmailSender> email = new();
-        email.Setup(e => e.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        store.Setup(s => s.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationLog, CancellationToken>((log, _) => capturedLog = log)
             .Returns(Task.CompletedTask);
 
@@ -298,7 +298,7 @@ public sealed class NewsletterDigestServiceTests
         // Act
         await sut.SendAsync(2, 12, new DateTime(2026, 8, 1, 11, 0, 0, DateTimeKind.Utc));
 
-        // Assert — query carries API key and keyword; log marks Sent
+        // Assert
         Assert.NotNull(capturedQuery);
         Assert.Equal("integration-test-api-key", capturedQuery!.ApiKey);
         Assert.Equal("Berlin", capturedQuery.KeywordsQuery);
@@ -310,10 +310,10 @@ public sealed class NewsletterDigestServiceTests
         Assert.Equal(DeliveryChannel.Email, capturedLog.Channel);
 
         email.Verify(
-            e => e.SendAsync(
-                It.Is<EmailMessage>(m =>
-                    m.To.Address == "digest@test.example"
-                    && m.Subject.Contains("#12", StringComparison.Ordinal)),
+            emailSender => emailSender.SendAsync(
+                It.Is<EmailMessage>(emailMessage =>
+                    emailMessage.To.Address == "digest@test.example"
+                    && emailMessage.Subject.Contains("#12", StringComparison.Ordinal)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -327,28 +327,28 @@ public sealed class NewsletterDigestServiceTests
         News news = new() { Id = 1, UserId = 1, Keywords = ["test"] };
 
         Mock<IHermesDataStore> store = new();
-        store.Setup(s => s.ExistsSentNotificationInWindowAsync(
+        store.Setup(dataStore => dataStore.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        store.Setup(s => s.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "fail@test.example", Name = "F" });
-        store.Setup(s => s.GetNewsByIdAsync(1, 1, It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.GetNewsByIdAsync(1, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(news);
 
         Mock<INewsArticleProvider> articles = new();
-        articles.Setup(a => a.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()))
+        articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         Mock<IEmailSender> email = new();
-        email.Setup(e => e.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SMTP unavailable"));
 
         NotificationLog? capturedFailed = null;
-        store.Setup(s => s.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+        store.Setup(dataStore => dataStore.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationLog, CancellationToken>((log, _) => capturedFailed = log)
             .Returns(Task.CompletedTask);
 

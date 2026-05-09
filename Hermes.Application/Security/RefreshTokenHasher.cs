@@ -11,7 +11,7 @@ public static class RefreshTokenHasher
     /// <summary>SHA-256 over UTF-8 bytes, returned as uppercase hex (64 chars).</summary>
     public static string Hash(string plainToken)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(plainToken));
+        byte[]? bytes = SHA256.HashData(Encoding.UTF8.GetBytes(plainToken));
         return Convert.ToHexString(bytes);
     }
 }

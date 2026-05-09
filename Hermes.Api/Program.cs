@@ -1,14 +1,12 @@
 using Hermes.Api.Hosting;
 using Serilog;
 
-// Minimal bootstrap logger so failures before host build are visible on the console.
 SerilogBootstrap.InitializeGlobalLogger();
 
 try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // Structured logging: sinks and levels from appsettings (Serilog section).
     builder.Host.UseHermesSerilog();
 
     builder.Services.AddHermesApiServices(builder.Configuration);

@@ -1,5 +1,7 @@
+using System.Globalization;
 using Hermes.Application.Models;
 using Hermes.Application.Ports;
+using Hermes.Application.Scheduling;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
@@ -7,19 +9,25 @@ using Hermes.Domain.Interfaces.Services;
 
 namespace Hermes.Application.Services;
 
-public sealed class UserService(IHermesDataStore db) : IUserService
+public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger verificationMailJobTrigger) : IUserService
 {
-    public async Task<UserScope> RegisterUserAsync(User user, CancellationToken cancellationToken = default)
+    /// <summary>Registers a new user, normalizes fields, hashes the plain password, and returns the created user scope.</summary>
+    public async Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(user);
-        if (string.IsNullOrWhiteSpace(user.Name))
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.Name))
             throw new InvalidOperationException("User name is required.");
-        user.Name = user.Name.Trim();
+        request.Name = request.Name.Trim();
 
-        if (!string.IsNullOrEmpty(user.Email))
-            user.Email = user.Email.Trim().ToLowerInvariant();
-        // API sends plain password in PasswordHash field; store BCrypt hash only.
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash ?? "");
+        if (!string.IsNullOrEmpty(request.Email))
+            request.Email = request.Email.Trim().ToLowerInvariant();
+        request.Password = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "");
+        User user = new()
+        {
+            Name = request.Name,
+            Email = request.Email,
+            PasswordHash = request.Password
+        };
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id <= 0)
             throw new InvalidOperationException("Failed to create user.");
@@ -29,11 +37,13 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         {
             Name = user.Name,
             Email = user.Email,
-            UserId = user.Id
+            UserId = user.Id,
+            IsEmailVerified = false
         };
         return userScope;
     }
 
+    /// <summary>Authenticates a user by e-mail or name and verifies the supplied plain password.</summary>
     public async Task<LoginResult> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(nameOrEmail))
@@ -41,12 +51,10 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         if (string.IsNullOrEmpty(password))
             return new LoginResult(false, "Password is required.", null);
 
-        var key = nameOrEmail.Trim();
-        User? user;
-        if (key.Contains('@', StringComparison.Ordinal))
-            user = await db.GetUserEntityForAuthenticationByEmailAsync(key, cancellationToken).ConfigureAwait(false);
-        else
-            user = await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
+        string? key = nameOrEmail.Trim();
+        User? user = key.Contains('@', StringComparison.Ordinal)
+            ? await db.GetUserEntityForAuthenticationByEmailAsync(key, cancellationToken).ConfigureAwait(false)
+            : await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
         if (user is null || string.IsNullOrEmpty(user.PasswordHash))
             return new LoginResult(false, "Invalid login or password.", null);
@@ -67,6 +75,7 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         return new LoginResult(true, null, user.Id, user.Email, user.Name);
     }
 
+    /// <summary>Updates user profile data and optionally changes the password after current-password verification.</summary>
     public async Task UpdateUserAsync(User user, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -78,14 +87,14 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         if (!string.IsNullOrWhiteSpace(user.Email))
             user.Email = user.Email.Trim().ToLowerInvariant();
 
-        var newPlain = user.PasswordHash;
+        string? newPlain = user.PasswordHash;
         string? hashedForDb = null;
         if (!string.IsNullOrWhiteSpace(newPlain))
         {
             if (string.IsNullOrWhiteSpace(currentPasswordPlain))
                 throw new ArgumentException("Current password is required when setting a new password.", nameof(currentPasswordPlain));
 
-            var existing = await db.GetUserEntityByIdAsync(user.Id, cancellationToken).ConfigureAwait(false);
+            User? existing = await db.GetUserEntityByIdAsync(user.Id, cancellationToken).ConfigureAwait(false);
             if (existing is null)
                 throw new UserNotFoundException($"User with id {user.Id} was not found.");
             if (string.IsNullOrEmpty(existing.PasswordHash))
@@ -111,12 +120,14 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         await db.UpdateUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Deletes the specified user scope.</summary>
     public async Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         await db.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Returns a user scope by display name.</summary>
     public async Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -124,6 +135,7 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         return await db.GetUserByNameAsync(name, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Returns a user scope by user identifier.</summary>
     public async Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
@@ -131,6 +143,7 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         return await db.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Returns a user scope by e-mail address.</summary>
     public async Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -138,11 +151,46 @@ public sealed class UserService(IHermesDataStore db) : IUserService
         return await db.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Enqueues a verification e-mail for the user identified by e-mail address.</summary>
     public async Task SendVerificationMailAsync(string email, CancellationToken cancellationToken)
     {
-        if(string.IsNullOrWhiteSpace(email) || email == null)
+        if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
-        
-        // Todo: use 
+
+        string? normalized = email.Trim().ToLowerInvariant();
+        User? user = await db.GetUserEntityForAuthenticationByEmailAsync(normalized, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            throw new UserNotFoundException($"User with email '{normalized}' was not found.");
+
+        verificationMailJobTrigger.EnqueueSendVerificationMail(user.Id);
+    }
+
+    /// <summary>Validates and consumes a six-digit verification code for the specified user.</summary>
+    public async Task CheckVerificationCodeAsync(int userId, int code, CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), "User id must be positive.");
+        if (code is < 0 or > 999_999)
+            throw new ArgumentOutOfRangeException(nameof(code), "Verification code must be a six-digit value.");
+
+        User? user = await db.GetUserEntityForAuthenticationByIdAsync(userId, cancellationToken).ConfigureAwait(false)
+            ?? throw new UserNotFoundException($"User with id {userId} was not found.");
+        string? stored = user.TwoFactorCode;
+        DateTime? expiry = user.TwoFactorExpiry;
+        if (string.IsNullOrWhiteSpace(stored) || !expiry.HasValue)
+            throw new VerificationCodeMismatchException();
+
+        DateTime expiresUtc = expiry.Value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(expiry.Value, DateTimeKind.Utc)
+            : expiry.Value.ToUniversalTime();
+
+        if (DateTime.UtcNow >= expiresUtc)
+            throw new VerificationCodeMismatchException();
+
+        string? provided = code.ToString("D6", CultureInfo.InvariantCulture);
+        if (!string.Equals(stored.Trim(), provided, StringComparison.Ordinal))
+            throw new VerificationCodeMismatchException();
+
+        await db.CompleteUserEmailVerificationAsync(userId, cancellationToken).ConfigureAwait(false);
     }
 }

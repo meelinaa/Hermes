@@ -10,27 +10,27 @@ namespace Hermes.Infrastructure.Migrations;
 /// </summary>
 public partial class FixNewsRelationshipAndNewsUserIndex : Migration
 {
-    private const string NewsUserFk = "FK_news_users_UserId";
-    private const string NewsUserIndex = "IX_news_UserId";
+    private const string NEWS_USER_FK = "FK_news_users_UserId";
+    private const string NEWS_USER_INDEX = "IX_news_UserId";
 
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropForeignKey(
-            name: NewsUserFk,
+            name: NEWS_USER_FK,
             table: "news");
 
         migrationBuilder.DropIndex(
-            name: NewsUserIndex,
+            name: NEWS_USER_INDEX,
             table: "news");
 
         migrationBuilder.CreateIndex(
-            name: NewsUserIndex,
+            name: NEWS_USER_INDEX,
             table: "news",
             column: "UserId");
 
         migrationBuilder.AddForeignKey(
-            name: NewsUserFk,
+            name: NEWS_USER_FK,
             table: "news",
             column: "UserId",
             principalTable: "users",
@@ -42,21 +42,21 @@ public partial class FixNewsRelationshipAndNewsUserIndex : Migration
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropForeignKey(
-            name: NewsUserFk,
+            name: NEWS_USER_FK,
             table: "news");
 
         migrationBuilder.DropIndex(
-            name: NewsUserIndex,
+            name: NEWS_USER_INDEX,
             table: "news");
 
         migrationBuilder.CreateIndex(
-            name: NewsUserIndex,
+            name: NEWS_USER_INDEX,
             table: "news",
             column: "UserId",
             unique: true);
 
         migrationBuilder.AddForeignKey(
-            name: NewsUserFk,
+            name: NEWS_USER_FK,
             table: "news",
             column: "UserId",
             principalTable: "users",

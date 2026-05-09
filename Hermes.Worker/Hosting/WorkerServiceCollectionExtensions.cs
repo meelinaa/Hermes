@@ -1,5 +1,6 @@
-﻿using Hangfire;
+using Hangfire;
 using Hangfire.MySql;
+using Hermes.Application.Jobs;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Services;
@@ -7,35 +8,26 @@ using Hermes.Infrastructure.Data;
 using Hermes.Infrastructure.Email;
 using Hermes.Infrastructure.NewsDataIo;
 using Hermes.Notifications.Receiving.Models;
-using Hermes.Worker.Jobs;
 using Hermes.Worker.Scheduling;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Worker.Hosting;
 
+/// <summary>Registers worker infrastructure, application services, and Hangfire processing components.</summary>
 public static class WorkerServiceCollectionExtensions
 {
     /// <summary>
     /// Registers EF Core, e-mail, NewsData.io, Hangfire storage/server, and worker-scoped jobs.
-    /// Also merges <c>NEWSDATA.IO</c> from <c>.env</c> into configuration when present.
+    /// NewsData.io API key is read only from <c>.env</c> (see <see cref="WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile"/>).
     /// </summary>
     public static void AddHermesWorker(this HostApplicationBuilder builder)
     {
-        var newsDataIoApiKeyFromDotEnv = WorkerServiceCollectionHelper.TryReadNewsDataIoKeyFromDotEnv(builder.Environment.ContentRootPath);
-        if (!string.IsNullOrWhiteSpace(newsDataIoApiKeyFromDotEnv))
-        {
-            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["NewsDataIo:ApiKey"] = newsDataIoApiKeyFromDotEnv.Trim()
-            });
-        }
-
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? builder.Configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
 
-        var hangfireConnectionRaw = builder.Configuration.GetConnectionString("Hangfire");
-        var hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
+        string? hangfireConnectionRaw = builder.Configuration.GetConnectionString("Hangfire");
+        string hangfireConnection = string.IsNullOrWhiteSpace(hangfireConnectionRaw)
             ? connectionString
             : hangfireConnectionRaw;
 
@@ -46,17 +38,15 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailSettings(builder.Configuration));
         builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
         builder.Services.Configure<MailHogSettings>(builder.Configuration.GetSection("MailHog"));
-        builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
-        builder.Services.PostConfigure<NewsDataIoOptions>(opts =>
+        builder.Services.Configure<NewsDataIoOptions>(opts =>
         {
-            if (!string.IsNullOrWhiteSpace(opts.ApiKey))
-                return;
-            var fromDot = WorkerServiceCollectionHelper.TryReadNewsDataIoKeyFromDotEnv(builder.Environment.ContentRootPath);
-            if (!string.IsNullOrWhiteSpace(fromDot))
-                opts.ApiKey = fromDot.Trim();
+            opts.ApiKey = WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile(builder.Environment.ContentRootPath)
+                ?? string.Empty;
         });
+        builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
+        builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();
         builder.Services.AddScoped<NotificationJobs>();
         builder.Services.AddScoped<NewsletterScheduler>();

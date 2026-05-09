@@ -14,6 +14,7 @@ public sealed class NewsSubscriptionListCache
     private List<News> _items = [];
     private string? _lastError;
 
+    /// <summary>Clears cache content and error state.</summary>
     public void Invalidate()
     {
         _freshUserId = null;
@@ -22,6 +23,7 @@ public sealed class NewsSubscriptionListCache
     }
 
     /// <param name="forceReload">When true, always calls the API (after create/update/delete).</param>
+    /// <summary>Returns cached items or reloads the current user's list from the API.</summary>
     public async Task<(List<News> Items, string? Error)> GetOrLoadAsync(
         int userId,
         HttpClient http,
@@ -34,18 +36,18 @@ public sealed class NewsSubscriptionListCache
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var response = await http
+            HttpResponseMessage response = await http
                 .GetAsync($"api/v1/users/news/{userId}/list", cancellationToken)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 _lastError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
                 _freshUserId = null;
-                _items = new List<News>();
+                _items = [];
                 return (_items, _lastError);
             }
 
-            var list = await response.Content
+            List<News>? list = await response.Content
                 .ReadFromJsonAsync<List<News>>(HermesNewsJson.Options, cancellationToken)
                 .ConfigureAwait(false);
             _items = list ?? [];
@@ -57,25 +59,26 @@ public sealed class NewsSubscriptionListCache
         {
             _lastError = $"Laden fehlgeschlagen: {ex.Message}";
             _freshUserId = null;
-            _items = new List<News>();
+            _items = [];
             return (_items, _lastError);
         }
     }
 
+    /// <summary>Returns a detached copy of cached items.</summary>
     private List<News> Snapshot() => _items.Count == 0 ? [] : new List<News>(_items);
 
+    /// <summary>Attempts to extract a problem-details message from a failed API response.</summary>
     private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
     {
         try
         {
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+            using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out JsonElement d) && d.ValueKind == JsonValueKind.String)
                 return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
         }
         catch
         {
-            // ignore
         }
 
         return $"Anfrage fehlgeschlagen ({(int)response.StatusCode}).";

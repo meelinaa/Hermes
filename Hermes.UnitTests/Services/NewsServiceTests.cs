@@ -44,7 +44,7 @@ public sealed class NewsServiceTests
     {
         News news = new() { Id = 0, UserId = 1 };
         Mock<IHermesDataStore> db = new();
-        db.Setup(x => x.SetNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
+        db.Setup(dataStore => dataStore.SetNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
             .Callback<News, CancellationToken>((n, _) => n.Id = 55)
             .Returns(Task.CompletedTask);
 
@@ -53,7 +53,7 @@ public sealed class NewsServiceTests
         int id = await sut.SetNewsAsync(news);
 
         Assert.Equal(55, id);
-        db.Verify(x => x.SetNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
+        db.Verify(dataStore => dataStore.SetNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public sealed class NewsServiceTests
     public async Task GetNewsByIdAsync_Should_ReturnEntity_FromStore_WhenIdentifiersValid()
     {
         Mock<IHermesDataStore> db = new();
-        db.Setup(x => x.GetNewsByIdAsync(3, 9, It.IsAny<CancellationToken>()))
+        db.Setup(dataStore => dataStore.GetNewsByIdAsync(3, 9, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new News { Id = 9, UserId = 3 });
 
         NewsService sut = new(db.Object);
@@ -121,7 +121,7 @@ public sealed class NewsServiceTests
     public async Task DeleteAllNewsByUserAsync_Should_ReturnRemovedRowCount_FromStore()
     {
         Mock<IHermesDataStore> db = new();
-        db.Setup(x => x.DeleteAllNewsByUserAsync(4, It.IsAny<CancellationToken>())).ReturnsAsync(7);
+        db.Setup(dataStore => dataStore.DeleteAllNewsByUserAsync(4, It.IsAny<CancellationToken>())).ReturnsAsync(7);
 
         NewsService sut = new(db.Object);
 
@@ -142,8 +142,8 @@ public sealed class NewsServiceTests
         await sut.UpdateNewsAsync(news);
         await sut.DeleteNewsAsync(news);
 
-        db.Verify(x => x.UpdateNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
-        db.Verify(x => x.DeleteNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
+        db.Verify(dataStore => dataStore.UpdateNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
+        db.Verify(dataStore => dataStore.DeleteNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

@@ -18,8 +18,8 @@ public sealed class NewsRepository(HermesDbContext db) : INewsRepository
     public async Task<IReadOnlyList<News>> GetNewsByUserIdAsync(int userId, CancellationToken ct = default)
     {
         return await db.News.AsNoTracking()
-            .Where(n => n.UserId == userId)
-            .OrderBy(n => n.Id)
+            .Where(newsEntity => newsEntity.UserId == userId)
+            .OrderBy(newsEntity => newsEntity.Id)
             .ToListAsync(ct)
             .ConfigureAwait(false);
     }
@@ -43,7 +43,7 @@ public sealed class NewsRepository(HermesDbContext db) : INewsRepository
     /// <inheritdoc />
     public async Task DeleteNewsAsync(int id, CancellationToken ct = default)
     {
-        var entity = await db.News.FirstOrDefaultAsync(n => n.Id == id, ct).ConfigureAwait(false);
+        News? entity = await db.News.FirstOrDefaultAsync(newsEntity => newsEntity.Id == id, ct).ConfigureAwait(false);
         if (entity is null)
         {
             return;
