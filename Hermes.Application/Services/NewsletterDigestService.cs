@@ -1,11 +1,11 @@
 using System.Globalization;
+using Hermes.Application.Mapping;
 using Hermes.Application.Models.Email;
 using Hermes.Application.Models.News;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
-using Hermes.Domain.Mapping;
 using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Notifications.Sending.HtmlLayout.Models;
 using Microsoft.Extensions.Logging;

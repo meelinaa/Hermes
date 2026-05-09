@@ -1,6 +1,6 @@
-﻿using Hermes.Domain.Enums;
+using Hermes.Domain.Enums;
 
-namespace Hermes.Domain.Mapping;
+namespace Hermes.Application.Mapping;
 
 /// <summary>Converts between framework weekday values and Hermes weekday enum values.</summary>
 public class WeekdayConverter

@@ -1,5 +1,5 @@
+using Hermes.Application.Mapping;
 using Hermes.Domain.Enums;
-using Hermes.Domain.Mapping;
 using Xunit;
 
 namespace Hermes.UnitTests.Domain.Mapping;

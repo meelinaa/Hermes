@@ -1,7 +1,7 @@
 using System.Reflection;
 using Hermes.Domain.Enums;
 
-namespace Hermes.Domain.Mapping;
+namespace Hermes.Application.Mapping;
 
 /// <summary>
 /// Maps <see cref="Language"/> to ISO 639-1 codes and back using <see cref="LanguageIsoCodeAttribute"/>.

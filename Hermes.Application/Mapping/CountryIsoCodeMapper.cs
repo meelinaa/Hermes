@@ -2,7 +2,7 @@ using System.Reflection;
 using Hermes.Domain.Enums;
 using Hermes.Domain.Enums.Attribute;
 
-namespace Hermes.Domain.Mapping;
+namespace Hermes.Application.Mapping;
 
 /// <summary>
 /// Maps <see cref="Country"/> to ISO 3166-1 alpha-2 codes and back using <see cref="CountryIsoCodeAttribute"/>.
