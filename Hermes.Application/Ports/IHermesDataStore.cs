@@ -1,5 +1,6 @@
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Enums;
 
 namespace Hermes.Application.Ports;
 
@@ -24,6 +25,13 @@ public interface IHermesDataStore
     Task DeleteNewsAsync(News news, CancellationToken cancellationToken = default);
     Task<List<News>> GetAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
     Task<List<NewsScheduleRow>> GetNewsScheduleRowsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns newsletter profiles that are due for the given local weekday and clock slot, evaluated in MySQL
+    /// (JSON on <c>news</c> columns) so schedulers do not load all rows every tick.
+    /// Requires MySQL 8.0.4+ for <c>JSON_TABLE</c>.
+    /// </summary>
+    Task<List<(int NewsId, int UserId)>> GetDueNewsScheduleForSlotAsync(Weekdays weekday, int hour, int minute, CancellationToken cancellationToken = default);
     Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default);
     Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
     Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default);

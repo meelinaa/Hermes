@@ -255,6 +255,46 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     }
 
     /// <inheritdoc />
+    public async Task<List<(int NewsId, int UserId)>> GetDueNewsScheduleForSlotAsync(
+        Weekdays weekday,
+        int hour,
+        int minute,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(hour, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(hour, 23);
+        ArgumentOutOfRangeException.ThrowIfLessThan(minute, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(minute, 59);
+
+        string weekdayName = weekday.ToString();
+        List<DueNewsScheduleSlotRow> rows = await Database
+            .SqlQueryRaw<DueNewsScheduleSlotRow>(
+                """
+                SELECT n.Id AS Id, n.UserId AS UserId
+                FROM news n
+                WHERE n.Id > 0 AND n.UserId > 0
+                  AND JSON_CONTAINS(n.SendOnWeekdays, JSON_QUOTE({0}), '$')
+                  AND EXISTS (
+                    SELECT 1
+                    FROM JSON_TABLE(n.SendAtTimes, '$[*]' COLUMNS (time_str VARCHAR(40) PATH '$')) jt
+                    WHERE HOUR(CAST(jt.time_str AS TIME(6))) = {1}
+                      AND MINUTE(CAST(jt.time_str AS TIME(6))) = {2})
+                ORDER BY n.Id
+                """,
+                weekdayName,
+                hour,
+                minute)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        List<(int NewsId, int UserId)> result = new(rows.Count);
+        foreach (DueNewsScheduleSlotRow row in rows)
+            result.Add((row.Id, row.UserId));
+
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -626,5 +666,13 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
             throw;
         }
+    }
+
+    /// <summary>Materialization type for <see cref="GetDueNewsScheduleForSlotAsync"/> raw SQL.</summary>
+    private sealed class DueNewsScheduleSlotRow
+    {
+        public int Id { get; set; }
+
+        public int UserId { get; set; }
     }
 }
