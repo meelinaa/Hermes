@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Serilog.Enrichers.Span;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -61,7 +62,7 @@ public static class ApiServiceCollectionExtensions
             });
         services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
         services.AddHermesJwtAuthentication(configuration);
-        services.AddOpenApi();
+        services.AddHermesOpenApiDocument(configuration);
         Log.Information("Added controllers, JWT authentication, FluentValidation, and OpenAPI services");
 
         services.AddProblemDetails();
@@ -190,6 +191,7 @@ public static class ApiServiceCollectionExtensions
         hostBuilder.UseSerilog((context, _, configuration) => configuration
             .ReadFrom.Configuration(context.Configuration)
             .Enrich.FromLogContext()
+            .Enrich.WithSpan()
             .Enrich.WithProperty("Application", "Hermes.Api"));
     }
 }

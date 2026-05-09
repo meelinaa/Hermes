@@ -1,10 +1,15 @@
 using Hermes.Api.Middleware;
 using Hermes.Domain;
 using Hermes.Domain.Exceptions;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using Serilog;
 using System.Text.Json;
 
@@ -139,11 +144,36 @@ public static class ApiApplicationPipelineExtensions
             });
         });
 
-        if (app.Environment.IsDevelopment())
+        HermesOpenApiOptions openApiOpts = app.Services.GetRequiredService<IOptions<HermesOpenApiOptions>>().Value;
+        bool exposeOpenApi = openApiOpts.MapInProduction || app.Environment.IsProduction() is false;
+
+        if (exposeOpenApi &&
+            app.Environment.IsProduction() &&
+            !string.IsNullOrWhiteSpace(openApiOpts.DocumentationApiKey))
         {
-            app.MapOpenApi();
+            string expectedKey = openApiOpts.DocumentationApiKey;
+            string keyHeader = openApiOpts.DocumentationApiKeyHeader;
+            PathString docsPrefix = new(openApiOpts.DocumentationPathPrefix);
+            app.UseWhen(
+                ctx => ctx.Request.Path.StartsWithSegments(docsPrefix),
+                branch => branch.Use(async (HttpContext ctx, RequestDelegate next) =>
+                {
+                    if (!ctx.Request.Headers.TryGetValue(keyHeader, out StringValues supplied) ||
+                        supplied.Count == 0 ||
+                        !string.Equals(supplied.ToString(), expectedKey, StringComparison.Ordinal))
+                    {
+                        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+                        return;
+                    }
+
+                    await next(ctx);
+                }));
         }
-        else
+
+        if (exposeOpenApi)
+            app.MapOpenApi(openApiOpts.RoutePattern);
+
+        if (!app.Environment.IsDevelopment())
         {
             app.UseHttpsRedirection();
         }

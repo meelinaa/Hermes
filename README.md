@@ -4,7 +4,7 @@ Hermes is a **personal news digest service**. The idea is that you configure **w
 
 The codebase is intentionally structured for **clarity and maintainability**: layered architecture, explicit domain models, validation at the API boundary, and separate libraries for **news HTTP access** and **email delivery**. `Hermes.UnitTests` holds **xUnit** unit tests (services, JWT/auth + refresh hashing, API validators and HTTP helpers, NewsData.io URL builder, domain mappers, worker scheduler/digest/schedule services, EF Core **InMemory** checks on selected `HermesDbContext` methods). `Hermes.IntegrationTests` runs **API + real MySQL** tests via **Testcontainers** and `WebApplicationFactory` over `Hermes.Api` (**Docker** required). **Docker** is also the intended packaging and deployment story for running the API, database, frontend, and **worker** together.
 
-For **HTTP route details, request/response examples, and OpenAPI notes**, see `[Hermes.Api/README.md](Hermes.Api/README.md)`.
+For **HTTP route details, request/response examples, and controller-focused OpenAPI notes**, see `[Hermes.Api/README.md](Hermes.Api/README.md)`.
 
 ---
 
@@ -28,7 +28,7 @@ The solution is organized into focused projects:
 | **Hermes.Domain**                                      | Core **entities** (`User`, `News`, `NotificationLog`), **DTOs** (e.g. `UserScope` with **e-mail verification** flag), **RFC 7807 problem type** constants (`HermesProblemTypes` for API clients), **enums** (categories, languages, countries, weekdays, delivery channel, notification status), **domain exceptions** mapped by the API to HTTP status codes, and **abstractions** the application depends on.                                                                                                                                                                                                                                                                                                       |
 | **Hermes.Application**                                 | **Use cases** and **services** (users, authentication, news configuration, etc.) that orchestrate domain rules and call into persistence through interfaces.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **Hermes.Infrastructure**                              | **Entity Framework Core** with **Pomelo.EntityFrameworkCore.MySql**; **repositories**; `HermesDbContext`; resilience helpers (e.g. **Polly**) where appropriate. The database is **MySQL**.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| **Hermes.Api**                                         | **ASP.NET Core** host: **path versioning** (`/api/v1/`; see `[Hermes.Api/README.md](Hermes.Api/README.md)` § API versioning), controllers, **JWT** authentication, **FluentValidation**, global exception handling mapped to **Problem Details**, **health** endpoints (live/ready), **CORS** and DI composition. OpenAPI is available in **Development**.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Hermes.Api**                                         | **ASP.NET Core** host: **path versioning** (`/api/v1/`; see `[Hermes.Api/README.md](Hermes.Api/README.md)` § API versioning), controllers, **JWT** authentication, **FluentValidation**, global exception handling mapped to **Problem Details**, **health** endpoints (live/ready), **CORS** and DI composition. **OpenAPI** document `v1` (JWT + error models); see § **Observability & OpenAPI**. **Serilog** and optional **OpenTelemetry** (OTLP).                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | **Hermes.NewsClient**                                  | Optional **reference** project under `Hermes.NewsClient/`: typed HTTP client for **[NewsData.io](https://newsdata.io/)** (`NewsDataIoUrlBuilder`, `ApiUrlParts`, DTOs). It is **not** included in `Hermes.slnx`; the running pipeline uses `Hermes.Infrastructure` (`NewsDataIoClient` / `INewsArticleProvider`).                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **Hermes.Notifications**                               | **Email sending** (`IEmailSender`, `SmtpEmailSender` using `System.Net.Mail.SmtpClient`), configuration models, and **HTML newsletter composition** (`NewsletterHtmlComposer`) from **embedded** partial templates (header, repeating item row, footer).                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | **Hermes.UnitTests**                                   | **Unit tests** (xUnit, Moq): `UserService` (incl. e-mail verification helpers), `VerificationDigestService`, `NewsService`, `AuthTokenService`, JWT issuer, refresh-token hashing, `NotificationJobs`, thin wrappers such as `NotificationLogService`, `UpdateNewsRequestValidator`, `ControllerUserExtensions`, `NewsDataIoUrlBuilder`, ISO-code mappers / weekday converter, `HermesDbContext` helpers (e.g. notification-window query, profile e-mail / verification flags), `NewsletterScheduler`, `NewsletterScheduleService`, `NewsletterDigestService`. Uses **EF Core InMemory** where persistence is exercised without MySQL.                                                                                        |
@@ -135,6 +135,37 @@ The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, c
 
 ---
 
+## Observability & OpenAPI
+
+Hermes uses **Serilog** for application logs, optional **OpenTelemetry** export via **OTLP**, and a **versioned OpenAPI 3** document for HTTP contracts. Settings are read from `appsettings` and environment variables; the relevant sections are **`OpenTelemetry`** and **`OpenApi`** in **Hermes.Api** (and **`OpenTelemetry`** in **Hermes.Worker**).
+
+### Structured logging
+
+- **Hermes.Api** configures Serilog in hosting (`UseHermesSerilog`): logs include **correlation IDs** (`CorrelationIdMiddleware` + Serilog request logging) and **Activity** fields (**TraceId** / **SpanId** via `Serilog.Enrichers.Span`) when a current span exists.
+- **Hermes.Worker** wires Serilog into `HostApplicationBuilder.Logging` (`UseHermesWorkerSerilog`) with the same span enrichment so worker output lines up with distributed traces.
+- **Production** API configuration (`Hermes.Api/appsettings.Production.json`) uses **RenderedCompactJsonFormatter** on the console sink so platforms that ingest stdout JSON get a consistent structure; Development typically keeps human-readable console output.
+
+### OpenTelemetry (traces and metrics)
+
+- Export is **disabled by default** (`OpenTelemetry:Enabled` = `false`). Enable it when a collector (Jaeger, Grafana Alloy, the OpenTelemetry Collector, managed backends, etc.) is available.
+- Typical keys: **`OpenTelemetry:ServiceName`**, **`OpenTelemetry:OtlpEndpoint`** (gRPC OTLP, often `http://localhost:4317`), optional **`OpenTelemetry:OtlpHeaders`**. If **`OtlpEndpoint`** is empty, the SDK may still pick up the standard **`OTEL_EXPORTER_OTLP_ENDPOINT`** variable.
+- **Hermes.Api** registers instrumentation for **ASP.NET Core** (with health endpoints filtered out of noise where configured), **HttpClient**, and **.NET runtime** metrics, all exported with **OTLP**.
+- **Hermes.Worker** registers **Entity Framework Core** client instrumentation, **runtime** metrics, and **OTLP** export.
+- **Integration tests** disable telemetry on the in-memory API host (`OpenTelemetry:Enabled=false`) so CI does not require a collector.
+
+### OpenAPI contract (`Hermes.Api`)
+
+- The document name defaults to **`v1`** (`OpenApi:DocumentName`). With the default route template `openapi/{documentName}.json`, the spec is available at **`GET /openapi/v1.json`**.
+- The generated spec declares **Bearer JWT** security, **RFC 7807** components (**`ProblemDetails`**, **`ValidationProblemDetails`**), typical **400** / **401** responses, and **examples** on selected auth request bodies.
+- **When the JSON is served**
+  - In **Development**, **Testing**, and other non-Production environments, the document is exposed **without** needing `OpenApi:MapInProduction`.
+  - In **Production**, the route is **not** mapped unless **`OpenApi:MapInProduction`** is `true`.
+  - For **internal-only** docs in Production, set a non-empty **`OpenApi:DocumentationApiKey`**. Requests under **`OpenApi:DocumentationPathPrefix`** (default **`/openapi`**) must then send that value in **`OpenApi:DocumentationApiKeyHeader`** (default **`X-Hermes-Documentation-Key`**); otherwise the server answers **404**, hiding the fact that documentation exists.
+
+Controller-level route text and problem-type notes remain in **`Hermes.Api/README.md`**.
+
+---
+
 ## What is not implemented yet
 
 - **Production hardening of scheduling**: The worker uses a **minutely** Hangfire tick; production may want tuned cron, explicit **per-user time zones**, back-pressure, and stronger **idempotency** / dead-letter handling beyond the current design.
@@ -194,7 +225,7 @@ Requirements: **.NET SDK** matching the solution target (currently **.NET 10** i
 dotnet build Hermes.slnx
 ```
 
-Run the API from the `Hermes.Api` project directory (set `ASPNETCORE_ENVIRONMENT=Development` for OpenAPI). See `[Hermes.Api/README.md](Hermes.Api/README.md)` for endpoint summaries and `GET /openapi/v1.json` in Development.
+Run the API from the `Hermes.Api` project directory. For the OpenAPI JSON (`GET /openapi/v1.json` by default), see § **Observability & OpenAPI** above and `[Hermes.Api/README.md](Hermes.Api/README.md)` for endpoint summaries.
 
 Run the Blazor app from `Hermes.WebFrontend/Hermes.WebFrontend` (`dotnet run`). Configure `ApiBaseUrl` and CORS as described in `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.
 

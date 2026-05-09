@@ -35,5 +35,6 @@ public sealed class HermesApiWebApplicationFactory(string connectionString) : We
         builder.UseSetting("Jwt:AccessTokenMinutes", "60");
         builder.UseSetting("Jwt:RefreshTokenDays", "14");
         builder.UseSetting("RateLimiting:Enabled", "false");
+        builder.UseSetting("OpenTelemetry:Enabled", "false");
     }
 }

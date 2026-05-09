@@ -7,6 +7,7 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    builder.AddHermesOpenTelemetry();
     builder.Host.UseHermesSerilog();
 
     builder.Services.AddHermesApiServices(builder.Configuration);
