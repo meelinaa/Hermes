@@ -132,23 +132,19 @@ Success: **204 No Content**.
 
 ### Users
 
-**Register** uses entity `[User](../Hermes.Domain/Entities/User.cs)` (plain password in `passwordHash`; stored as BCrypt hash). **Profile update** uses `[UserProfileUpdateRequest](../Hermes.Application/Models/User/UserProfileUpdateRequest.cs)` (`newPassword` / `currentPassword`, not the full `User` JSON). Response DTO for lookups/register: `[UserScope](../Hermes.Domain/DTOs/UserScope.cs)`.
+**Register** body is `[RegisterUserRequest](../Hermes.Domain/DTOs/RegisterUserRequest.cs)` (`name`, `email`, `password`; extra JSON properties are ignored). **Profile update** uses `[UserProfileUpdateRequest](../Hermes.Application/Models/User/UserProfileUpdateRequest.cs)` (`newPassword` / `currentPassword`, not the full `User` JSON). Success responses use `[UserResponse](../Hermes.Application/Models/User/UserResponse.cs)` for register, profile GET, profile PUT, and successful verification-code submission. Queued verification mail: `[SendVerificationMailResponse](../Hermes.Application/Models/User/SendVerificationMailResponse.cs)`.
 
-**Register** (`POST /api/v1/users`): example (password is sent in `passwordHash` and hashed server-side):
+**Register** (`POST /api/v1/users`): example (`password` is hashed server-side with BCrypt):
 
 ```json
 {
-  "id": 0,
   "name": "Max Mustermann",
   "email": "max@example.com",
-  "passwordHash": "plain-password-here",
-  "isEmailVerified": false,
-  "twoFactorCode": null,
-  "twoFactorExpiry": null
+  "password": "plain-password-here"
 }
 ```
 
-**Update** (`PUT /api/v1/users`): body type `[UserProfileUpdateRequest](../Hermes.Application/Models/User/UserProfileUpdateRequest.cs)`. Omit `newPassword` (or send empty) to keep the existing password. When `newPassword` is set, `**currentPassword`** is required; the API verifies it with **BCrypt** against the stored hash before persisting the new hash.
+**Update** (`PUT /api/v1/users`): body type `[UserProfileUpdateRequest](../Hermes.Application/Models/User/UserProfileUpdateRequest.cs)`. Success body is **`UserResponse`** (current profile after save). Omit `newPassword` (or send empty) to keep the existing password. When `newPassword` is set, `**currentPassword`** is required; the API verifies it with **BCrypt** against the stored hash before persisting the new hash.
 
 ```json
 {
@@ -174,7 +170,7 @@ Password change example:
 
 If the **e-mail address changes**, persistence resets `**isEmailVerified`** to `false` until the user completes verification again.
 
-**Get user**: success body is `UserScope`:
+**Get user**: success body is **`UserResponse`**:
 
 ```json
 {
@@ -187,7 +183,7 @@ If the **e-mail address changes**, persistence resets `**isEmailVerified`** to `
 
 **E-mail verification**: queue mail for account id (same auth rules as other user routes):
 
-`POST /api/v1/users/1/verify` → **200** with `{ "userId": 1, "email": "max@example.com" }` (implementation queues the message with a time-limited code). The caller must be authorized to access the user id.
+`POST /api/v1/users/1/verify` → **200** with **`SendVerificationMailResponse`** `{ "userId": 1, "email": "max@example.com" }` (implementation queues the message with a time-limited code). The caller must be authorized to access the user id.
 
 Confirm code: body `[UserVerificationCodeRequest](../Hermes.Application/Models/User/UserVerificationCodeRequest.cs)`:
 
@@ -198,7 +194,7 @@ Confirm code: body `[UserVerificationCodeRequest](../Hermes.Application/Models/U
 }
 ```
 
-→ **200** when the code matches and is not expired; **400** when the code is wrong or expired (problem body without a stable `type`).
+→ **200** with **`UserResponse`** when the code matches and is not expired (includes updated `isEmailVerified`). **400** when the code is wrong or expired (problem body without a stable `type`).
 
 *More inline examples:* `[Controllers/UsersController.cs](Controllers/UsersController.cs)` (`SetNewUser`, `UpdateUser`).
 
@@ -210,12 +206,10 @@ Entity: `[News](../Hermes.Domain/Entities/News.cs)`. Enums: `[NewsCategory](../H
 
 The API uses `System.Text.Json` with **string enums** (`JsonStringEnumConverter`), so enum fields appear as enum member names in JSON (e.g. `"Technology"`, `"Monday"`).
 
-**Create** (`POST /api/v1/users/news`): example:
+**Create** (`POST /api/v1/users/news`): example (owner from JWT — omit `userId`/`id`):
 
 ```json
 {
-  "id": 0,
-  "userId": 0,
   "keywords": ["markets", "climate"],
   "category": ["Business", "Environment"],
   "languages": ["English", "German"],
@@ -225,9 +219,7 @@ The API uses `System.Text.Json` with **string enums** (`JsonStringEnumConverter`
 }
 ```
 
-Omit `userId` or set `0` to use the authenticated user’s id.
-
-**Create**: success body `[NewsScope](../Hermes.Domain/DTOs/NewsScope.cs)`:
+**Create**: success body [`CreateNewsResponse`](../Hermes.Application/Models/News/CreateNewsResponse.cs):
 
 ```json
 {
@@ -236,9 +228,9 @@ Omit `userId` or set `0` to use the authenticated user’s id.
 }
 ```
 
-**Update** (`PUT /api/v1/users/news`): same shape as create but `**id` must be set** to the existing news row (validated via FluentValidation).
+**Update** (`PUT /api/v1/users/news`): same editable fields as create plus required `id`; owner remains the JWT user (no `userId` in JSON).
 
-**List / get**: response is an array or single `[News](../Hermes.Domain/Entities/News.cs)` entity.
+**List / get**: response items are [`NewsResponse`](../Hermes.Application/Models/News/NewsResponse.cs) (API projection of persisted `[News](../Hermes.Domain/Entities/News.cs)` rows).
 
 *Path notes:* list uses `/api/v1/users/news/{userId}/list`. Single-item routes use literal segments, e.g. `GET`/`DELETE` `…/userId=1/newsId=5`.
 
@@ -248,12 +240,11 @@ Omit `userId` or set `0` to use the authenticated user’s id.
 
 Entity: `[NotificationLog](../Hermes.Domain/Entities/NotificationLog.cs)`. Status/channel enums: `[NotificationStatus](../Hermes.Domain/Enums/NotificationStatus.cs)`, `[DeliveryChannel](../Hermes.Domain/Enums/DeliveryChannel.cs)`.
 
-**Create** (`POST /api/v1/users/{userId}/notification-logs`):
+**Create** (`POST /api/v1/users/{userId}/notification-logs`): body omits `userId` (route + bearer scope the row):
 
 ```json
 {
-  "id": 0,
-  "userId": 0,
+  "newsId": null,
   "sentAt": "2026-03-29T13:00:00Z",
   "status": "Pending",
   "channel": "Email",
@@ -263,7 +254,7 @@ Entity: `[NotificationLog](../Hermes.Domain/Entities/NotificationLog.cs)`. Statu
 }
 ```
 
-`userId` in the body should be `0` or match `{userId}` in the URL.
+Success body: [`NotificationLogResponse`](../Hermes.Application/Models/NotificationLogs/NotificationLogResponse.cs).
 
 *More inline notes:* `[Controllers/NotificationLogsController.cs](Controllers/NotificationLogsController.cs)`.
 
@@ -300,7 +291,7 @@ Automated coverage lives in `**Hermes.UnitTests**` (fast, no Docker) and `**Herm
 | Area                              | Examples                                                                          |
 | --------------------------------- | --------------------------------------------------------------------------------- |
 | Auth / JWT                        | `AuthTokenServiceTests`, `JwtTokenIssuerTests`, `RefreshTokenHasherTests`         |
-| Users / news                      | `UserServiceTests`, `NewsServiceTests`, `NewsWriteValidatorTests`                 |
+| Users / news                      | `UserServiceTests`, `NewsServiceTests`, `UpdateNewsRequestValidatorTests`                 |
 | Verification mail pipeline        | `VerificationDigestServiceTests`                                                  |
 | Hangfire entrypoints              | `NotificationJobsTests`                                                           |
 | Thin application wrappers         | `NotificationLogServiceTests`                                                     |
@@ -315,11 +306,11 @@ Automated coverage lives in `**Hermes.UnitTests**` (fast, no Docker) and `**Herm
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Health**            | `HealthProbeIntegrationTests`: `/health/live`, `/health/ready`, DB probe behaviour                                                                                                                                                                                    |
 |                       | `ReadinessProbeFailureIntegrationTests`: readiness when MySQL stops                                                                                                                                                                                                   |
-| **Auth**              | `AuthIntegrationTests`: login, refresh + replay, **logout** (single session, revoke all, bad refresh body → **400**), credential validation, JWT bearer rejection (`UsersController` as probe), malformed/expired/forged tokens                                       |
+| **Auth**              | `AuthIntegrationTests`: login, refresh + replay, **logout** (single session, revoke all, unknown targeted refresh → **401**), credential validation, JWT bearer rejection (`UsersController` as probe), malformed/expired/forged tokens                                       |
 | **Users**             | `UsersCrudIntegrationTests`: anonymous register, profile GET (by id / by email), update, **password change success**, wrong `currentPassword` → **400** + `type`, delete + GET **404**, cross-account **403**, **401**/ **400** samples |
-|                       | `UsersEmailVerificationIntegrationTests`: `POST …/users/{id}/verify` and `POST …/users/verify/code` (success → `isEmailVerified`, wrong code / expired → **400**)                                                          |
+|                       | `UsersEmailVerificationIntegrationTests`: `POST …/users/{id}/verify` and `POST …/users/verify/code` (success → **`UserResponse`** / `isEmailVerified`, wrong code / expired → **400**)                                                          |
 | **News**              | `NewsCrudIntegrationTests`: create/list/get/update/delete, cross-user **403**, missing-news **404**, invalid JSON / binding **400**, **401** paths                                                                                                                    |
-| **Notification logs** | `NotificationLogsIntegrationTests`: `POST …/notification-logs` happy path, route vs body `userId` **400**, cross-user **403**, **401**/ malformed bearer                                                                                                              |
+| **Notification logs** | `NotificationLogsIntegrationTests`: `POST …/notification-logs` happy path, extraneous body `userId` ignored, cross-user **403**, **401**/ malformed bearer                                                                                                              |
 
 
 From the **repository root**:

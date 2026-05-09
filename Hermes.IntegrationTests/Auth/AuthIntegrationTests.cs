@@ -158,7 +158,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
 
         using HttpResponseMessage response = await client.PostAsJsonAsync( // Attempt to refresh using an empty string as the refresh token; this should fail with a Bad Request status due to validation rules that require a non-empty token, demonstrating that the API correctly enforces input validation for the refresh endpoint.
             "/api/v1/auth/refresh",
-            new { refreshToken = "" },
+            new { refreshToken = string.Empty },
             JsonWeb);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -331,10 +331,10 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     }
 
     /// <summary>
-    /// Wrong refresh material for targeted logout yields 400 (does not revoke all).
+    /// Wrong refresh material for targeted logout yields 401 (same semantics as refresh failure; does not revoke all).
     /// </summary>
     [Fact]
-    public async Task Logout_with_foreign_refresh_token_returns_BadRequest()
+    public async Task Logout_with_foreign_refresh_token_returns_Unauthorized()
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
@@ -347,6 +347,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
             options: JsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(logout);
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

@@ -1,4 +1,5 @@
 using Hermes.Api.Http;
+using Hermes.Api.Mapping;
 using Hermes.Application.Models;
 using Hermes.Application.Models.User;
 using Hermes.Domain.DTOs;
@@ -37,7 +38,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// </remarks>
     [AllowAnonymous]
     [HttpPost]
-    public async Task<ActionResult<UserScope>> SetNewUser([FromBody] RegisterUserRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponse>> SetNewUser([FromBody] RegisterUserRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.Name))
             return this.BadRequestProblem("Name is required.");
@@ -46,7 +47,7 @@ public class UsersController(IUserService userService) : ControllerBase
 
         UserScope userScope = await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
 
-        return Ok(userScope);
+        return Ok(userScope.ToUserResponse());
     }
 
     /// <summary>Update profile (name, e-mail, optional password change).</summary>
@@ -63,7 +64,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// </code>
     /// </remarks>
     [HttpPut]
-    public async Task<ActionResult> UpdateUser([FromBody] UserProfileUpdateRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponse>> UpdateUser([FromBody] UserProfileUpdateRequest request, CancellationToken cancellationToken)
     {
         if (request.Id <= 0)
             return this.BadRequestProblem("User Id is required for update.");
@@ -78,7 +79,7 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(request.Id) is { } denied)
             return denied;
 
-        User user = new() 
+        User user = new()
         {
             Id = request.Id,
             Name = request.Name,
@@ -95,7 +96,17 @@ public class UsersController(IUserService userService) : ControllerBase
             return this.BadRequestProblem(ex.Message);
         }
 
-        return Ok();
+        UserScope? updated;
+        try
+        {
+            updated = await userService.GetUserByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
+        return updated is null ? this.NotFoundProblem() : Ok(updated.ToUserResponse());
     }
 
     /// <summary>Delete user by id. No body.</summary>
@@ -126,7 +137,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <summary>Get user by id. No body.</summary>
     /// <remarks><b>GET</b> <c>api/v1/users/{id}</c></remarks>
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<UserScope>> GetUserById(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponse>> GetUserById(int id, CancellationToken cancellationToken)
     {
         if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
@@ -134,7 +145,7 @@ public class UsersController(IUserService userService) : ControllerBase
         try
         {
             UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
-            return user is null ? this.NotFoundProblem() : Ok(user);
+            return user is null ? this.NotFoundProblem() : Ok(user.ToUserResponse());
         }
         catch (UserNotFoundException)
         {
@@ -145,7 +156,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <summary>Get user by e-mail address (path segment).</summary>
     /// <remarks><b>GET</b> <c>api/v1/users/by-email/{email}</c> — URL-encode the address (e.g. <c>%40</c> for <c>@</c>). Uses a fixed prefix so routes like <c>/api/v1/users/news</c> are not treated as an e-mail.</remarks>
     [HttpGet("by-email/{email}")]
-    public async Task<ActionResult<UserScope>> GetUserByEmail(string email, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponse>> GetUserByEmail(string email, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email))
             return this.BadRequestProblem("Path segment 'email' is required.");
@@ -166,12 +177,12 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(user.UserId) is { } denied)
             return denied;
 
-        return Ok(user);
+        return Ok(user.ToUserResponse());
     }
 
     /// <summary>Sends a verification email to the authenticated user identified by <paramref name="id"/>.</summary>
     [HttpPost("{id:int}/verify")]
-    public async Task<ActionResult> SendVerificationMail(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<SendVerificationMailResponse>> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
         if (id <= 0)
             return this.BadRequestProblem("A valid user id is required.");
@@ -197,12 +208,12 @@ public class UsersController(IUserService userService) : ControllerBase
 
         await userService.SendVerificationMailAsync(user.Email, cancellationToken).ConfigureAwait(false);
         RegisterVerificationMailSend(id);
-        return Ok(new { userId = id, email = user.Email });
+        return Ok(new SendVerificationMailResponse(id, user.Email));
     }
 
-    /// <summary>Submit e-mail verification code (six-digit). Returns 200 when the account is marked verified.</summary>
+    /// <summary>Submit e-mail verification code (six-digit). Returns updated profile when verified.</summary>
     [HttpPost("verify/code")]
-    public async Task<ActionResult> CheckVerificationCode([FromBody] UserVerificationCodeRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponse>> CheckVerificationCode([FromBody] UserVerificationCodeRequest request, CancellationToken cancellationToken)
     {
         if (request is null)
             return this.BadRequestProblem("Request body is required.");
@@ -217,7 +228,18 @@ public class UsersController(IUserService userService) : ControllerBase
             return denied;
 
         await userService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
-        return Ok();
+
+        UserScope? refreshed;
+        try
+        {
+            refreshed = await userService.GetUserByIdAsync(request.UserId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UserNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
+        return refreshed is null ? this.NotFoundProblem() : Ok(refreshed.ToUserResponse());
     }
 
     /// <summary>
@@ -233,7 +255,7 @@ public class UsersController(IUserService userService) : ControllerBase
             return null;
 
         int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
-        Response.Headers["Retry-After"] = remainingSeconds.ToString();
+        Response.Headers.RetryAfter = remainingSeconds.ToString();
         return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
     }
 

@@ -1,4 +1,9 @@
+using FluentValidation;
+using FluentValidation.Results;
 using Hermes.Api.Http;
+using Hermes.Api.Mapping;
+using Hermes.Api.Validation;
+using Hermes.Application.Models.NotificationLogs;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -14,11 +19,10 @@ public class NotificationLogsController(INotificationLogService notificationLogS
 {
     /// <summary>Append a notification log entry.</summary>
     /// <remarks>
-    /// <b>POST</b> <c>api/v1/users/{userId}/notification-logs</c> — Body:
+    /// <b>POST</b> <c>api/v1/users/{userId}/notification-logs</c> — Body omits <c>userId</c> (route + bearer scope the row).
     /// <code>
     /// {
-    ///   "id": 0,
-    ///   "userId": 0,
+    ///   "newsId": null,
     ///   "sentAt": "2026-03-29T13:00:00Z",
     ///   "status": "Pending",
     ///   "channel": "Email",
@@ -27,20 +31,25 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     ///   "nextRetryAt": null
     /// }
     /// </code>
-    /// <c>status</c>: <c>Pending</c>, <c>Sent</c>, <c>Failed</c> — stored as string in DB; use string in JSON if enum-as-string is enabled, else <c>0</c>/<c>1</c>/<c>2</c>.
-    /// <c>channel</c>: <c>Email</c>, <c>Telegram</c> (or <c>0</c>/<c>1</c>).
+    /// <c>status</c>: <c>Pending</c>, <c>Sent</c>, <c>Failed</c> — stored as string in DB.
+    /// <c>channel</c>: <c>Email</c>, <c>Telegram</c>.
     /// </remarks>
     [HttpPost]
-    public async Task<ActionResult<NotificationLog>> Post(int userId, [FromBody] NotificationLog log, CancellationToken cancellationToken)
+    public async Task<ActionResult<NotificationLogResponse>> Post(
+        int userId,
+        [FromBody] CreateNotificationLogRequest request,
+        [FromServices] IValidator<CreateNotificationLogRequest> validator,
+        CancellationToken cancellationToken)
     {
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        if (log.UserId != 0 && log.UserId != userId)
-            return this.BadRequestProblem("NotificationLog.UserId must match the route or be 0.");
-        log.UserId = userId;
+        ValidationResult fv = await validator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!fv.IsValid)
+            return fv.ToValidationProblem(this);
 
-        await notificationLogService.SetNotificationLogAsync(log, cancellationToken).ConfigureAwait(false);
-        return Ok(log);
+        NotificationLog entity = request.ToEntity(userId);
+        await notificationLogService.SetNotificationLogAsync(entity, cancellationToken).ConfigureAwait(false);
+        return Ok(entity.ToResponse());
     }
 }

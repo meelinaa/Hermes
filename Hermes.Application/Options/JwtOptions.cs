@@ -10,15 +10,15 @@ public sealed class JwtOptions
     public const string SECTION_NAME = "Jwt";
 
     /// <summary>Value for the JWT <c>iss</c> claim and for <see cref="Microsoft.IdentityModel.Tokens.TokenValidationParameters.ValidIssuer"/>.</summary>
-    public string Issuer { get; set; } = "";
+    public string Issuer { get; set; } = string.Empty;
 
     /// <summary>Value for the JWT <c>aud</c> claim and for token audience validation.</summary>
-    public string Audience { get; set; } = "";
+    public string Audience { get; set; } = string.Empty;
 
     /// <summary>
     /// Shared secret used to sign (HMAC-SHA256) and verify access tokens. Must stay private; use a long random value in production.
     /// </summary>
-    public string SigningKey { get; set; } = "";
+    public string SigningKey { get; set; } = string.Empty;
 
     /// <summary>Lifetime of JWT access tokens in minutes (short, since refresh tokens extend the session).</summary>
     public int AccessTokenMinutes { get; set; } = 60;

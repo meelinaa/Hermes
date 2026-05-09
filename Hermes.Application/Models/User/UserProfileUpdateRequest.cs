@@ -5,9 +5,9 @@ public sealed class UserProfileUpdateRequest
 {
     public int Id { get; set; }
 
-    public string Name { get; set; } = "";
+    public string Name { get; set; } = string.Empty;
 
-    public string Email { get; set; } = "";
+    public string Email { get; set; } = string.Empty;
 
     /// <summary>Plain new password; omit or empty to keep the current password.</summary>
     public string? NewPassword { get; set; }

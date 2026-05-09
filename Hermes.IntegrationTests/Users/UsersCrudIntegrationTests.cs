@@ -41,6 +41,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.True(json.RootElement.GetProperty("userId").GetInt32() > 0);
         Assert.Equal(email, json.RootElement.GetProperty("email").GetString());
         Assert.False(string.IsNullOrEmpty(json.RootElement.GetProperty("name").GetString()));
+        Assert.False(json.RootElement.GetProperty("isEmailVerified").GetBoolean());
     }
 
     [Fact]
@@ -52,7 +53,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             id = 0,
             name = "No Password User",
             email = $"nopwd-{Guid.NewGuid():N}@integration.hermes",
-            password = "", // Empty password should be rejected by API validation.
+            password = string.Empty, // Empty password should be rejected by API validation.
             isEmailVerified = false,
             twoFactorCode = (string?)null,
             twoFactorExpiry = (DateTime?)null,
@@ -176,6 +177,11 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
 
         using HttpResponseMessage putResp = await client.SendAsync(put);
         Assert.Equal(HttpStatusCode.OK, putResp.StatusCode);
+        using (JsonDocument putJson = JsonDocument.Parse(await putResp.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("Renamed Integration User", putJson.RootElement.GetProperty("name").GetString());
+            Assert.Equal(newEmail, putJson.RootElement.GetProperty("email").GetString());
+        }
 
         using HttpResponseMessage getResp = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access));
         getResp.EnsureSuccessStatusCode();

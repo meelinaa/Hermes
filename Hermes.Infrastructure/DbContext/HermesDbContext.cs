@@ -551,7 +551,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             entity.ToTable("notification_logs");
             entity.HasKey(notificationLog => notificationLog.Id);
 
-            entity.HasOne(notificationLog => notificationLog.User)
+            entity.HasOne<User>()
                 .WithMany(userEntity => userEntity.NotificationLogs)
                 .HasForeignKey(notificationLog => notificationLog.UserId)
                 .OnDelete(DeleteBehavior.Cascade);

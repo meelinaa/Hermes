@@ -57,16 +57,15 @@ public class AuthController(IUserService userService) : ControllerBase
             return this.UnauthorizedProblem(result.ErrorMessage);
 
         AuthTokensResult tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
-        return Ok(new
-        {
-            success = true,
-            userId = result.UserId,
-            accessToken = tokens.AccessToken,
-            tokenType = "Bearer",
-            expiresAt = tokens.AccessTokenExpiresAtUtc,
-            refreshToken = tokens.RefreshToken,
-            refreshTokenExpiresAt = tokens.RefreshTokenExpiresAtUtc
-        });
+        LoginResponse body = new(
+            Success: true,
+            UserId: result.UserId!.Value,
+            AccessToken: tokens.AccessToken,
+            TokenType: "Bearer",
+            ExpiresAt: tokens.AccessTokenExpiresAtUtc,
+            RefreshToken: tokens.RefreshToken,
+            RefreshTokenExpiresAt: tokens.RefreshTokenExpiresAtUtc);
+        return Ok(body);
     }
 
     /// <summary>Exchange a valid refresh token for a new access + refresh pair (rotation).</summary>
@@ -87,15 +86,14 @@ public class AuthController(IUserService userService) : ControllerBase
         if (next is null)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
 
-        return Ok(new
-        {
-            success = true,
-            accessToken = next.AccessToken,
-            tokenType = "Bearer",
-            expiresAt = next.AccessTokenExpiresAtUtc,
-            refreshToken = next.RefreshToken,
-            refreshTokenExpiresAt = next.RefreshTokenExpiresAtUtc
-        });
+        RefreshResponse body = new(
+            Success: true,
+            AccessToken: next.AccessToken,
+            TokenType: "Bearer",
+            ExpiresAt: next.AccessTokenExpiresAtUtc,
+            RefreshToken: next.RefreshToken,
+            RefreshTokenExpiresAt: next.RefreshTokenExpiresAtUtc);
+        return Ok(body);
     }
 
     /// <summary>
@@ -120,7 +118,7 @@ public class AuthController(IUserService userService) : ControllerBase
 
         bool ok = await authTokens.TryRevokeRefreshForUserAsync(body.RefreshToken, userId, cancellationToken).ConfigureAwait(false);
         if (!ok)
-            return this.BadRequestProblem("Invalid or expired refresh token.");
+            return this.UnauthorizedProblem("Invalid or expired refresh token.");
 
         return NoContent();
     }

@@ -12,7 +12,7 @@ public class RefreshToken
     public int UserId { get; set; }
 
     /// <summary>SHA-256 hex hash of the refresh token string (never store the plain token).</summary>
-    public string TokenHash { get; set; } = "";
+    public string TokenHash { get; set; } = string.Empty;
 
     /// <summary>UTC instant after which this row cannot be used for rotation even if not revoked.</summary>
     public DateTime ExpiresAt { get; set; }
