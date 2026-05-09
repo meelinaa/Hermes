@@ -8,7 +8,7 @@ using NewsEntity = Hermes.Domain.Entities.News;
 namespace Hermes.IntegrationTests.News;
 
 /// <summary>
-/// Validates MySQL-side due filtering (<c>JSON_CONTAINS</c> + <c>JSON_TABLE</c>) against real JSON stored by EF conversions.
+/// Validates MySQL-side due filtering (<c>JSON_SEARCH</c> / <c>JSON_VALID</c>) against real JSON stored by EF conversions.
 /// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]

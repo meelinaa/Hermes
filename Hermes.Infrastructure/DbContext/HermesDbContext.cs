@@ -266,24 +266,41 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         ArgumentOutOfRangeException.ThrowIfLessThan(minute, 0);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(minute, 59);
 
-        string weekdayName = weekday.ToString();
+        // Labels must match JSON string elements produced by the same serializers as the EF value converters.
+        string weekdayLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(weekday, HermesJsonOptions.ForEnums))!;
+        string timeLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(new TimeOnly(hour, minute)))!;
         List<DueNewsScheduleSlotRow> rows = await Database
             .SqlQueryRaw<DueNewsScheduleSlotRow>(
                 """
                 SELECT n.Id AS Id, n.UserId AS UserId
                 FROM news n
                 WHERE n.Id > 0 AND n.UserId > 0
-                  AND JSON_CONTAINS(n.SendOnWeekdays, JSON_QUOTE({0}), '$')
-                  AND EXISTS (
-                    SELECT 1
-                    FROM JSON_TABLE(n.SendAtTimes, '$[*]' COLUMNS (time_str VARCHAR(40) PATH '$')) jt
-                    WHERE HOUR(CAST(jt.time_str AS TIME(6))) = {1}
-                      AND MINUTE(CAST(jt.time_str AS TIME(6))) = {2})
+                  AND JSON_SEARCH(
+                    IF(
+                      n.SendOnWeekdays IS NOT NULL
+                      AND CHAR_LENGTH(TRIM(n.SendOnWeekdays)) > 0
+                      AND JSON_VALID(n.SendOnWeekdays),
+                      n.SendOnWeekdays,
+                      '[]'),
+                    'one',
+                    {0},
+                    NULL,
+                    '$[*]') IS NOT NULL
+                  AND JSON_SEARCH(
+                    IF(
+                      n.SendAtTimes IS NOT NULL
+                      AND CHAR_LENGTH(TRIM(n.SendAtTimes)) > 0
+                      AND JSON_VALID(n.SendAtTimes),
+                      n.SendAtTimes,
+                      '[]'),
+                    'one',
+                    {1},
+                    NULL,
+                    '$[*]') IS NOT NULL
                 ORDER BY n.Id
                 """,
-                weekdayName,
-                hour,
-                minute)
+                weekdayLabel,
+                timeLabel)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -577,13 +594,17 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
             entity.Property(newsEntity => newsEntity.SendOnWeekdays)
                 .HasConversion(
-                    weekdayValues => JsonSerializer.Serialize(weekdayValues, HermesJsonOptions.ForEnums),
-                    serializedWeekdays => JsonSerializer.Deserialize<List<Weekdays>>(serializedWeekdays, HermesJsonOptions.ForEnums) ?? new List<Weekdays>());
+                    weekdayValues => JsonSerializer.Serialize(weekdayValues ?? new List<Weekdays>(), HermesJsonOptions.ForEnums),
+                    serializedWeekdays => string.IsNullOrWhiteSpace(serializedWeekdays)
+                        ? new List<Weekdays>()
+                        : JsonSerializer.Deserialize<List<Weekdays>>(serializedWeekdays, HermesJsonOptions.ForEnums) ?? new List<Weekdays>());
 
             entity.Property(newsEntity => newsEntity.SendAtTimes)
                 .HasConversion(
-                    sendAtTimes => JsonSerializer.Serialize(sendAtTimes, (JsonSerializerOptions?)null),
-                    serializedSendAtTimes => JsonSerializer.Deserialize<List<TimeOnly>>(serializedSendAtTimes, (JsonSerializerOptions?)null) ?? new List<TimeOnly>());
+                    sendAtTimes => JsonSerializer.Serialize(sendAtTimes ?? new List<TimeOnly>(), (JsonSerializerOptions?)null),
+                    serializedSendAtTimes => string.IsNullOrWhiteSpace(serializedSendAtTimes)
+                        ? new List<TimeOnly>()
+                        : JsonSerializer.Deserialize<List<TimeOnly>>(serializedSendAtTimes, (JsonSerializerOptions?)null) ?? new List<TimeOnly>());
         });
 
         modelBuilder.Entity<NotificationLog>(entity =>

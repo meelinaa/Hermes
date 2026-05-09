@@ -1,6 +1,5 @@
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
-using Hermes.Application.Models;
 using Hermes.Application.Models.User;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;

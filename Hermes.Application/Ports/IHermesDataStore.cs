@@ -29,7 +29,7 @@ public interface IHermesDataStore
     /// <summary>
     /// Returns newsletter profiles that are due for the given local weekday and clock slot, evaluated in MySQL
     /// (JSON on <c>news</c> columns) so schedulers do not load all rows every tick.
-    /// Requires MySQL 8.0.4+ for <c>JSON_TABLE</c>.
+    /// Requires MySQL 8+ for <c>JSON_SEARCH</c> / <c>JSON_VALID</c>.
     /// </summary>
     Task<List<(int NewsId, int UserId)>> GetDueNewsScheduleForSlotAsync(Weekdays weekday, int hour, int minute, CancellationToken cancellationToken = default);
     Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default);

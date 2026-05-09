@@ -17,7 +17,7 @@ namespace Hermes.IntegrationTests.Auth;
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
 {
-    private static readonly JsonSerializerOptions JsonWeb = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonWeb = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Successful credential validation issues access + refresh pairs persisted as hashed refresh rows in MySQL.
@@ -63,7 +63,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         using HttpResponseMessage response = await client.PostAsJsonAsync( 
             "/api/v1/auth/login",
             new { nameOrEmail, password }, // This anonymous object represents the JSON payload sent to the login endpoint; it includes the parameters being tested (nameOrEmail and password) which are intentionally set to invalid values to trigger validation errors.
-            JsonWeb);
+            _jsonWeb);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("application/problem", response.Content.Headers.ContentType?.MediaType ?? "", StringComparison.OrdinalIgnoreCase);
@@ -159,7 +159,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         using HttpResponseMessage response = await client.PostAsJsonAsync( // Attempt to refresh using an empty string as the refresh token; this should fail with a Bad Request status due to validation rules that require a non-empty token, demonstrating that the API correctly enforces input validation for the refresh endpoint.
             "/api/v1/auth/refresh",
             new { refreshToken = string.Empty },
-            JsonWeb);
+            _jsonWeb);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -299,7 +299,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
 
         using HttpRequestMessage logout = new(HttpMethod.Post, "/api/v1/auth/logout");
         logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        logout.Content = JsonContent.Create(new { refreshToken = refresh }, options: JsonWeb);
+        logout.Content = JsonContent.Create(new { refreshToken = refresh }, options: _jsonWeb);
 
         using HttpResponseMessage logoutResp = await client.SendAsync(logout);
         Assert.Equal(HttpStatusCode.NoContent, logoutResp.StatusCode);
@@ -321,7 +321,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
 
         using HttpRequestMessage logout = new(HttpMethod.Post, "/api/v1/auth/logout");
         logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        logout.Content = JsonContent.Create(new { refreshToken = (string?)null }, options: JsonWeb);
+        logout.Content = JsonContent.Create(new { refreshToken = (string?)null }, options: _jsonWeb);
 
         using HttpResponseMessage logoutResp = await client.SendAsync(logout);
         Assert.Equal(HttpStatusCode.NoContent, logoutResp.StatusCode);
@@ -344,7 +344,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         logout.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         logout.Content = JsonContent.Create(
             new { refreshToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)) },
-            options: JsonWeb);
+            options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(logout);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

@@ -9,10 +9,7 @@ namespace Hermes.UnitTests.Infrastructure.NewsDataIo;
 public sealed class NewsDataIoUrlBuilderTests
 {
     [Fact]
-    public void Build_ThrowsArgumentNull_WhenPartsNull()
-    {
-        Assert.Throws<ArgumentNullException>(() => NewsDataIoUrlBuilder.Build(null!));
-    }
+    public void Build_ThrowsArgumentNull_WhenPartsNull() => Assert.Throws<ArgumentNullException>(() => NewsDataIoUrlBuilder.Build(null!));
 
     /// <summary>
     /// ApiKey must be non-whitespace — remote API always requires authentication query parameter.

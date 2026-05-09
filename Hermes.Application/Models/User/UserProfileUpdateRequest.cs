@@ -1,4 +1,4 @@
-namespace Hermes.Application.Models;
+namespace Hermes.Application.Models.User;
 
 /// <summary>Body for <c>PUT /api/v1/users</c> (profile update). JSON camelCase.</summary>
 public sealed class UserProfileUpdateRequest
