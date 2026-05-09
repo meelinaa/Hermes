@@ -69,6 +69,7 @@ services:
       - Email__Port=${MAIL_PORT}
       - MailHog__BaseUrl=http://hermes-mailhog:8025
       - NewsDataIo__Key=${NEWS_DATA_IO_KEY}
+      - Newsletter__TimeZoneId=Europe/Berlin
     depends_on:
       hermes-mysql:
         condition: service_healthy

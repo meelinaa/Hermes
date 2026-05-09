@@ -21,13 +21,13 @@ public static class MailHogSchedulerTestMail
         EmailRecipient to = new(smtp.DefaultFromAddress, smtp.DefaultFromName);
         string body =
             $"<p>Hermes Worker – Scheduler-Lauf (MailHog-Test)</p>" +
-            $"<p>Lokal: {schedulerRunAt.LocalDateTime:O}<br/>UTC: {schedulerRunAt.UtcDateTime:O}</p>" +
+            $"<p>Wandzeit (Konfig Newsletter-TZ): {schedulerRunAt.DateTime:O}<br/>UTC: {schedulerRunAt.UtcDateTime:O}</p>" +
             "<p>Wenn du das in MailHog siehst, ist SMTP ok.</p>";
 
         await emailSender.SendAsync(
                 new EmailMessage(
                     to,
-                    $"[Hermes/MailHog] Scheduler-Test {schedulerRunAt.LocalDateTime:HH:mm:ss}",
+                    $"[Hermes/MailHog] Scheduler-Test {schedulerRunAt.DateTime:HH:mm:ss}",
                     body),
                 cancellationToken)
             .ConfigureAwait(false);

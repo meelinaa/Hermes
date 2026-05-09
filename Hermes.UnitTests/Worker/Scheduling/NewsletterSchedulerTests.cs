@@ -1,4 +1,5 @@
 using Hermes.Application.Models.Email;
+using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Services;
 using Hermes.Notifications.Receiving.Models;
@@ -46,7 +47,8 @@ public sealed class NewsletterSchedulerTests
             NullLogger<NewsletterScheduler>.Instance,
             emailSender.Object,
             CreateEmailSettings(),
-            Options.Create(new MailHogSettings { SendSchedulerTestMailEachMinute = false }));
+            Options.Create(new MailHogSettings { SendSchedulerTestMailEachMinute = false }),
+            Options.Create(new NewsletterOptions()));
 
         // Act
         await sut.RunAsync();
@@ -78,7 +80,8 @@ public sealed class NewsletterSchedulerTests
             NullLogger<NewsletterScheduler>.Instance,
             Mock.Of<IEmailSender>(),
             CreateEmailSettings(),
-            Options.Create(new MailHogSettings()));
+            Options.Create(new MailHogSettings()),
+            Options.Create(new NewsletterOptions()));
 
         using CancellationTokenSource cts = new();
 

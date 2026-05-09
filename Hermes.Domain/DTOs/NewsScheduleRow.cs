@@ -8,5 +8,5 @@ namespace Hermes.Domain.DTOs;
 /// <param name="NewsId">News profile id (one digest job per row).</param>
 /// <param name="UserId">Owner user id.</param>
 /// <param name="SendOnWeekdays">Days on which sends are allowed.</param>
-/// <param name="SendAtTimes">Clock times (hour and minute) matched against the worker host’s current minute (<see cref="DateTime.Now"/>).</param>
+/// <param name="SendAtTimes">Clock times (hour and minute) matched against the configured newsletter time zone on the worker (configuration key <c>Newsletter:TimeZoneId</c>).</param>
 public sealed record NewsScheduleRow(int NewsId, int UserId, List<Weekdays> SendOnWeekdays, List<TimeOnly> SendAtTimes);

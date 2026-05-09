@@ -1,7 +1,9 @@
 using Hangfire;
 using Hermes.Application.Jobs;
 using Hermes.Application.Models.Email;
+using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
 using Hermes.Notifications.Receiving.Models;
 using Hermes.Worker.MailHog;
@@ -18,23 +20,30 @@ public sealed class NewsletterScheduler(
     ILogger<NewsletterScheduler> logger,
     IEmailSender emailSender,
     EmailSettings emailSettings,
-    IOptions<MailHogSettings> mailHogOptions)
+    IOptions<MailHogSettings> mailHogOptions,
+    IOptions<NewsletterOptions> newsletterOptions)
 {
+    private readonly TimeZoneInfo _newsletterTimeZone =
+        NewsletterSchedulingClock.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
+
     /// <summary>Evaluates due newsletter items for the current minute and enqueues one Hangfire job per due row.</summary>
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        DateTime now = DateTime.Now;
-        DateTime slotStartLocal = new(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Local);
-        DateTime slotStartUtc = slotStartLocal.ToUniversalTime();
+        DateTime wallNow = NewsletterSchedulingClock.GetWallClockNow(_newsletterTimeZone);
+        DateTime slotStartWall = NewsletterSchedulingClock.GetWallClockMinuteStart(_newsletterTimeZone);
+        DateTime slotStartUtc = NewsletterSchedulingClock.WallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
+        DateTimeOffset wallStamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _newsletterTimeZone);
 
         logger.LogInformation(
-            "[NewsletterScheduler] === Run START === host local now={Local:o} | slot local={SlotLocal:o} | slotUtc={SlotUtc:o} | host TZ={TzId}",
-            now,
-            slotStartLocal,
-            slotStartUtc,
-            TimeZoneInfo.Local.Id);
+            "[NewsletterScheduler] === Run START === wall-now (newsletter TZ={TzId})={Wall:o} | minute start wall={SlotWall:o} | slotUtc={SlotUtc:o} | source=UtcNow→TZ",
+            _newsletterTimeZone.Id,
+            wallNow,
+            slotStartWall,
+            slotStartUtc);
 
-        IReadOnlyList<(int NewsId, int UserId)> due = await newsletterScheduleService.GetDueItemsAsync(now, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<(int NewsId, int UserId)> due = await newsletterScheduleService
+            .GetDueItemsAsync(wallNow, cancellationToken)
+            .ConfigureAwait(false);
 
         foreach ((int newsId, int userId) in due)
         {
@@ -56,7 +65,7 @@ public sealed class NewsletterScheduler(
                 await MailHogSchedulerTestMail.SendAsync(
                         emailSender,
                         emailSettings,
-                        DateTimeOffset.Now,
+                        wallStamp,
                         logger,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -66,5 +75,5 @@ public sealed class NewsletterScheduler(
                 logger.LogWarning(ex, "[NewsletterScheduler] MailHog-Scheduler-Testmail fehlgeschlagen.");
             }
         }
-    }  
+    }
 }
