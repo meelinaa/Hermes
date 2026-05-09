@@ -26,5 +26,7 @@ public class RefreshToken
     /// <summary>Optional link to the replacement row after refresh-token rotation (audit).</summary>
     public int? ReplacedByTokenId { get; set; }
 
+    public RefreshToken? ReplacedByToken { get; set; }
+
     public User? User { get; set; }
 }

@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Domain.Entities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Security;
@@ -12,7 +13,8 @@ namespace Hermes.Application.Security;
 public sealed class AuthTokenService(
     IHermesDataStore db,
     IJwtTokenIssuer jwt,
-    IOptions<JwtOptions> options) : IAuthTokenService
+    IOptions<JwtOptions> options,
+    ILogger<AuthTokenService> logger) : IAuthTokenService
 {
     private readonly JwtOptions _o = options.Value;
 
@@ -46,9 +48,17 @@ public sealed class AuthTokenService(
             return null;
 
         string? hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
-        RefreshToken? old = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
+        RefreshToken? old = await db.GetRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
         if (old is null || old.User is null)
             return null;
+
+        if (old.RevokedAt != null || old.ExpiresAt <= DateTime.UtcNow)
+        {
+            string shortHash = hash.Length > 8 ? hash[..8] + "..." : hash;
+            logger.LogWarning("Replay detected: Attempt to rotate revoked or expired token. UserId: {UserId}, TokenHash: {TokenHash}", old.UserId, shortHash);
+            await db.RevokeTokenFamilyAsync(old, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
 
         JwtAccessTokenResult access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
         string? newPlain = CreateRefreshPlain();

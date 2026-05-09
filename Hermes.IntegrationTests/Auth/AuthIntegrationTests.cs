@@ -89,30 +89,48 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     }
 
     /// <summary>
-    /// After rotation the previous refresh plaintext must be unusable—replay detection prevents stolen tokens from working indefinitely.
+    /// Sequential refresh rotation yields new tokens each time.
     /// </summary>
-    /// <remarks>
-    /// Mirrors <see cref="Hermes.Application.Security.AuthTokenService.RotateAsync"/> which completes rotation via <see cref="Hermes.Application.Ports.IHermesDataStore.CompleteRefreshRotationAsync"/>.
-    /// </remarks>
     [Fact]
-    public async Task Refresh_rejects_replay_of_previous_refresh_after_rotation()
+    public async Task Refresh_Sequential_Rotation_Works()
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string refreshFromLogin = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD); // Obtain the initial refresh token from login, which will be used to test the refresh flow and subsequent replay detection after rotation.
+        string refreshFromLogin = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        string refreshAfterRotation = await AuthIntegrationFlows.RefreshAndGetNewRefreshAsync(client, refreshFromLogin); // Perform a refresh using the initial refresh token, which should succeed and return a new refresh token; this simulates the normal refresh flow and sets up the scenario for testing replay detection of the old token.
+        string refreshAfterRotation = await AuthIntegrationFlows.RefreshAndGetNewRefreshAsync(client, refreshFromLogin);
 
-        using HttpResponseMessage replayOld = await AuthIntegrationFlows.RefreshResponseAsync(client, refreshFromLogin); // Attempt to refresh again using the original refresh token after it has been rotated; this should fail with an Unauthorized status, demonstrating that the old token is no longer valid and replay attacks are mitigated.
-        Assert.Equal(HttpStatusCode.Unauthorized, replayOld.StatusCode);
-
-        string refreshSecondRotation = await AuthIntegrationFlows.RefreshAndGetNewRefreshAsync(client, refreshAfterRotation); // Perform another refresh using the new refresh token obtained from the first refresh; this should succeed and return yet another new refresh token, demonstrating that the refresh flow continues to work with valid tokens while still enforcing replay detection on old tokens.
-
-        using HttpResponseMessage replayMiddle = await AuthIntegrationFlows.RefreshResponseAsync(client, refreshAfterRotation); // Attempt to refresh again using the second refresh token after it has been rotated; this should also fail with an Unauthorized status, confirming that each refresh token is single-use and that replay detection is consistently enforced across multiple rotations.
-        Assert.Equal(HttpStatusCode.Unauthorized, replayMiddle.StatusCode);
+        string refreshSecondRotation = await AuthIntegrationFlows.RefreshAndGetNewRefreshAsync(client, refreshAfterRotation);
 
         Assert.NotEqual(refreshFromLogin, refreshAfterRotation);
         Assert.NotEqual(refreshAfterRotation, refreshSecondRotation);
+    }
+
+    /// <summary>
+    /// Replay attack simulation: if a previously used (rotated) refresh token is used again, the entire token family is revoked.
+    /// The legitimate client will subsequently fail to refresh with its valid token.
+    /// </summary>
+    [Fact]
+    public async Task Refresh_Twice_WithSameToken_RevokesFamily()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        
+        // Schritt 1: Login (liefert Token A).
+        string tokenA = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
+
+        // Schritt 2: Refresh mit Token A (liefert Token B).
+        string tokenB = await AuthIntegrationFlows.RefreshAndGetNewRefreshAsync(client, tokenA);
+
+        // Schritt 3: Erneuter Refresh mit Token A (Simulierter Replay-Angriff).
+        // Erwartung: Der API-Call schlägt fehl (Unauthorized).
+        using HttpResponseMessage replayResponse = await AuthIntegrationFlows.RefreshResponseAsync(client, tokenA);
+        Assert.Equal(HttpStatusCode.Unauthorized, replayResponse.StatusCode);
+
+        // Schritt 4: Refresh mit Token B.
+        // Erwartung: Schlägt ebenfalls fehl, da Schritt 3 die gesamte Token-Familie widerrufen hat.
+        using HttpResponseMessage subsequentRefreshResponse = await AuthIntegrationFlows.RefreshResponseAsync(client, tokenB);
+        Assert.Equal(HttpStatusCode.Unauthorized, subsequentRefreshResponse.StatusCode);
     }
 
     /// <summary>

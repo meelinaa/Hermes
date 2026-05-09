@@ -31,9 +31,11 @@ public interface IHermesDataStore
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task AddRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default);
     Task<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
+    Task<RefreshToken?> GetRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
     Task CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default);
     Task RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default);
     Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default);
+    Task RevokeTokenFamilyAsync(RefreshToken compromisedToken, CancellationToken cancellationToken = default);
     Task<bool> ExistsSentNotificationInWindowAsync(int userId, int newsId, DateTime windowStartUtc, DateTime windowEndUtc, CancellationToken cancellationToken = default);
 
     /// <summary>

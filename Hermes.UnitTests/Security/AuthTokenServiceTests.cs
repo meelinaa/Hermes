@@ -1,7 +1,9 @@
+using System.Security.Cryptography;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Security;
 using Hermes.Domain.Entities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -16,10 +18,11 @@ public sealed class AuthTokenServiceTests
     private static AuthTokenService CreateSut(
         Mock<IHermesDataStore> db,
         Mock<IJwtTokenIssuer> jwt,
+        Mock<ILogger<AuthTokenService>>? logger = null,
         JwtOptions? options = null)
     {
         JwtOptions jwtOptions = options ?? new JwtOptions { RefreshTokenDays = 14 };
-        return new AuthTokenService(db.Object, jwt.Object, Options.Create(jwtOptions));
+        return new AuthTokenService(db.Object, jwt.Object, Options.Create(jwtOptions), logger?.Object ?? new Mock<ILogger<AuthTokenService>>().Object);
     }
 
     /// <summary>
@@ -83,7 +86,7 @@ public sealed class AuthTokenServiceTests
         Assert.Null(await sut.RotateAsync("   "));
 
         // Assert
-        db.Verify(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        db.Verify(dataStore => dataStore.GetRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     /// <summary>
@@ -94,7 +97,7 @@ public sealed class AuthTokenServiceTests
     {
         // Arrange
         Mock<IHermesDataStore> db = new();
-        db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((RefreshToken?)null);
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenIssuer>());
 
@@ -116,7 +119,7 @@ public sealed class AuthTokenServiceTests
         string plain = "token";
         string hash = RefreshTokenHasher.Hash(plain);
         Mock<IHermesDataStore> db = new();
-        db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
+        db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new RefreshToken { UserId = 1, TokenHash = hash, User = null });
         Mock<IJwtTokenIssuer> jwt = new();
         AuthTokenService sut = CreateSut(db, jwt);
@@ -148,7 +151,7 @@ public sealed class AuthTokenServiceTests
         };
 
         Mock<IHermesDataStore> db = new();
-        db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
+        db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
             .ReturnsAsync(oldRow);
         db.Setup(dataStore => dataStore.CompleteRefreshRotationAsync(
                 It.IsAny<RefreshToken>(),
@@ -177,6 +180,45 @@ public sealed class AuthTokenServiceTests
                 It.Is<RefreshToken>(nr => nr.UserId == 7 && nr.TokenHash == RefreshTokenHasher.Hash(result.RefreshToken)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    /// <summary>
+    /// Replay scenario: using a revoked token revokes the entire token family.
+    /// </summary>
+    [Fact]
+    public async Task RotateAsync_Should_RevokeFamily_WhenReplayDetected()
+    {
+        // Arrange
+        string plainOld = "revoked-refresh-plain";
+        string hashOld = RefreshTokenHasher.Hash(plainOld);
+        RefreshToken oldRow = new()
+        {
+            Id = 10,
+            UserId = 7,
+            TokenHash = hashOld,
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            CreatedAt = DateTime.UtcNow,
+            RevokedAt = DateTime.UtcNow.AddMinutes(-5), // Token is revoked!
+            User = new User { Id = 7, Email = "u@example.org", Name = "Uwe" },
+        };
+
+        Mock<IHermesDataStore> db = new();
+        db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldRow);
+        
+        Mock<ILogger<AuthTokenService>> logger = new();
+        Mock<IJwtTokenIssuer> jwt = new();
+
+        AuthTokenService sut = CreateSut(db, jwt, logger);
+
+        // Act
+        AuthTokensResult? result = await sut.RotateAsync(plainOld);
+
+        // Assert
+        Assert.Null(result); // Rotation should fail
+        db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
+        db.Verify(dataStore => dataStore.RevokeTokenFamilyAsync(oldRow, It.IsAny<CancellationToken>()), Times.Once); // Family revoked
+        jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
 
     /// <summary>
