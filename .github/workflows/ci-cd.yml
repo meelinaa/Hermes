@@ -6,6 +6,8 @@ on:
       - main
       - 'feat/**'
       - 'test/**'
+      - 'fix/**'
+      - 'refactor/**'
 
   pull_request:
     branches:
@@ -39,11 +41,11 @@ jobs:
       - name: Restore Dependencies
         run: dotnet restore Hermes.sln
 
-      - name: Build Solution
-        run: dotnet build Hermes.sln --configuration Release --no-restore
-
       - name: Create Test Results Directory
-        run: mkdir -p ${{ github.workspace }}/test-results
+        run: mkdir -p ${{ github.workspace }}/test-results/coverage
+
+      - name: Build Solution
+        run: dotnet build Hermes.sln --configuration Release --no-restore -warnaserror
 
       - name: Run Unit Tests
         run: |
@@ -52,16 +54,32 @@ jobs:
             --no-build \
             --verbosity normal \
             --logger "trx;LogFileName=unit-test-results.trx" \
-            --results-directory ${{ github.workspace }}/test-results
+            --results-directory ${{ github.workspace }}/test-results \
+            /p:CollectCoverage=true \
+            /p:CoverletOutput="${{ github.workspace }}/test-results/coverage/unit" \
+            /p:CoverletOutputFormat=json
 
-      - name: Run Integration Tests
+      - name: Run Integration Tests (merged coverage gate)
         run: |
           dotnet test Hermes.IntegrationTests/Hermes.IntegrationTests.csproj \
             --configuration Release \
             --no-build \
             --verbosity normal \
             --logger "trx;LogFileName=integration-test-results.trx" \
-            --results-directory ${{ github.workspace }}/test-results
+            --results-directory ${{ github.workspace }}/test-results \
+            /p:CollectCoverage=true \
+            /p:MergeWith="${{ github.workspace }}/test-results/coverage/unit.json" \
+            /p:CoverletOutput="${{ github.workspace }}/test-results/coverage/combined" \
+            /p:CoverletOutputFormat=json \
+            /p:ThresholdType=line \
+            /p:ThresholdStat=total \
+            /p:Threshold=65
+      - name: Upload Code Coverage Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-coverage
+          path: ${{ github.workspace }}/test-results/coverage/
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1.9.1

@@ -131,7 +131,7 @@ The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, c
 
 ### CI/CD pipeline
 
-- A committed GitHub Actions workflow exists in `.github/workflows/ci-cd.yml`. It restores, builds, runs unit and integration tests, publishes test reports, builds and pushes Docker images (API + Worker) on push, and runs Trivy image scans.
+- A committed GitHub Actions workflow exists in `.github/workflows/ci-cd.yml`. It restores and **Release**-builds the solution with `-warnaserror` (Roslyn/SDK warnings fail the job), runs **Hermes.UnitTests** and **Hermes.IntegrationTests** with **`coverlet.msbuild`**. Unit-run coverage merges into the integration run; **`ThresholdStat=total` / `ThresholdType=line` / `Threshold=65`** enforces merged **overall line coverage** for instrumented assemblies. Test TRX logs and **`code-coverage`** JSON artifacts are published. On **push**, it builds and pushes Docker images (API + Worker) and runs Trivy image scans.
 
 ---
 
