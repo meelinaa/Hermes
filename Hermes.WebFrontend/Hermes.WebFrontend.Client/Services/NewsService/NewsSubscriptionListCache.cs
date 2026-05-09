@@ -5,7 +5,7 @@ using Hermes.Domain.Entities;
 namespace Hermes.WebFrontend.Client.Services.NewsService;
 
 /// <summary>
-/// Holds the news subscription list per user session so switching tabs does not repeat GET /list.
+/// Holds the news subscription list per user session so switching tabs does not repeat GET collection.
 /// Call <see cref="Invalidate"/> on logout or when the list must be refetched from the API.
 /// </summary>
 public sealed class NewsSubscriptionListCache
@@ -37,7 +37,7 @@ public sealed class NewsSubscriptionListCache
         try
         {
             HttpResponseMessage response = await http
-                .GetAsync($"api/v1/users/news/{userId}/list", cancellationToken)
+                .GetAsync($"api/v1/users/{userId}/news", cancellationToken)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {

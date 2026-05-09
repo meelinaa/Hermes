@@ -13,17 +13,20 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Controllers;
 
-/// <summary>News under <c>api/v1/users/news/…</c>; resource ids in the path for safe GET/DELETE where applicable.</summary>
+/// <summary>
+/// News resources under <c>/api/v1/users/…</c>; collection/item URLs use normal path segments (no query-like literals).
+/// Create/update bodies omit owning <c>userId</c> (JWT).
+/// </summary>
 [Authorize]
 [ApiController]
-[Route("api/v1/users/news")]
+[Route("api/v1/users")]
 public class NewsController(
     INewsService newsService,
     INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger) : ControllerBase
 {
-    /// <summary>Returns all news entries for the authenticated user.</summary>
-    /// <remarks><b>GET</b> <c>api/v1/users/news/{userId}/list</c> — no body.</remarks>
-    [HttpGet("{userId}/list")]
+    /// <summary>Returns all news entries for the user.</summary>
+    /// <remarks><b>GET</b> <c>/api/v1/users/{userId}/news</c> — no body.</remarks>
+    [HttpGet("{userId:int}/news")]
     public async Task<ActionResult<List<NewsResponse>>> GetNewsList(int userId, CancellationToken cancellationToken)
     {
         if (this.WhenCannotAccessUser(userId) is { } denied)
@@ -33,12 +36,9 @@ public class NewsController(
         return Ok(list.ConvertAll(static entity => entity.ToResponse()));
     }
 
-    /// <summary>Returns a single news entry by user and news identifier.</summary>
-    /// <remarks>
-    /// <b>GET</b> <c>api/v1/users/news/userId={userId}/newsId={newsId}</c> — no body.
-    /// Uses composite path segments (literal + value) so ids are named in the URL; e.g. <c>…/userId=1/newsId=5</c>.
-    /// </remarks>
-    [HttpGet("userId={userId:int}/newsId={newsId:int}")]
+    /// <summary>Returns a single news row for the user.</summary>
+    /// <remarks><b>GET</b> <c>/api/v1/users/{userId}/news/{newsId}</c> — no body.</remarks>
+    [HttpGet("{userId:int}/news/{newsId:int}")]
     public async Task<ActionResult<NewsResponse>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
     {
         if (this.WhenCannotAccessUser(userId) is { } denied)
@@ -57,9 +57,9 @@ public class NewsController(
 
     /// <summary>Create news for the authenticated user (owner from JWT, not request body).</summary>
     /// <remarks>
-    /// <b>POST</b> <c>api/v1/users/news</c> — Body omits <c>userId</c>. Enum fields use underlying integer values or names (see <see cref="Hermes.Domain.Enums"/>).
+    /// <b>POST</b> <c>/api/v1/users/news</c> — Body omits <c>userId</c>. Enum fields use underlying integer values or names (see <see cref="Hermes.Domain.Enums"/>).
     /// </remarks>
-    [HttpPost]
+    [HttpPost("news")]
     public async Task<ActionResult<CreateNewsResponse>> SetNews(
         [FromBody] CreateNewsRequest request,
         CancellationToken cancellationToken)
@@ -74,7 +74,7 @@ public class NewsController(
     }
 
     /// <summary>Update news; <c>id</c> required in body; owner from JWT.</summary>
-    [HttpPut]
+    [HttpPut("news")]
     public async Task<ActionResult> UpdateNews(
         [FromBody] UpdateNewsRequest request,
         [FromServices] IValidator<UpdateNewsRequest> validator,
@@ -94,7 +94,8 @@ public class NewsController(
     }
 
     /// <summary>Delete all news rows for this user. No body.</summary>
-    [HttpDelete("userId={userId:int}/delete/all")]
+    /// <remarks><b>DELETE</b> <c>/api/v1/users/{userId}/news/all</c></remarks>
+    [HttpDelete("{userId:int}/news/all")]
     public async Task<ActionResult<DeleteAllNewsResponse>> DeleteAllNews(int userId, CancellationToken cancellationToken)
     {
         if (this.WhenCannotAccessUser(userId) is { } denied)
@@ -104,10 +105,8 @@ public class NewsController(
         return Ok(new DeleteAllNewsResponse(deleted));
     }
 
-    /// <remarks>
-    /// <b>DELETE</b> <c>api/v1/users/news/userId={userId}/newsId={newsId}</c> — no body (same path shape as <see cref="GetNewsById"/>).
-    /// </remarks>
-    [HttpDelete("userId={userId:int}/newsId={newsId:int}")]
+    /// <remarks><b>DELETE</b> <c>/api/v1/users/{userId}/news/{newsId}</c> — no body.</remarks>
+    [HttpDelete("{userId:int}/news/{newsId:int}")]
     public async Task<ActionResult> DeleteNews(int userId, int newsId, CancellationToken cancellationToken)
     {
         if (this.WhenCannotAccessUser(userId) is { } denied)

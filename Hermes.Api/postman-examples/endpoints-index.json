@@ -11,12 +11,12 @@
     { "method": "GET", "path": "/api/v1/users/{id}", "example": "users-get-by-id.example.json" },
     { "method": "GET", "path": "/api/v1/users/by-email/{email}", "example": "users-get-by-email.example.json" },
     { "method": "POST", "path": "/api/v1/add/user", "example": "users-add-user-compat.example.json" },
-    { "method": "GET", "path": "/api/v1/users/news/{userId}/list", "example": "news-get-list.example.json" },
-    { "method": "GET", "path": "/api/v1/users/news/userId={userId}/newsId={newsId}", "example": "news-get-one.example.json" },
+    { "method": "GET", "path": "/api/v1/users/{userId}/news", "example": "news-get-list.example.json" },
+    { "method": "GET", "path": "/api/v1/users/{userId}/news/{newsId}", "example": "news-get-one.example.json" },
     { "method": "POST", "path": "/api/v1/users/news", "example": "news-post-create.example.json" },
     { "method": "PUT", "path": "/api/v1/users/news", "example": "news-put-update.example.json" },
-    { "method": "DELETE", "path": "/api/v1/users/news/userId={userId}/delete/all", "example": "news-delete-all.example.json" },
-    { "method": "DELETE", "path": "/api/v1/users/news/userId={userId}/newsId={newsId}", "example": "news-delete-one.example.json" },
+    { "method": "DELETE", "path": "/api/v1/users/{userId}/news/all", "example": "news-delete-all.example.json" },
+    { "method": "DELETE", "path": "/api/v1/users/{userId}/news/{newsId}", "example": "news-delete-one.example.json" },
     { "method": "POST", "path": "/api/v1/users/{userId}/notification-logs", "example": "notification-logs-post.example.json" }
   ]
 }

@@ -1,6 +1,14 @@
 # Hermes API
 
-REST API for user management, JWT-based authentication, personalized news configuration, and notification logs. JSON property names use **camelCase**. In **Development**, OpenAPI metadata is exposed (see [OpenAPI](#openapi-and-documentation)).
+REST API for user management, JWT-based authentication, personalized news configuration, and notification logs. JSON property names use **camelCase**. All HTTP routes are prefixed with **`/api/v1/`** (see [API versioning](#api-versioning)). In **Development**, OpenAPI metadata is exposed (see [OpenAPI](#openapi-and-documentation)).
+
+## API versioning
+
+- **Path versioning:** Every resource URL starts with **`/api/v1/`**. The `v1` segment is the API revision exposed to clients.
+- **Breaking changes:** When URLs or response contracts change incompatibly, introduce **`/api/v2/`** (or the next major segment) and keep **`v1`** until consumers migrate; document deprecation in release notes.
+- **Non-breaking changes:** New optional JSON fields, new endpoints under the same `v1` prefix, or tightened validation may ship without a new version when clients remain compatible.
+
+---
 
 ## Authentication
 
@@ -28,12 +36,12 @@ Configuration for signing and validation lives under the `Jwt` section (see `app
 | `GET`    | `/api/v1/users/{id}`                                 | Yes  | Get user by id                                                                                        |
 | `GET`    | `/api/v1/users/by-email/{email}`                     | Yes  | Get user by email (URL-encode `@` as `%40`)                                                           |
 | `DELETE` | `/api/v1/users/{id}`                                 | Yes  | Delete user                                                                                           |
-| `GET`    | `/api/v1/users/news/{userId}/list`                   | Yes  | List all news rows for a user                                                                         |
-| `GET`    | `/api/v1/users/news/userId={userId}/newsId={newsId}` | Yes  | Get one news row                                                                                      |
-| `POST`   | `/api/v1/users/news`                                 | Yes  | Create news configuration                                                                             |
-| `PUT`    | `/api/v1/users/news`                                 | Yes  | Update news (body must include `id`)                                                                  |
-| `DELETE` | `/api/v1/users/news/userId={userId}/newsId={newsId}` | Yes  | Delete one news row                                                                                   |
-| `DELETE` | `/api/v1/users/news/userId={userId}/delete/all`      | Yes  | Delete all news for a user                                                                            |
+| `GET`    | `/api/v1/users/{userId}/news`                     | Yes  | List all news rows for a user                                                                         |
+| `GET`    | `/api/v1/users/{userId}/news/{newsId}`          | Yes  | Get one news row                                                                                      |
+| `POST`   | `/api/v1/users/news`                             | Yes  | Create news configuration                                                                             |
+| `PUT`    | `/api/v1/users/news`                             | Yes  | Update news (body must include `id`)                                                                  |
+| `DELETE` | `/api/v1/users/{userId}/news/{newsId}`          | Yes  | Delete one news row                                                                                   |
+| `DELETE` | `/api/v1/users/{userId}/news/all`               | Yes  | Delete all news for a user                                                                            |
 | `POST`   | `/api/v1/users/{userId}/notification-logs`           | Yes  | Append a notification log entry                                                                       |
 
 
@@ -232,7 +240,7 @@ The API uses `System.Text.Json` with **string enums** (`JsonStringEnumConverter`
 
 **List / get**: response items are [`NewsResponse`](../Hermes.Application/Models/News/NewsResponse.cs) (API projection of persisted `[News](../Hermes.Domain/Entities/News.cs)` rows).
 
-*Path notes:* list uses `/api/v1/users/news/{userId}/list`. Single-item routes use literal segments, e.g. `GET`/`DELETE` `…/userId=1/newsId=5`.
+*Path notes:* news collection is **`GET /api/v1/users/{userId}/news`**; a single row is **`GET|DELETE /api/v1/users/{userId}/news/{newsId}`**; bulk delete is **`DELETE /api/v1/users/{userId}/news/all`**. Create/update remain **`POST|PUT /api/v1/users/news`** (owner from JWT).
 
 ---
 
