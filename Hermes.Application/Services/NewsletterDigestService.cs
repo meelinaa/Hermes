@@ -30,9 +30,9 @@ public sealed class NewsletterDigestService(
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
         if(newsId <= 0)
             throw new ArgumentOutOfRangeException(nameof(newsId), "News ID must be positive.");
-        string? apiKey = newsDataOptions.Value.ApiKey?.Trim();
+        string? apiKey = newsDataOptions.Value.Key?.Trim();
         if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("Configure NewsDataIo:ApiKey.");
+            throw new InvalidOperationException("Configure NewsDataIo:Key.");
 
         DateTime windowStart = DateTime.SpecifyKind(digestSlotStartUtc, DateTimeKind.Utc);
         windowStart = new DateTime(windowStart.Year, windowStart.Month, windowStart.Day, windowStart.Hour, windowStart.Minute, 0, DateTimeKind.Utc);

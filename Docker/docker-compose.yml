@@ -33,7 +33,7 @@ services:
   #     context: ..
   #     dockerfile: Docker/Dockerfile.Migrate
   #   environment:
-  #     ConnectionStrings__DefaultConnection: Server=hermes-mysql;Port=3306;Database=hermes;User=root;Password=password1234!;SslMode=none;
+  #     ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;
   #   depends_on:
   #     hermes-mysql:
   #       condition: service_healthy
@@ -47,8 +47,8 @@ services:
       - "5165:5165"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=3306;Database=hermes;User=root;Password=password1234!;SslMode=none;
-      - Jwt__SigningKey=SuperSichererUndExtremLangerSchluessel123456!
+      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;
+      - Jwt__SigningKey=${JWT_SIGNING_KEY}
     depends_on:
       hermes-mysql:
         condition: service_healthy
@@ -61,15 +61,14 @@ services:
       dockerfile: Docker/Dockerfile.Worker
     ports:
       - "5166:5166"
-    volumes:
-      - ../Hermes.Worker/.env:/app/.env:ro
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=3306;Database=hermes;User=root;Password=password1234!;SslMode=none;
-      - Jwt__SigningKey=SuperSichererUndExtremLangerSchluessel123456!
-      - Email__Host=hermes-mailhog
-      - Email__Port=1025
+      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;
+      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - Email__Host=${MAIL_HOST}
+      - Email__Port=${MAIL_PORT}
       - MailHog__BaseUrl=http://hermes-mailhog:8025
+      - NewsDataIo__Key=${NEWS_DATA_IO_KEY}
     depends_on:
       hermes-mysql:
         condition: service_healthy

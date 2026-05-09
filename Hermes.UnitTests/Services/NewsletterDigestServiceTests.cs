@@ -29,7 +29,7 @@ public sealed class NewsletterDigestServiceTests
             store,
             newsProvider ?? Mock.Of<INewsArticleProvider>(),
             emailSender ?? Mock.Of<IEmailSender>(),
-            newsOptions ?? Options.Create(new NewsDataIoOptions { ApiKey = "integration-test-api-key" }),
+            newsOptions ?? Options.Create(new NewsDataIoOptions { Key = "integration-test-api-key" }),
             logger ?? Mock.Of<ILogger<NewsletterDigestService>>());
     }
 
@@ -55,13 +55,13 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_ThrowInvalidOperation_WhenApiKeyMissingOrWhitespaceOnly()
     {
         // Arrange
-        NewsletterDigestService sutEmpty = CreateSut(Mock.Of<IHermesDataStore>(), newsOptions: Options.Create(new NewsDataIoOptions { ApiKey = "" }));
-        NewsletterDigestService sutWs = CreateSut(Mock.Of<IHermesDataStore>(), newsOptions: Options.Create(new NewsDataIoOptions { ApiKey = "   " }));
+        NewsletterDigestService sutEmpty = CreateSut(Mock.Of<IHermesDataStore>(), newsOptions: Options.Create(new NewsDataIoOptions { Key = "" }));
+        NewsletterDigestService sutWs = CreateSut(Mock.Of<IHermesDataStore>(), newsOptions: Options.Create(new NewsDataIoOptions { Key = "   " }));
 
         // Act
         InvalidOperationException ex1 = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sutEmpty.SendAsync(1, 1, new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)));
-        Assert.Equal("Configure NewsDataIo:ApiKey.", ex1.Message);
+        Assert.Equal("Configure NewsDataIo:Key.", ex1.Message);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sutWs.SendAsync(1, 1, DateTime.UtcNow));

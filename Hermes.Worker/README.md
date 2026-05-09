@@ -38,13 +38,13 @@ The worker **reuses** the same application and infrastructure types as the API s
 
 ## Configuration
 
-Settings are read from `appsettings.json`, `appsettings.{Environment}.json`, and environment variables. The **NewsData.io API key is read only from a `.env` file** (not from `appsettings`): place `.env` next to the worker project or publish folder, or use one line from `NEWSDATA.IO: <your-api-key>`, `NewsDataIo__ApiKey=<your-api-key>`, or `NEWSDATA_IO_API_KEY=<your-api-key>` (see `WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile`). Docker Compose mounts `Hermes.Worker/.env` into the container as `/app/.env`.
+Settings are read from `appsettings.json`, `appsettings.{Environment}.json`, and environment variables. The **NewsData.io API key is read from the `NewsDataIo:Key` configuration section.** Environment variables like `NewsDataIo__Key` are also supported.
 
 | Section | Purpose |
 |--------|---------|
 | `ConnectionStrings:DefaultConnection` | MySQL for Hermes app data (required). |
 | `ConnectionStrings:Hangfire` | Optional; if omitted, Hangfire uses `DefaultConnection`. |
-| `.env` (NewsData.io key) | Required for newsletter article fetches; not configured via `appsettings`. |
+| `NewsDataIo:Key` | NewsData.io API key (required for newsletter article fetches). Can be set in `appsettings.json` or via environment variables (e.g., `NewsDataIo__Key`). |
 | `Email` | SMTP host, port, SSL, credentials, from/reply-to (see `EmailSettings`). |
 | `MailHog` | `BaseUrl` for logging the web UI hint; `SendSchedulerTestMailEachMinute` sends a tiny test mail each tick when `true` (local dev with [MailHog](https://github.com/mailhog/MailHog)). |
 

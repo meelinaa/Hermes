@@ -18,7 +18,7 @@ public static class WorkerServiceCollectionExtensions
 {
     /// <summary>
     /// Registers EF Core, e-mail, NewsData.io, Hangfire storage/server, and worker-scoped jobs.
-    /// NewsData.io API key is read only from <c>.env</c> (see <see cref="WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile"/>).
+    /// NewsData.io API key is read from the <c>NewsDataIo:Key</c> configuration section.
     /// </summary>
     public static void AddHermesWorker(this HostApplicationBuilder builder)
     {
@@ -38,11 +38,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailSettings(builder.Configuration));
         builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
         builder.Services.Configure<MailHogSettings>(builder.Configuration.GetSection("MailHog"));
-        builder.Services.Configure<NewsDataIoOptions>(opts =>
-        {
-            opts.ApiKey = WorkerServiceCollectionHelper.TryReadNewsDataIoApiKeyFromEnvFile(builder.Environment.ContentRootPath)
-                ?? string.Empty;
-        });
+        builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
         builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
