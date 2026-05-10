@@ -46,10 +46,21 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.True(newsId > 0); // Assert that the newsId is a positive integer, indicating that the news subscription was successfully created.
 
         using HttpResponseMessage listResp = await client.SendAsync(Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news", access)); // Send an authorized GET request to the news listing endpoint for the authenticated user, including the access token in the Authorization header.
-        listResp.EnsureSuccessStatusCode(); // Assert that the response status code indicates success (2xx), ensuring that the news listing was successfully retrieved.
-        List<JsonElement>? list = await listResp.Content.ReadFromJsonAsync<List<JsonElement>>(options: JsonWeb);
-        Assert.NotNull(list);
-        Assert.Contains(list, item => item.GetProperty("id").GetInt32() == newsId);
+        listResp.EnsureSuccessStatusCode();
+        using JsonDocument listDoc = JsonDocument.Parse(await listResp.Content.ReadAsStringAsync());
+        JsonElement items = listDoc.RootElement.GetProperty("items");
+        Assert.Equal(JsonValueKind.Array, items.ValueKind);
+        bool found = false;
+        foreach (JsonElement item in items.EnumerateArray())
+        {
+            if (item.GetProperty("id").GetInt32() == newsId)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        Assert.True(found);
 
         using HttpResponseMessage getOne = await client.SendAsync(
             Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{newsId}", access)); // Send an authorized GET request to retrieve the specific news subscription by its ID, including the access token in the Authorization header.

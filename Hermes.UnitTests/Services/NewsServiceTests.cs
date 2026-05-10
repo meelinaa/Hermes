@@ -1,6 +1,8 @@
+using Hermes.Application.Models.News;
 using Hermes.Application.Ports;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Enums;
 using Moq;
 using Xunit;
 
@@ -89,16 +91,45 @@ public sealed class NewsServiceTests
     }
 
     /// <summary>
-    /// Listing news by user requires positive user id.
+    /// Listing news requires positive user id on the query.
     /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-99)]
-    public async Task GetAllNewsByUserAsync_Should_RejectNonPositiveUserId(int invalidUserId)
+    public async Task GetNewsListAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
         NewsService sut = new(Mock.Of<IHermesDataStore>());
+        NewsListQuery query = new(invalidUserId, 1, 10, AfterId: null, SortDescending: false, Search: null, Category: null);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetAllNewsByUserAsync(invalidUserId));
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsListAsync(query));
+    }
+
+    /// <summary>
+    /// Valid query delegates to the data store.
+    /// </summary>
+    [Fact]
+    public async Task GetNewsListAsync_Should_ReturnResult_FromStore()
+    {
+        NewsListResult expected = new(
+            Items: [new News { Id = 1, UserId = 2 }],
+            Page: 1,
+            PageSize: 10,
+            TotalCount: 1,
+            TotalPages: 1,
+            HasNextPage: false,
+            NextAfterId: null);
+        Mock<IHermesDataStore> db = new();
+        db.Setup(dataStore => dataStore.GetNewsListAsync(It.IsAny<NewsListQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        NewsService sut = new(db.Object);
+        NewsListQuery q = new(2, 1, 10, null, false, null, NewsCategory.Technology);
+
+        NewsListResult result = await sut.GetNewsListAsync(q);
+
+        Assert.Single(result.Items);
+        Assert.Equal(1, result.TotalCount);
+        db.Verify(dataStore => dataStore.GetNewsListAsync(q, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     /// <summary>

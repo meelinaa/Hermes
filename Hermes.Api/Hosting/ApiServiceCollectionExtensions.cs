@@ -48,6 +48,7 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<INewsService, NewsService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
         services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
+        services.Configure<PaginationOptions>(configuration.GetSection(PaginationOptions.SECTION_NAME));
         services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
 

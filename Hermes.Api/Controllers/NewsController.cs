@@ -4,12 +4,15 @@ using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Api.Validation;
 using Hermes.Application.Models.News;
+using Hermes.Application.Options;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Enums;
 using Hermes.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Hermes.Api.Controllers;
 
@@ -22,18 +25,113 @@ namespace Hermes.Api.Controllers;
 [Route("api/v1/users")]
 public class NewsController(
     INewsService newsService,
-    INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger) : ControllerBase
+    INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger,
+    IOptions<PaginationOptions> paginationOptions) : ControllerBase
 {
-    /// <summary>Returns all news entries for the user.</summary>
-    /// <remarks><b>GET</b> <c>/api/v1/users/{userId}/news</c> — no body.</remarks>
+    /// <summary>
+    /// Returns a page of news entries for the user.
+    /// Offset: <c>page</c> and <c>pageSize</c>. Cursor: optional <c>afterId</c> (ascending id; do not combine with <c>sort=-id</c>).
+    /// </summary>
+    /// <remarks>
+    /// <b>GET</b> <c>/api/v1/users/{userId}/news</c> — query: <c>page</c>, <c>pageSize</c>, <c>afterId</c>, <c>sort</c> (<c>id</c>|<c>-id</c>), <c>q</c>, <c>category</c>.
+    /// </remarks>
     [HttpGet("{userId:int}/news")]
-    public async Task<ActionResult<List<NewsResponse>>> GetNewsList(int userId, CancellationToken cancellationToken)
+    public async Task<ActionResult<PagedNewsListResponse>> GetNewsList(
+        int userId,
+        [FromQuery] int page = 1,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] int? afterId = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? q = null,
+        [FromQuery] NewsCategory? category = null,
+        CancellationToken cancellationToken = default)
     {
         if (this.WhenCannotAccessUser(userId) is { } denied)
             return denied;
 
-        List<News> list = await newsService.GetAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
-        return Ok(list.ConvertAll(static entity => entity.ToResponse()));
+        PaginationOptions po = paginationOptions.Value;
+        int size = pageSize ?? po.DefaultPageSize;
+        if (size < 1)
+        {
+            ModelState.AddModelError(nameof(pageSize), "Page size must be at least 1.");
+            return ValidationProblem(ModelState);
+        }
+
+        if (size > po.MaxPageSize)
+            size = po.MaxPageSize;
+
+        if (page < 1)
+        {
+            ModelState.AddModelError(nameof(page), "Page must be at least 1.");
+            return ValidationProblem(ModelState);
+        }
+
+        if (!TryParseSort(sort, out bool sortDescending, out string? sortError))
+        {
+            ModelState.AddModelError(nameof(sort), sortError ?? "Invalid sort.");
+            return ValidationProblem(ModelState);
+        }
+
+        if (afterId is not null and < 0)
+        {
+            ModelState.AddModelError(nameof(afterId), "afterId must be non-negative.");
+            return ValidationProblem(ModelState);
+        }
+
+        string? search = null;
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            search = q.Trim();
+            if (search.Length > 200)
+                search = search[..200];
+        }
+
+        int effectivePage = afterId is not null ? 1 : page;
+
+        NewsListQuery query = new(
+            userId,
+            effectivePage,
+            size,
+            afterId,
+            sortDescending,
+            search,
+            category);
+
+        try
+        {
+            NewsListResult result = await newsService.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
+            return Ok(new PagedNewsListResponse(
+                result.Items.Select(static n => n.ToResponse()).ToList(),
+                result.Page,
+                result.PageSize,
+                result.TotalCount,
+                result.TotalPages,
+                result.HasNextPage,
+                result.NextAfterId));
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return ValidationProblem(ModelState);
+        }
+    }
+
+    private static bool TryParseSort(string? sort, out bool sortDescending, out string? error)
+    {
+        sortDescending = false;
+        error = null;
+        if (string.IsNullOrWhiteSpace(sort))
+            return true;
+        if (sort.Equals("id", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (sort.Equals("-id", StringComparison.OrdinalIgnoreCase))
+        {
+            sortDescending = true;
+            return true;
+        }
+
+        error = "Use 'id' (ascending) or '-id' (descending).";
+        return false;
     }
 
     /// <summary>Returns a single news row for the user.</summary>

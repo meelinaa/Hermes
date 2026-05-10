@@ -36,7 +36,7 @@ Configuration for signing and validation lives under the `Jwt` section (see `app
 | `GET`    | `/api/v1/users/{id}`                                 | Yes  | Get user by id                                                                                        |
 | `GET`    | `/api/v1/users/by-email/{email}`                     | Yes  | Get user by email (URL-encode `@` as `%40`)                                                           |
 | `DELETE` | `/api/v1/users/{id}`                                 | Yes  | Delete user                                                                                           |
-| `GET`    | `/api/v1/users/{userId}/news`                     | Yes  | List all news rows for a user                                                                         |
+| `GET`    | `/api/v1/users/{userId}/news`                     | Yes  | Paged list (`page`, `pageSize`, `afterId`, `sort`, `q`, `category`) — see OpenAPI / notes below          |
 | `GET`    | `/api/v1/users/{userId}/news/{newsId}`          | Yes  | Get one news row                                                                                      |
 | `POST`   | `/api/v1/users/news`                             | Yes  | Create news configuration                                                                             |
 | `PUT`    | `/api/v1/users/news`                             | Yes  | Update news (body must include `id`)                                                                  |
@@ -240,7 +240,7 @@ The API uses `System.Text.Json` with **string enums** (`JsonStringEnumConverter`
 
 **List / get**: response items are [`NewsResponse`](../Hermes.Application/Models/News/NewsResponse.cs) (API projection of persisted `[News](../Hermes.Domain/Entities/News.cs)` rows).
 
-*Path notes:* news collection is **`GET /api/v1/users/{userId}/news`**; a single row is **`GET|DELETE /api/v1/users/{userId}/news/{newsId}`**; bulk delete is **`DELETE /api/v1/users/{userId}/news/all`**. Create/update remain **`POST|PUT /api/v1/users/news`** (owner from JWT).
+*Path notes:* news collection is **`GET /api/v1/users/{userId}/news`** with optional query **`page`**, **`pageSize`** (capped by `Pagination:MaxPageSize`), **`afterId`** (cursor; ascending id only; incompatible with **`sort=-id`**), **`sort`** (`id` or `-id`), **`q`** (keyword substring, max 200 chars), **`category`** (`NewsCategory`). Response: **`items`** plus **`totalCount`**, **`totalPages`** (offset mode), **`hasNextPage`**, **`nextAfterId`** (cursor). A single row is **`GET|DELETE /api/v1/users/{userId}/news/{newsId}`**; bulk delete is **`DELETE /api/v1/users/{userId}/news/all`**. Create/update remain **`POST|PUT /api/v1/users/news`** (owner from JWT).
 
 ---
 

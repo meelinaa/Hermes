@@ -1,3 +1,4 @@
+using Hermes.Application.Models.News;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
@@ -231,18 +232,60 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     }
 
     /// <inheritdoc />
-    public async Task<List<News>> GetAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<NewsListResult> GetNewsListAsync(NewsListQuery query, CancellationToken cancellationToken = default)
     {
-         if (userId <= 0)
-            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+        ArgumentNullException.ThrowIfNull(query);
+        if (query.UserId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(query.UserId), query.UserId, "User id must be greater than zero.");
+        if (query.Page < 1)
+            throw new ArgumentOutOfRangeException(nameof(query.Page), query.Page, "Page must be at least 1.");
+        if (query.PageSize < 1)
+            throw new ArgumentOutOfRangeException(nameof(query.PageSize), query.PageSize, "Page size must be at least 1.");
 
-        await EnsureUserExistsAsync(userId, cancellationToken).ConfigureAwait(false);
+        await EnsureUserExistsAsync(query.UserId, cancellationToken).ConfigureAwait(false);
 
-        List<News> news = await News.AsNoTracking()
-            .Where(newsEntity => newsEntity.UserId == userId)
+        IQueryable<News> filtered = News.AsNoTracking().Where(n => n.UserId == query.UserId);
+
+        if (query.Category is NewsCategory category)
+            filtered = filtered.Where(n => n.Category != null && n.Category.Contains(category));
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            string term = query.Search.Trim();
+            if (term.Length > 200)
+                term = term[..200];
+
+            filtered = filtered.Where(n => n.Keywords != null && n.Keywords.Any(k => k.Contains(term)));
+        }
+
+        if (query.AfterId is int after)
+        {
+            IQueryable<News> cursorQuery = filtered.OrderBy(n => n.Id).Where(n => n.Id > after);
+            List<News> window = await cursorQuery
+                .Take(query.PageSize + 1)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            bool hasNext = window.Count > query.PageSize;
+            if (hasNext)
+                window.RemoveAt(window.Count - 1);
+            int? nextAfter = hasNext && window.Count > 0 ? window[^1].Id : null;
+            return new NewsListResult(window, 1, query.PageSize, null, null, hasNext, nextAfter);
+        }
+
+        IQueryable<News> ordered = query.SortDescending
+            ? filtered.OrderByDescending(n => n.Id)
+            : filtered.OrderBy(n => n.Id);
+
+        int total = await ordered.CountAsync(cancellationToken).ConfigureAwait(false);
+        int skip = (query.Page - 1) * query.PageSize;
+        List<News> items = await ordered
+            .Skip(skip)
+            .Take(query.PageSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return news is null ? throw new NewsNotFoundException() : news;
+        int totalPages = query.PageSize > 0 ? (int)Math.Ceiling(total / (double)query.PageSize) : 0;
+        bool hasNextPage = skip + items.Count < total;
+        return new NewsListResult(items, query.Page, query.PageSize, total, totalPages, hasNextPage, null);
     }
 
     /// <inheritdoc />

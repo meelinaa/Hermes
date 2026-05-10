@@ -1,5 +1,5 @@
 {
   "method": "GET",
-  "url": "http://localhost:5165/api/v1/users/1/news",
-  "note": "List news configurations for user id 1."
+  "url": "http://localhost:5165/api/v1/users/1/news?page=1&pageSize=20&sort=id",
+  "note": "Paged news list: page, pageSize (<= MaxPageSize), optional afterId (cursor), sort (id|-id), q, category."
 }

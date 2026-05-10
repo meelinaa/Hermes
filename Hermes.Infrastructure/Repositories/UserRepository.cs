@@ -15,18 +15,13 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
 {
 
     /// <inheritdoc />
-    public async Task<User?> GetUserByIdAsync(int id, CancellationToken ct = default)
-    {
-        return await db.Users.AsNoTracking().FirstOrDefaultAsync(userEntity => userEntity.Id == id, ct).ConfigureAwait(false);
-    }
+    public async Task<User?> GetUserByIdAsync(int id, CancellationToken ct = default) => await db.Users.AsNoTracking().FirstOrDefaultAsync(userEntity => userEntity.Id == id, ct).ConfigureAwait(false);
 
     /// <inheritdoc />
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(email))
-        {
             return null;
-        }
 
         string normalized = email.Trim();
         return await db.Users.AsNoTracking().FirstOrDefaultAsync(userEntity => userEntity.Email == normalized, ct).ConfigureAwait(false);
@@ -52,9 +47,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     {
         User? entity = await db.Users.FirstOrDefaultAsync(userEntity => userEntity.Id == id, ct).ConfigureAwait(false);
         if (entity is null)
-        {
             return;
-        }
 
         db.Users.Remove(entity);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);

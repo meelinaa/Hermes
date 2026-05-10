@@ -1,3 +1,4 @@
+using Hermes.Application.Models.News;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
@@ -23,7 +24,7 @@ public interface IHermesDataStore
     Task SetNewsAsync(News news, CancellationToken cancellationToken = default);
     Task UpdateNewsAsync(News news, CancellationToken cancellationToken = default);
     Task DeleteNewsAsync(News news, CancellationToken cancellationToken = default);
-    Task<List<News>> GetAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
+    Task<NewsListResult> GetNewsListAsync(NewsListQuery query, CancellationToken cancellationToken = default);
     Task<List<NewsScheduleRow>> GetNewsScheduleRowsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

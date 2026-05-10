@@ -103,7 +103,7 @@ Components include `HermesBrand`, `HermesTopNavigation`, `NewsSettingsPanel`, `N
 | Service | Purpose |
 |---------|---------|
 | `UserProfileRefreshNotifier` | Singleton: after saving profile, notify other views (e.g. reload home welcome line). |
-| `NewsSubscriptionListCache` | Caches news lists to reduce redundant API calls. |
+| `NewsSubscriptionListCache` | Builds paged `GET …/news` requests (query: page, pageSize, sort, filters); no response cache. |
 
 ---
 

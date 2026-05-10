@@ -1,80 +1,83 @@
+using System.Globalization;
 using System.Net.Http.Json;
-using System.Text.Json;
+using System.Text;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Enums;
 
 namespace Hermes.WebFrontend.Client.Services.NewsService;
 
 /// <summary>
-/// Holds the news subscription list per user session so switching tabs does not repeat GET collection.
-/// Call <see cref="Invalidate"/> on logout or when the list must be refetched from the API.
+/// Loads paged news list responses from the API. <see cref="Invalidate"/> is a no-op kept for logout hooks;
+/// list data is not cached between calls.
 /// </summary>
 public sealed class NewsSubscriptionListCache
 {
-    private int? _freshUserId;
-    private List<News> _items = [];
-    private string? _lastError;
-
-    /// <summary>Clears cache content and error state.</summary>
+    /// <summary>Clears any client-side list state (hook for logout; no in-memory list cache).</summary>
     public void Invalidate()
     {
-        _freshUserId = null;
-        _items = [];
-        _lastError = null;
     }
 
-    /// <param name="forceReload">When true, always calls the API (after create/update/delete).</param>
-    /// <summary>Returns cached items or reloads the current user's list from the API.</summary>
-    public async Task<(List<News> Items, string? Error)> GetOrLoadAsync(
+    public async Task<(NewsListPageDto? Data, string? Error)> FetchAsync(
         int userId,
         HttpClient http,
-        bool forceReload,
+        int page,
+        int pageSize,
+        bool sortDescending,
+        string? q,
+        NewsCategory? category,
+        int? afterId,
         CancellationToken cancellationToken = default)
     {
-        if (!forceReload && _freshUserId == userId)
-            return (Snapshot(), _lastError);
-
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            HttpResponseMessage response = await http
-                .GetAsync($"api/v1/users/{userId}/news", cancellationToken)
-                .ConfigureAwait(false);
+            string url = BuildNewsListUrl(userId, page, pageSize, sortDescending, q, category, afterId);
+            HttpResponseMessage response = await http.GetAsync(url, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                _lastError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
-                _freshUserId = null;
-                _items = [];
-                return (_items, _lastError);
+                return (null, await ReadErrorDetailAsync(response).ConfigureAwait(false));
             }
 
-            List<News>? list = await response.Content
-                .ReadFromJsonAsync<List<News>>(HermesNewsJson.Options, cancellationToken)
+            NewsListPageDto? dto = await response.Content
+                .ReadFromJsonAsync<NewsListPageDto>(HermesNewsJson.Options, cancellationToken)
                 .ConfigureAwait(false);
-            _items = list ?? [];
-            _lastError = null;
-            _freshUserId = userId;
-            return (_items, null);
+            return (dto, null);
         }
         catch (Exception ex)
         {
-            _lastError = $"Laden fehlgeschlagen: {ex.Message}";
-            _freshUserId = null;
-            _items = [];
-            return (_items, _lastError);
+            return (null, $"Laden fehlgeschlagen: {ex.Message}");
         }
     }
 
-    /// <summary>Returns a detached copy of cached items.</summary>
-    private List<News> Snapshot() => _items.Count == 0 ? [] : new List<News>(_items);
+    internal static string BuildNewsListUrl(
+        int userId,
+        int page,
+        int pageSize,
+        bool sortDescending,
+        string? q,
+        NewsCategory? category,
+        int? afterId)
+    {
+        StringBuilder sb = new();
+        sb.Append(CultureInfo.InvariantCulture, $"api/v1/users/{userId}/news?page={page}");
+        sb.Append(CultureInfo.InvariantCulture, $"&pageSize={pageSize}");
+        sb.Append(sortDescending ? "&sort=-id" : "&sort=id");
+        if (!string.IsNullOrWhiteSpace(q))
+            sb.Append("&q=").Append(Uri.EscapeDataString(q.Trim()));
+        if (category is NewsCategory c)
+            sb.Append(CultureInfo.InvariantCulture, $"&category={(int)c}");
+        if (afterId is int a)
+            sb.Append(CultureInfo.InvariantCulture, $"&afterId={a}");
+        return sb.ToString();
+    }
 
-    /// <summary>Attempts to extract a problem-details message from a failed API response.</summary>
     private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
     {
         try
         {
             using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("detail", out JsonElement d) && d.ValueKind == JsonValueKind.String)
+            using System.Text.Json.JsonDocument doc = await System.Text.Json.JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("detail", out System.Text.Json.JsonElement d) && d.ValueKind == System.Text.Json.JsonValueKind.String)
                 return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
         }
         catch

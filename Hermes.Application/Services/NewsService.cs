@@ -1,3 +1,4 @@
+using Hermes.Application.Models.News;
 using Hermes.Domain.Entities;
 using Hermes.Application.Ports;
 
@@ -39,12 +40,24 @@ public sealed class NewsService(IHermesDataStore db) : INewsService
         return await db.GetNewsByIdAsync(userId, id, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Returns all news entries for the specified user.</summary>
-    public async Task<List<News>> GetAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    /// <summary>Returns one page of news for the user (offset and/or cursor), with optional filter and sort.</summary>
+    public async Task<NewsListResult> GetNewsListAsync(NewsListQuery query, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
-            throw new ArgumentException("User id must be greater than zero.", nameof(userId));
-        return await db.GetAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(query);
+        if (query.UserId <= 0)
+            throw new ArgumentException("User id must be greater than zero.", nameof(query));
+        if (query.Page < 1)
+            throw new ArgumentException("Page must be at least 1.", nameof(query));
+        if (query.PageSize < 1)
+            throw new ArgumentException("Page size must be at least 1.", nameof(query));
+        if (query.AfterId is not null && query.SortDescending)
+        {
+            throw new ArgumentException(
+                "Cursor pagination (afterId) is only supported with ascending id order (sort=id or omit sort).",
+                nameof(query));
+        }
+
+        return await db.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Deletes all news entries for the specified user and returns the deleted row count.</summary>
