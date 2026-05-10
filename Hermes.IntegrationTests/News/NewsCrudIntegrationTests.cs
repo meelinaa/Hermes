@@ -29,6 +29,26 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendAtTimes = new[] { "09:00:00" },
         };
 
+    /// <summary>Creation route returns stable camelCase for the SPA (<see cref="Hermes.Application.Models.News.CreateNewsResponse"/>).</summary>
+    [Fact]
+    public async Task Post_news_contract_uses_userId_and_newsId_camelCase()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
+
+        using HttpRequestMessage req = Authorized(HttpMethod.Post, "/api/v1/users/news", access);
+        req.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: JsonWeb);
+        using HttpResponseMessage resp = await client.SendAsync(req);
+        resp.EnsureSuccessStatusCode();
+        using JsonDocument doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+        JsonElement root = doc.RootElement;
+        Assert.True(root.TryGetProperty("userId", out JsonElement u) && userId == u.GetInt32(), "Expect userId (camelCase) matching JWT subject.");
+        Assert.True(root.TryGetProperty("newsId", out JsonElement n) && n.GetInt32() > 0, "Expect newsId (camelCase).");
+        Assert.False(root.TryGetProperty("UserId", out JsonElement _), "Pascal-case keys break Web defaults.");
+        Assert.False(root.TryGetProperty("NewsId", out JsonElement _), "Pascal-case keys break Web defaults.");
+    }
+
     [Fact]
     public async Task Crud_happy_path_create_list_get_update_delete()
     {

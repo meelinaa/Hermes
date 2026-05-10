@@ -36,10 +36,14 @@ public sealed class RefreshTokenStore(HermesDbContext db) : IRefreshTokenStore
     }
 
     /// <inheritdoc />
-    public async Task CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default)
+    public async Task<bool> CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(trackedOld);
         ArgumentNullException.ThrowIfNull(newToken);
+
+        DateTime utc = DateTime.UtcNow;
+        int oldId = trackedOld.Id;
+        string expectedHash = trackedOld.TokenHash;
 
         if (db.Database.IsRelational())
         {
@@ -47,10 +51,27 @@ public sealed class RefreshTokenStore(HermesDbContext db) : IRefreshTokenStore
             try
             {
                 await db.RefreshTokens.AddAsync(newToken, cancellationToken).ConfigureAwait(false);
-                trackedOld.RevokedAt = DateTime.UtcNow;
-                trackedOld.ReplacedByToken = newToken;
                 await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                int rows = await db.RefreshTokens
+                    .Where(
+                        t => t.Id == oldId
+                            && t.TokenHash == expectedHash
+                            && t.RevokedAt == null
+                            && t.ExpiresAt > utc)
+                    .ExecuteUpdateAsync(
+                        s => s.SetProperty(t => t.RevokedAt, utc).SetProperty(t => t.ReplacedByTokenId, newToken.Id),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (rows != 1)
+                {
+                    await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                    return false;
+                }
+
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                return true;
             }
             catch
             {
@@ -58,13 +79,13 @@ public sealed class RefreshTokenStore(HermesDbContext db) : IRefreshTokenStore
                 throw;
             }
         }
-        else
-        {
-            await db.RefreshTokens.AddAsync(newToken, cancellationToken).ConfigureAwait(false);
-            trackedOld.RevokedAt = DateTime.UtcNow;
-            trackedOld.ReplacedByToken = newToken;
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
+
+        await db.RefreshTokens.AddAsync(newToken, cancellationToken).ConfigureAwait(false);
+        trackedOld.RevokedAt = utc;
+        trackedOld.ReplacedByToken = newToken;
+        trackedOld.ReplacedByTokenId = newToken.Id;
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     /// <inheritdoc />

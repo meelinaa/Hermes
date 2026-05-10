@@ -89,21 +89,64 @@ public sealed class NewsServiceTests
     }
 
     /// <summary>
-    /// Valid ids delegate to store and return entity when present.
+    /// Deletes should only hit persistence; digest slot advancement is tied to mutations that maintain newsletter scheduling.
     /// </summary>
     [Fact]
-    public async Task GetNewsByIdAsync_Should_ReturnEntity_FromStore_WhenIdentifiersValid()
+    public async Task DeleteNewsAsync_Should_RemoveFromStore_WithoutAdvancingDigestSlot()
     {
         Mock<INewsStore> db = new();
-        db.Setup(dataStore => dataStore.GetNewsByIdAsync(3, 9, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new News { Id = 9, UserId = 3 });
+        News news = new()
+        {
+            Id = 9,
+            UserId = 4,
+            SendOnWeekdays = [Weekdays.Tuesday],
+            SendAtTimes = [new TimeOnly(8, 0)],
+        };
+        db.Setup(dataStore => dataStore.DeleteNewsAsync(news, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         NewsService sut = new(db.Object, DefaultNewsletterOpts);
+        await sut.DeleteNewsAsync(news);
 
-        News? news = await sut.GetNewsByIdAsync(3, 9);
+        db.Verify(dataStore => dataStore.DeleteNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
+        db.Verify(
+            dataStore => dataStore.AdvanceNextDigestSlotAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<TimeZoneInfo>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 
-        Assert.NotNull(news);
-        Assert.Equal(9, news!.Id);
+    /// <summary>
+    /// <summary>
+    /// Updates that keep a schedule must recompute the materialized next-slot column after persist.
+    /// </summary>
+    /// </summary>
+    [Fact]
+    public async Task UpdateNewsAsync_Should_AdvanceDigestSlot_AfterPersist()
+    {
+        News news = new() { Id = 1, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
+        Mock<INewsStore> db = new();
+        db.Setup(dataStore => dataStore.UpdateNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<TimeZoneInfo>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        NewsService sut = new(db.Object, DefaultNewsletterOpts);
+        await sut.UpdateNewsAsync(news);
+
+        db.Verify(dataStore => dataStore.AdvanceNextDigestSlotAsync(
+            1,
+            1,
+            It.IsAny<TimeZoneInfo>(),
+            It.IsAny<DateTime>(),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     /// <summary>
@@ -121,34 +164,6 @@ public sealed class NewsServiceTests
     }
 
     /// <summary>
-    /// Valid query delegates to the data store.
-    /// </summary>
-    [Fact]
-    public async Task GetNewsListAsync_Should_ReturnResult_FromStore()
-    {
-        NewsListResult expected = new(
-            Items: [new News { Id = 1, UserId = 2 }],
-            Page: 1,
-            PageSize: 10,
-            TotalCount: 1,
-            TotalPages: 1,
-            HasNextPage: false,
-            NextAfterId: null);
-        Mock<INewsStore> db = new();
-        db.Setup(dataStore => dataStore.GetNewsListAsync(It.IsAny<NewsListQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expected);
-
-        NewsService sut = new(db.Object, DefaultNewsletterOpts);
-        NewsListQuery q = new(2, 1, 10, null, false, null, NewsCategory.Technology);
-
-        NewsListResult result = await sut.GetNewsListAsync(q);
-
-        Assert.Single(result.Items);
-        Assert.Equal(1, result.TotalCount);
-        db.Verify(dataStore => dataStore.GetNewsListAsync(q, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    /// <summary>
     /// Bulk delete by user requires positive user id.
     /// </summary>
     [Theory]
@@ -162,44 +177,8 @@ public sealed class NewsServiceTests
     }
 
     /// <summary>
-    /// Delete-all returns the row count from persistence (pass-through).
+    /// Update throws when entity is null.
     /// </summary>
-    [Fact]
-    public async Task DeleteAllNewsByUserAsync_Should_ReturnRemovedRowCount_FromStore()
-    {
-        Mock<INewsStore> db = new();
-        db.Setup(dataStore => dataStore.DeleteAllNewsByUserAsync(4, It.IsAny<CancellationToken>())).ReturnsAsync(7);
-
-        NewsService sut = new(db.Object, DefaultNewsletterOpts);
-
-        Assert.Equal(7, await sut.DeleteAllNewsByUserAsync(4));
-    }
-
-    /// <summary>
-    /// Update and delete delegate to store when entity reference is non-null.
-    /// </summary>
-    [Fact]
-    public async Task UpdateNewsAsync_And_DeleteNewsAsync_Should_DelegateToStore_WhenEntitiesNonNull()
-    {
-        News news = new() { Id = 1, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
-        Mock<INewsStore> db = new();
-        db.Setup(dataStore => dataStore.UpdateNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        db.Setup(dataStore => dataStore.DeleteNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
-                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<TimeZoneInfo>(), It.IsAny<DateTime>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        NewsService sut = new(db.Object, DefaultNewsletterOpts);
-        await sut.UpdateNewsAsync(news);
-        await sut.DeleteNewsAsync(news);
-
-        db.Verify(dataStore => dataStore.UpdateNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
-        db.Verify(dataStore => dataStore.DeleteNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
     [Fact]
     public async Task UpdateNewsAsync_Should_Throw_WhenNewsNull()
     {

@@ -137,8 +137,9 @@ public sealed class HermesDbContextTests
             CreatedAt = DateTime.UtcNow,
         };
 
-        await tokens.CompleteRefreshRotationAsync(oldToken, newToken, CancellationToken.None);
+        bool ok = await tokens.CompleteRefreshRotationAsync(oldToken, newToken, CancellationToken.None);
 
+        Assert.True(ok);
         Assert.True(oldToken.RevokedAt.HasValue);
         Assert.Equal(newToken.Id, oldToken.ReplacedByTokenId);
 

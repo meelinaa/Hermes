@@ -109,7 +109,7 @@ Components include `HermesBrand`, `HermesTopNavigation`, `NewsSettingsPanel`, `N
 
 ## Known limitations
 
-- **Blazor / E2E:** There is no dedicated UI test project yet (`bUnit`, Playwright, etc.).
+- **Blazor UI:** `Hermes.WebFrontend.Client.Tests` (bUnit) covers selected components; heavier flows stay in API integration tests.
 
 ---
 
@@ -117,8 +117,9 @@ Components include `HermesBrand`, `HermesTopNavigation`, `NewsSettingsPanel`, `N
 
 ```
 Hermes.WebFrontend/
-├── README.md                 ← this file
-├── Hermes.WebFrontend/       ← server host
+├── README.md                         ← this file
+├── Hermes.WebFrontend.Client.Tests/ ← bUnit (component tests)
+├── Hermes.WebFrontend/               ← server host
 │   ├── Components/           App.razor, Routes, Layout/MainLayout, Pages (Error, NotFound)
 │   ├── wwwroot/              global CSS, tokens
 │   └── Program.cs
@@ -135,7 +136,7 @@ Hermes.WebFrontend/
 
 ## Automated tests
 
-There are **no dedicated Blazor or Playwright tests** in this repo yet. Backend paths the UI relies on (**auth**, **users**, **news**, **notification logs**) are covered by **`Hermes.IntegrationTests`** together with **`Hermes.UnitTests`** (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)). Future UI work might add **bUnit** or E2E tests here.
+**`Hermes.WebFrontend.Client.Tests`** (bUnit) exercises key Blazor components (e.g. `HermesBrand`). Backend paths the UI relies on (**auth**, **users**, **news**, **notification logs**) are covered by **`Hermes.IntegrationTests`** and **`Hermes.UnitTests`** (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)).
 
 Run all solution tests from the repository root:
 

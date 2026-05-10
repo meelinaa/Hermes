@@ -22,6 +22,9 @@ env:
 jobs:
   test:
     name: Run Tests
+    # Quality gates: `dotnet build -warnaserror` (Roslyn + xUnit analyzers); Coverlet line threshold on merged coverage after integration tests.
+    # Repo-wide `dotnet format Hermes.sln --verify-no-changes` is intentionally not enforced until a one-time format pass (whitespace/charset/imports) lands.
+    # Mutation testing (e.g. Stryker.NET) can be added as a separate optional workflow when the team wants that signal.
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,6 +49,15 @@ jobs:
 
       - name: Build Solution
         run: dotnet build Hermes.sln --configuration Release --no-restore -warnaserror
+
+      - name: Run WebFrontend Client Tests (bUnit)
+        run: |
+          dotnet test Hermes.WebFrontend/Hermes.WebFrontend.Client.Tests/Hermes.WebFrontend.Client.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --verbosity normal \
+            --logger "trx;LogFileName=client-bunit-results.trx" \
+            --results-directory ${{ github.workspace }}/test-results
 
       - name: Run Unit Tests
         run: |

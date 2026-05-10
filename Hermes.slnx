@@ -11,6 +11,9 @@
     <Build Solution="Debug|*" Project="false" />
   </Project>
   <Project Path="Hermes.WebFrontend/Hermes.WebFrontend.Client/Hermes.WebFrontend.Client.csproj" Id="c48c8970-d55f-4741-86b3-e21f29fe396f" />
+  <Project Path="Hermes.WebFrontend/Hermes.WebFrontend.Client.Tests/Hermes.WebFrontend.Client.Tests.csproj">
+    <Build Solution="Debug|*" Project="false" />
+  </Project>
   <Project Path="Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj" Id="13eb8d64-6f7a-42e9-9fbd-5e8e577dd21e" />
   <Project Path="Hermes.Worker/Hermes.Worker.csproj" Id="d3372e6a-c2fd-4622-940c-3854172ac482" />
   <Project Path="Hermes/Hermes.csproj" />

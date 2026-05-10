@@ -60,7 +60,6 @@ public sealed class AuthTokenService(
             return null;
         }
 
-        JwtAccessTokenResult access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
         string? newPlain = CreateRefreshPlain();
         RefreshToken newRow = new()
         {
@@ -69,7 +68,11 @@ public sealed class AuthTokenService(
             ExpiresAt = DateTime.UtcNow.AddDays(_o.RefreshTokenDays),
             CreatedAt = DateTime.UtcNow,
         };
-        await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
+        bool rotated = await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
+        if (!rotated)
+            return null;
+
+        JwtAccessTokenResult access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
         return new AuthTokensResult(
             access.Token,
             access.ExpiresAtUtc,

@@ -45,6 +45,40 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     }
 
     [Fact]
+    public async Task Register_duplicate_email_returns_Conflict()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        string email = $"dup-{Guid.NewGuid():N}@integration.hermes";
+        object firstDto = new
+        {
+            id = 0,
+            name = "First",
+            email,
+            password = AuthIntegrationFlows.DEFAULT_PASSWORD,
+            isEmailVerified = false,
+            twoFactorCode = (string?)null,
+            twoFactorExpiry = (DateTime?)null,
+        };
+
+        using HttpResponseMessage first = await client.PostAsJsonAsync("/api/v1/users", firstDto, options: _jsonWeb);
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+
+        object secondDto = new
+        {
+            id = 0,
+            name = "Second",
+            email,
+            password = AuthIntegrationFlows.DEFAULT_PASSWORD,
+            isEmailVerified = false,
+            twoFactorCode = (string?)null,
+            twoFactorExpiry = (DateTime?)null,
+        };
+
+        using HttpResponseMessage second = await client.PostAsJsonAsync("/api/v1/users", secondDto, options: _jsonWeb);
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+    }
+
+    [Fact]
     public async Task Register_without_password_returns_BadRequest()
     {
         using HttpClient client = fixture.Factory.CreateClient();

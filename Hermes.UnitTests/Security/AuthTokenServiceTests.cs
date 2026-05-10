@@ -129,6 +129,7 @@ public sealed class AuthTokenServiceTests
 
         // Assert
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
+        db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     /// <summary>
@@ -157,7 +158,7 @@ public sealed class AuthTokenServiceTests
                 It.IsAny<RefreshToken>(),
                 It.IsAny<RefreshToken>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
 
         Mock<IJwtTokenIssuer> jwt = new();
         jwt.Setup(tokenIssuer => tokenIssuer.Issue(7, "u@example.org", "Uwe"))
@@ -180,6 +181,41 @@ public sealed class AuthTokenServiceTests
                 It.Is<RefreshToken>(nr => nr.UserId == 7 && nr.TokenHash == RefreshTokenHasher.Hash(result.RefreshToken)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    /// <summary>
+    /// Another request won refresh rotation (e.g. duplicate tab) — abort without issuing an access token.
+    /// </summary>
+    [Fact]
+    public async Task RotateAsync_Should_ReturnNull_WhenRotationNotClaimed()
+    {
+        string plainOld = "concurrent-loser";
+        string hashOld = RefreshTokenHasher.Hash(plainOld);
+        RefreshToken oldRow = new()
+        {
+            Id = 99,
+            UserId = 7,
+            TokenHash = hashOld,
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            CreatedAt = DateTime.UtcNow,
+            User = new User { Id = 7, Email = "u@example.org", Name = "Uwe" },
+        };
+
+        Mock<IRefreshTokenStore> db = new();
+        db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldRow);
+        db.Setup(dataStore => dataStore.CompleteRefreshRotationAsync(
+                It.IsAny<RefreshToken>(),
+                It.IsAny<RefreshToken>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        Mock<IJwtTokenIssuer> jwt = new();
+        AuthTokenService sut = CreateSut(db, jwt);
+
+        Assert.Null(await sut.RotateAsync(plainOld));
+
+        jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
 
     /// <summary>

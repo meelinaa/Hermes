@@ -13,7 +13,7 @@ public interface IAuthTokenService
 
     /// <summary>
     /// Accepts the plain refresh token from the client, looks up the hash, and if valid: revokes the old row, inserts a new refresh row,
-    /// and returns a fresh JWT + new refresh (rotation). Returns <c>null</c> if missing, expired, or already revoked (reuse attack).
+    /// and returns a fresh JWT + new refresh (rotation). Returns <c>null</c> if missing, expired, already revoked (reuse attack), or lost a concurrent rotate race against the same session.
     /// </summary>
     Task<AuthTokensResult?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default);
 

@@ -301,10 +301,10 @@ Automated coverage lives in `**Hermes.UnitTests**` (fast, no Docker) and `**Herm
 | Auth / JWT                        | `AuthTokenServiceTests`, `JwtTokenIssuerTests`, `RefreshTokenHasherTests`         |
 | Users / news                      | `UserServiceTests`, `NewsServiceTests`, `UpdateNewsRequestValidatorTests`                 |
 | Verification mail pipeline        | `VerificationDigestServiceTests`                                                  |
-| Hangfire entrypoints              | `NotificationJobsTests`                                                           |
-| Thin application wrappers         | `NotificationLogServiceTests`                                                     |
 | HTTP / controllers                | `ControllerUserExtensionsTests`                                                   |
 | Notification / digest persistence | `HermesDbContextTests` (notification send window), `NewsletterDigestServiceTests` |
+
+**Blazor WASM (bUnit):** `Hermes.WebFrontend.Client.Tests` — lightweight component checks (for example `HermesBrand`).
 
 
 ### `Hermes.IntegrationTests`
@@ -315,9 +315,11 @@ Automated coverage lives in `**Hermes.UnitTests**` (fast, no Docker) and `**Herm
 | **Health**            | `HealthProbeIntegrationTests`: `/health/live`, `/health/ready`, DB probe behaviour                                                                                                                                                                                    |
 |                       | `ReadinessProbeFailureIntegrationTests`: readiness when MySQL stops                                                                                                                                                                                                   |
 | **Auth**              | `AuthIntegrationTests`: login, refresh + replay, **logout** (single session, revoke all, unknown targeted refresh → **401**), credential validation, JWT bearer rejection (`UsersController` as probe), malformed/expired/forged tokens                                       |
-| **Users**             | `UsersCrudIntegrationTests`: anonymous register, profile GET (by id / by email), update, **password change success**, wrong `currentPassword` → **400** + `type`, delete + GET **404**, cross-account **403**, **401**/ **400** samples |
+|                       | `AuthDtoContractIntegrationTests`: login/refresh JSON **camelCase** fields expected by the SPA; refresh response must omit `userId`                                                                                                                                         |
+|                       | `AuthRefreshConcurrencyIntegrationTests`: parallel refresh with the same token — exactly one **200**, one failure                                                                                                                                                          |
+| **Users**             | `UsersCrudIntegrationTests`: anonymous register (duplicate email → **409 Conflict**), profile GET (by id / by email), update, **password change success**, wrong `currentPassword` → **400** + `type`, delete + GET **404**, cross-account **403**, **401**/ **400** samples |
 |                       | `UsersEmailVerificationIntegrationTests`: `POST …/users/{id}/verify` and `POST …/users/verify/code` (success → **`UserResponse`** / `isEmailVerified`, wrong code / expired → **400**)                                                          |
-| **News**              | `NewsCrudIntegrationTests`: create/list/get/update/delete, cross-user **403**, missing-news **404**, invalid JSON / binding **400**, **401** paths                                                                                                                    |
+| **News**              | `NewsCrudIntegrationTests`: create contract (`userId` / `newsId` camelCase), create/list/get/update/delete, cross-user **403**, missing-news **404**, invalid JSON / binding **400**, **401** paths                                                                                                                    |
 | **Notification logs** | `NotificationLogsIntegrationTests`: `POST …/notification-logs` happy path, extraneous body `userId` ignored, cross-user **403**, **401**/ malformed bearer                                                                                                              |
 
 
