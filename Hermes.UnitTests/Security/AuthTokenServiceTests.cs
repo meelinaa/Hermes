@@ -16,7 +16,7 @@ namespace Hermes.UnitTests.Security;
 public sealed class AuthTokenServiceTests
 {
     private static AuthTokenService CreateSut(
-        Mock<IHermesDataStore> db,
+        Mock<IRefreshTokenStore> db,
         Mock<IJwtTokenIssuer> jwt,
         Mock<ILogger<AuthTokenService>>? logger = null,
         JwtOptions? options = null)
@@ -32,7 +32,7 @@ public sealed class AuthTokenServiceTests
     public async Task IssueTokensAsync_Should_PersistHashedRefresh_AndReturnPlainOnce()
     {
         // Arrange
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         Mock<IJwtTokenIssuer> jwt = new();
         jwt.Setup(tokenIssuer => tokenIssuer.Issue(3, "a@test.example", "Alice"))
             .Returns(new JwtAccessTokenResult("access-jwt", DateTimeOffset.UtcNow.AddMinutes(30)));
@@ -65,7 +65,7 @@ public sealed class AuthTokenServiceTests
     [InlineData(-3)]
     public async Task IssueTokensAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
-        AuthTokenService sut = CreateSut(new Mock<IHermesDataStore>(), new Mock<IJwtTokenIssuer>());
+        AuthTokenService sut = CreateSut(new Mock<IRefreshTokenStore>(), new Mock<IJwtTokenIssuer>());
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
             sut.IssueTokensAsync(invalidUserId, "a@test.dev", "X"));
@@ -78,7 +78,7 @@ public sealed class AuthTokenServiceTests
     public async Task RotateAsync_Should_NotTouchDatabase_WhenPlainMissingOrWhitespace()
     {
         // Arrange
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenIssuer>());
 
         // Act
@@ -96,7 +96,7 @@ public sealed class AuthTokenServiceTests
     public async Task RotateAsync_Should_ReturnNull_WhenNoActiveRefreshMatchesHash()
     {
         // Arrange
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((RefreshToken?)null);
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenIssuer>());
@@ -118,7 +118,7 @@ public sealed class AuthTokenServiceTests
         // Arrange
         string plain = "token";
         string hash = RefreshTokenHasher.Hash(plain);
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new RefreshToken { UserId = 1, TokenHash = hash, User = null });
         Mock<IJwtTokenIssuer> jwt = new();
@@ -150,7 +150,7 @@ public sealed class AuthTokenServiceTests
             User = new User { Id = 7, Email = "u@example.org", Name = "Uwe" },
         };
 
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
             .ReturnsAsync(oldRow);
         db.Setup(dataStore => dataStore.CompleteRefreshRotationAsync(
@@ -202,7 +202,7 @@ public sealed class AuthTokenServiceTests
             User = new User { Id = 7, Email = "u@example.org", Name = "Uwe" },
         };
 
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
             .ReturnsAsync(oldRow);
         
@@ -231,7 +231,7 @@ public sealed class AuthTokenServiceTests
         string plain = "secret";
         string hash = RefreshTokenHasher.Hash(plain);
         RefreshToken row = new() { UserId = 5, TokenHash = hash };
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(row);
 
@@ -254,7 +254,7 @@ public sealed class AuthTokenServiceTests
         string plain = "secret";
         string hash = RefreshTokenHasher.Hash(plain);
         RefreshToken row = new() { UserId = 12, TokenHash = hash };
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(row);
         db.Setup(dataStore => dataStore.RevokeRefreshTokenAsync(row, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -275,7 +275,7 @@ public sealed class AuthTokenServiceTests
     public async Task RevokeAllForUserAsync_Should_DelegateToStore()
     {
         // Arrange
-        Mock<IHermesDataStore> db = new();
+        Mock<IRefreshTokenStore> db = new();
         db.Setup(dataStore => dataStore.RevokeAllRefreshTokensForUserAsync(44, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenIssuer>());

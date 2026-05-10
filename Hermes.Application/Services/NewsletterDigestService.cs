@@ -14,7 +14,9 @@ using Microsoft.Extensions.Options;
 namespace Hermes.Application.Services;
 
 public sealed class NewsletterDigestService(
-    IHermesDataStore dataStore,
+    IUserStore users,
+    INewsStore news,
+    INotificationLogStore notificationLogs,
     INewsArticleProvider newsArticleProvider,
     IEmailSender emailSender,
     IOptions<NewsDataIoOptions> newsDataOptions,
@@ -38,21 +40,21 @@ public sealed class NewsletterDigestService(
         windowStart = new DateTime(windowStart.Year, windowStart.Month, windowStart.Day, windowStart.Hour, windowStart.Minute, 0, DateTimeKind.Utc);
         DateTime windowEnd = windowStart.AddMinutes(1);
 
-        bool duplicate = await dataStore
+        bool duplicate = await notificationLogs
             .ExistsSentNotificationInWindowAsync(userId, newsId, windowStart, windowEnd, cancellationToken)
             .ConfigureAwait(false);
         if (duplicate)
             return;
 
-        User? user = await dataStore.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
+        User? user = await users.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email))
             return;
 
-        News? news = await dataStore.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
-        if (news is null)
+        News? newsEntity = await news.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+        if (newsEntity is null)
             return;
 
-        NewsArticleQuery? query = BuildArticleQuery(apiKey, news);
+        NewsArticleQuery? query = BuildArticleQuery(apiKey, newsEntity);
         if (query is null)
             return;
 
@@ -69,7 +71,7 @@ public sealed class NewsletterDigestService(
                     body),
                 cancellationToken).ConfigureAwait(false);
 
-            await dataStore.SetNotificationLogAsync(
+            await notificationLogs.SetNotificationLogAsync(
                 new NotificationLog
                 {
                     UserId = userId,
@@ -83,7 +85,7 @@ public sealed class NewsletterDigestService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to send newsletter digest for user {UserId}, news {NewsId}.", userId, newsId);
-            await dataStore.SetNotificationLogAsync(
+            await notificationLogs.SetNotificationLogAsync(
                 new NotificationLog
                 {
                     UserId = userId,

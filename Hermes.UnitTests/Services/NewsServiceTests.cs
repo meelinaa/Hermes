@@ -9,7 +9,7 @@ using Xunit;
 namespace Hermes.UnitTests.Services;
 
 /// <summary>
-/// Specifications for news CRUD orchestration: reject invalid keys early; delegate valid operations to <see cref="IHermesDataStore"/>.
+/// Specifications for news CRUD orchestration: reject invalid keys early; delegate valid operations to <see cref="INewsStore"/>.
 /// </summary>
 public sealed class NewsServiceTests
 {
@@ -19,7 +19,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task SetNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsService sut = new(Mock.Of<IHermesDataStore>());
+        NewsService sut = new(Mock.Of<INewsStore>());
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetNewsAsync(null!));
     }
@@ -32,7 +32,7 @@ public sealed class NewsServiceTests
     [InlineData(-4)]
     public async Task SetNewsAsync_Should_RejectNonPositiveOwningUserId(int invalidUserId)
     {
-        NewsService sut = new(Mock.Of<IHermesDataStore>());
+        NewsService sut = new(Mock.Of<INewsStore>());
         News news = new() { Id = 0, UserId = invalidUserId };
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SetNewsAsync(news));
@@ -45,7 +45,7 @@ public sealed class NewsServiceTests
     public async Task SetNewsAsync_Should_ReturnPersistedId_AfterStoreAssignsKey()
     {
         News news = new() { Id = 0, UserId = 1 };
-        Mock<IHermesDataStore> db = new();
+        Mock<INewsStore> db = new();
         db.Setup(dataStore => dataStore.SetNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
             .Callback<News, CancellationToken>((n, _) => n.Id = 55)
             .Returns(Task.CompletedTask);
@@ -67,7 +67,7 @@ public sealed class NewsServiceTests
     [InlineData(-2, 5)]
     public async Task GetNewsByIdAsync_Should_RejectNonPositiveIdentifiers(int userId, int newsId)
     {
-        NewsService sut = new(Mock.Of<IHermesDataStore>());
+        NewsService sut = new(Mock.Of<INewsStore>());
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsByIdAsync(userId, newsId));
     }
@@ -78,7 +78,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task GetNewsByIdAsync_Should_ReturnEntity_FromStore_WhenIdentifiersValid()
     {
-        Mock<IHermesDataStore> db = new();
+        Mock<INewsStore> db = new();
         db.Setup(dataStore => dataStore.GetNewsByIdAsync(3, 9, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new News { Id = 9, UserId = 3 });
 
@@ -98,7 +98,7 @@ public sealed class NewsServiceTests
     [InlineData(-99)]
     public async Task GetNewsListAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
-        NewsService sut = new(Mock.Of<IHermesDataStore>());
+        NewsService sut = new(Mock.Of<INewsStore>());
         NewsListQuery query = new(invalidUserId, 1, 10, AfterId: null, SortDescending: false, Search: null, Category: null);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsListAsync(query));
@@ -118,7 +118,7 @@ public sealed class NewsServiceTests
             TotalPages: 1,
             HasNextPage: false,
             NextAfterId: null);
-        Mock<IHermesDataStore> db = new();
+        Mock<INewsStore> db = new();
         db.Setup(dataStore => dataStore.GetNewsListAsync(It.IsAny<NewsListQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
@@ -140,7 +140,7 @@ public sealed class NewsServiceTests
     [InlineData(-7)]
     public async Task DeleteAllNewsByUserAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
-        NewsService sut = new(Mock.Of<IHermesDataStore>());
+        NewsService sut = new(Mock.Of<INewsStore>());
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.DeleteAllNewsByUserAsync(invalidUserId));
     }
@@ -151,7 +151,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task DeleteAllNewsByUserAsync_Should_ReturnRemovedRowCount_FromStore()
     {
-        Mock<IHermesDataStore> db = new();
+        Mock<INewsStore> db = new();
         db.Setup(dataStore => dataStore.DeleteAllNewsByUserAsync(4, It.IsAny<CancellationToken>())).ReturnsAsync(7);
 
         NewsService sut = new(db.Object);
@@ -166,7 +166,7 @@ public sealed class NewsServiceTests
     public async Task UpdateNewsAsync_And_DeleteNewsAsync_Should_DelegateToStore_WhenEntitiesNonNull()
     {
         News news = new() { Id = 1, UserId = 1 };
-        Mock<IHermesDataStore> db = new();
+        Mock<INewsStore> db = new();
 
         NewsService sut = new(db.Object);
 
@@ -180,7 +180,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task UpdateNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsService sut = new(Mock.Of<IHermesDataStore>());
+        NewsService sut = new(Mock.Of<INewsStore>());
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.UpdateNewsAsync(null!));
     }
@@ -188,7 +188,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task DeleteNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsService sut = new(Mock.Of<IHermesDataStore>());
+        NewsService sut = new(Mock.Of<INewsStore>());
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.DeleteNewsAsync(null!));
     }

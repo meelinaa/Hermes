@@ -13,7 +13,7 @@ namespace Hermes.UnitTests.Services;
 public sealed class VerificationDigestServiceTests
 {
     private static VerificationDigestService CreateSut(
-        IHermesDataStore db,
+        IUserStore db,
         IEmailSender? emailSender = null)
     {
         IOptions<HermesSiteUrlsOptions> site = Options.Create(new HermesSiteUrlsOptions
@@ -33,7 +33,7 @@ public sealed class VerificationDigestServiceTests
     [InlineData(-1)]
     public async Task SendAsync_Should_RejectNonPositiveUserId(int invalidId)
     {
-        VerificationDigestService sut = CreateSut(Mock.Of<IHermesDataStore>());
+        VerificationDigestService sut = CreateSut(Mock.Of<IUserStore>());
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SendAsync(invalidId));
     }
@@ -41,7 +41,7 @@ public sealed class VerificationDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_ReturnWithoutMail_WhenUserMissing()
     {
-        Mock<IHermesDataStore> db = new();
+        Mock<IUserStore> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
         Mock<IEmailSender> mail = new();
@@ -60,7 +60,7 @@ public sealed class VerificationDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_ReturnWithoutMail_WhenUserHasNoEmail()
     {
-        Mock<IHermesDataStore> db = new();
+        Mock<IUserStore> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(3, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 3, Name = "N", Email = "  " });
 
@@ -78,7 +78,7 @@ public sealed class VerificationDigestServiceTests
     public async Task SendAsync_Should_PersistChallenge_AndSendMail_WhenUserValid()
     {
         User user = new() { Id = 10, Name = "Pat", Email = "pat@test.dev" };
-        Mock<IHermesDataStore> db = new();
+        Mock<IUserStore> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(10, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         string? capturedCode = null;
         db.Setup(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(10, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
@@ -111,7 +111,7 @@ public sealed class VerificationDigestServiceTests
     public async Task SendAsync_Should_Propagate_WhenSmtpFails()
     {
         User user = new() { Id = 1, Email = "e@test.dev", Name = "E" };
-        Mock<IHermesDataStore> db = new();
+        Mock<IUserStore> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         db.Setup(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(1, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);

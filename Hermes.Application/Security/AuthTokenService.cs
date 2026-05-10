@@ -11,7 +11,7 @@ namespace Hermes.Application.Security;
 /// Implements refresh-token persistence and rotation on top of <see cref="IJwtTokenIssuer"/> for access tokens.
 /// </summary>
 public sealed class AuthTokenService(
-    IHermesDataStore db,
+    IRefreshTokenStore db,
     IJwtTokenIssuer jwt,
     IOptions<JwtOptions> options,
     ILogger<AuthTokenService> logger) : IAuthTokenService

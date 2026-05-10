@@ -34,7 +34,10 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-        builder.Services.AddScoped<IHermesDataStore>(sp => sp.GetRequiredService<HermesDbContext>());
+        builder.Services.AddScoped<IUserStore>(static sp => sp.GetRequiredService<HermesDbContext>());
+        builder.Services.AddScoped<INewsStore>(static sp => sp.GetRequiredService<HermesDbContext>());
+        builder.Services.AddScoped<IRefreshTokenStore>(static sp => sp.GetRequiredService<HermesDbContext>());
+        builder.Services.AddScoped<INotificationLogStore>(static sp => sp.GetRequiredService<HermesDbContext>());
         builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailSettings(builder.Configuration));
         builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
         builder.Services.Configure<MailHogSettings>(builder.Configuration.GetSection("MailHog"));

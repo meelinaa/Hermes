@@ -8,7 +8,7 @@ using Hermes.Domain.Exceptions;
 
 namespace Hermes.Application.Services;
 
-public sealed class UserService(IHermesDataStore db, IVerificationMailJobTrigger verificationMailJobTrigger) : IUserService
+public sealed class UserService(IUserStore db, IVerificationMailJobTrigger verificationMailJobTrigger) : IUserService
 {
     /// <summary>Registers a new user, normalizes fields, hashes the plain password, and returns the created user scope.</summary>
     public async Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default)

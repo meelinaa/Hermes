@@ -18,7 +18,8 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
     public async Task GetDueNewsScheduleForSlotAsync_returns_only_rows_matching_weekday_and_time()
     {
         using IServiceScope scope = fixture.Factory.Services.CreateScope();
-        IHermesDataStore store = scope.ServiceProvider.GetRequiredService<IHermesDataStore>();
+        IUserStore users = scope.ServiceProvider.GetRequiredService<IUserStore>();
+        INewsStore newsStore = scope.ServiceProvider.GetRequiredService<INewsStore>();
 
         User user = new()
         {
@@ -28,7 +29,7 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
             PasswordHash = "hash",
             IsEmailVerified = true,
         };
-        await store.SetUserAsync(user, CancellationToken.None);
+        await users.SetUserAsync(user, CancellationToken.None);
         int userId = user.Id;
 
         NewsEntity mondaySlot = new()
@@ -38,7 +39,7 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
             SendOnWeekdays = [Weekdays.Monday],
             SendAtTimes = [new TimeOnly(9, 30)],
         };
-        await store.SetNewsAsync(mondaySlot, CancellationToken.None);
+        await newsStore.SetNewsAsync(mondaySlot, CancellationToken.None);
 
         NewsEntity wrongWeekday = new()
         {
@@ -47,7 +48,7 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
             SendOnWeekdays = [Weekdays.Tuesday],
             SendAtTimes = [new TimeOnly(9, 30)],
         };
-        await store.SetNewsAsync(wrongWeekday, CancellationToken.None);
+        await newsStore.SetNewsAsync(wrongWeekday, CancellationToken.None);
 
         NewsEntity wrongTime = new()
         {
@@ -56,9 +57,9 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
             SendOnWeekdays = [Weekdays.Monday],
             SendAtTimes = [new TimeOnly(14, 0)],
         };
-        await store.SetNewsAsync(wrongTime, CancellationToken.None);
+        await newsStore.SetNewsAsync(wrongTime, CancellationToken.None);
 
-        List<(int NewsId, int UserId)> due = await store.GetDueNewsScheduleForSlotAsync(
+        List<(int NewsId, int UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
             Weekdays.Monday,
             9,
             30,

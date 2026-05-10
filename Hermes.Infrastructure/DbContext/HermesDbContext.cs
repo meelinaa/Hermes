@@ -13,7 +13,12 @@ namespace Hermes.Infrastructure.Data;
 /// <summary>
 /// EF Core database context for Hermes (MySQL via Pomelo).
 /// </summary>
-public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbContext(options), IHermesDataStore
+public class HermesDbContext(DbContextOptions<HermesDbContext> options)
+    : DbContext(options),
+        IUserStore,
+        INewsStore,
+        IRefreshTokenStore,
+        INotificationLogStore
 {
     /// <inheritdoc />
     public DbSet<User> Users { get; set; } = null!;
@@ -405,7 +410,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
    
 
-    /// <inheritdoc cref="IHermesDataStore.GetActiveRefreshTokenByHashAsync" />
+    /// <inheritdoc cref="IRefreshTokenStore.GetActiveRefreshTokenByHashAsync" />
     public async Task<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(tokenHash))
@@ -464,7 +469,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         }
     }
 
-    /// <inheritdoc cref="IHermesDataStore.RevokeRefreshTokenAsync" />
+    /// <inheritdoc cref="IRefreshTokenStore.RevokeRefreshTokenAsync" />
     public async Task RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(trackedToken);
@@ -480,7 +485,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc cref="IHermesDataStore.RevokeAllRefreshTokensForUserAsync" />
+    /// <inheritdoc cref="IRefreshTokenStore.RevokeAllRefreshTokensForUserAsync" />
     public async Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         DateTime utc = DateTime.UtcNow;

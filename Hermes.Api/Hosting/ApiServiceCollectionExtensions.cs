@@ -45,7 +45,10 @@ public static class ApiServiceCollectionExtensions
 
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, serverVersion));
-        services.AddScoped<IHermesDataStore>(sp => sp.GetRequiredService<HermesDbContext>());
+        services.AddScoped<IUserStore>(static sp => sp.GetRequiredService<HermesDbContext>());
+        services.AddScoped<INewsStore>(static sp => sp.GetRequiredService<HermesDbContext>());
+        services.AddScoped<IRefreshTokenStore>(static sp => sp.GetRequiredService<HermesDbContext>());
+        services.AddScoped<INotificationLogStore>(static sp => sp.GetRequiredService<HermesDbContext>());
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();

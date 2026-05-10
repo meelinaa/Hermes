@@ -11,7 +11,7 @@ public sealed class NotificationLogServiceTests
     [Fact]
     public async Task SetNotificationLogAsync_Should_DelegateToStore()
     {
-        Mock<IHermesDataStore> db = new();
+        Mock<INotificationLogStore> db = new();
         NotificationLog log = new() { UserId = 1, NewsId = 2 };
         db.Setup(dataStore => dataStore.SetNotificationLogAsync(log, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 

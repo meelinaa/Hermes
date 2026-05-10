@@ -15,7 +15,7 @@ namespace Hermes.Application.Services;
 /// Persists a time-bound verification code on the user and sends the HTML verification e-mail (see <c>Verification.html</c>).
 /// </summary>
 public sealed class VerificationDigestService(
-    IHermesDataStore dataStore,
+    IUserStore users,
     IEmailSender emailSender,
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,
     ILogger<VerificationDigestService> logger) : IVerificationDigestService
@@ -29,14 +29,14 @@ public sealed class VerificationDigestService(
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
-        User? user = await dataStore.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
+        User? user = await users.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email))
             return;
 
         string? code = GenerateNumericVerificationCode();
         DateTime expiresAt = DateTime.UtcNow.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
 
-        await dataStore
+        await users
             .SetUserEmailVerificationChallengeAsync(userId, code, expiresAt, cancellationToken)
             .ConfigureAwait(false);
 

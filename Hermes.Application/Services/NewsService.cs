@@ -4,7 +4,7 @@ using Hermes.Application.Ports;
 
 namespace Hermes.Application.Services;
 
-public sealed class NewsService(IHermesDataStore db) : INewsService
+public sealed class NewsService(INewsStore db) : INewsService
 {
     /// <summary>Creates a news entry and returns its persisted identifier.</summary>
     public async Task<int> SetNewsAsync(News news, CancellationToken cancellationToken = default)
