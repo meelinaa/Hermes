@@ -13,15 +13,12 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace Hermes.Api.Controllers;
 
-/// <summary>Notification logs under <c>api/v1/users/{userId}/notification-logs</c>.</summary>
 [Authorize]
 [ApiController]
 [Route("api/v1/users/{userId:int}/notification-logs")]
 public class NotificationLogsController(INotificationLogService notificationLogService) : ControllerBase
 {
-    /// <summary>Append a notification log entry.</summary>
     /// <remarks>
-    /// <b>POST</b> <c>api/v1/users/{userId}/notification-logs</c> — Body omits <c>userId</c> (route + bearer scope the row).
     /// <code>
     /// {
     ///   "newsId": null,
@@ -33,8 +30,7 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     ///   "nextRetryAt": null
     /// }
     /// </code>
-    /// <c>status</c>: <c>Pending</c>, <c>Sent</c>, <c>Failed</c> — stored as string in DB.
-    /// <c>channel</c>: <c>Email</c>, <c>Telegram</c>.
+    /// <c>status</c>: Pending | Sent | Failed; <c>channel</c>: Email | Telegram.
     /// </remarks>
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]

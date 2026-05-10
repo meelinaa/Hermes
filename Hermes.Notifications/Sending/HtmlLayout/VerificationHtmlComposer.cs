@@ -4,12 +4,8 @@ using System.Reflection;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;
 
-/// <summary>Loads <c>Verification.html</c> and replaces template tokens with escaped values.</summary>
 public class VerificationHtmlComposer
 {
-    /// <summary>
-    /// Substitutes placeholders in <c>Verification.html</c> with UTF-8 HTML-safe values.
-    /// </summary>
     public static async Task<string> BuildAsync(
         VerificationContent verificationContent,
         CancellationToken cancellationToken = default)

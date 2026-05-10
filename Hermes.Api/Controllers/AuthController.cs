@@ -11,32 +11,15 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace Hermes.Api.Controllers;
 
-/// <summary>
-/// Authentication endpoints: password login issues JWT + refresh; refresh exchanges a valid refresh for a new pair;
-/// logout revokes refresh row(s). Protected routes use <c>Authorization: Bearer &lt;accessToken&gt;</c>.
-/// </summary>
 [ApiController]
 [Route("api/v1/auth")]
 public class AuthController(IUserService userService) : ControllerBase
 {
-    /// <summary>Login with display name or email plus plain password (BCrypt verify).</summary>
     /// <remarks>
-    /// <b>POST</b> <c>api/v1/auth/login</c> — Body (application/json):
-    /// <para>By email:</para>
+    /// <b>POST</b> <c>api/v1/auth/login</c>. <c>nameOrEmail</c> is an e-mail or display name.
     /// <code>
-    /// {
-    ///   "nameOrEmail": "max@example.com",
-    ///   "password": "plain-password"
-    /// }
+    /// { "nameOrEmail": "max@example.com", "password": "plain-password" }
     /// </code>
-    /// <para>By display name:</para>
-    /// <code>
-    /// {
-    ///   "nameOrEmail": "Max Mustermann",
-    ///   "password": "plain-password"
-    /// }
-    /// </code>
-    /// <para>Returns access and refresh tokens; store refresh securely. Access token is short-lived; use <c>POST …/refresh</c> to renew.</para>
     /// </remarks>
     [AllowAnonymous]
     [HttpPost("login")]
@@ -67,7 +50,6 @@ public class AuthController(IUserService userService) : ControllerBase
         return Ok(body);
     }
 
-    /// <summary>Exchange a valid refresh token for a new access + refresh pair (rotation).</summary>
     [AllowAnonymous]
     [HttpPost("refresh")]
     [EnableRateLimiting("AuthRefreshPolicy")]
@@ -95,10 +77,7 @@ public class AuthController(IUserService userService) : ControllerBase
         return Ok(body);
     }
 
-    /// <summary>
-    /// Revokes refresh token(s). With body <c>{ "refreshToken": "…" }</c> revokes that session if it belongs to the caller;
-    /// with empty body revokes all refresh tokens for the caller (logout everywhere).
-    /// </summary>
+    /// <summary>Body with <c>refreshToken</c> revokes that session; empty body revokes all refresh rows for the user.</summary>
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(

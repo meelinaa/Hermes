@@ -7,7 +7,6 @@ namespace Hermes.Api.Hosting;
 
 public static class OpenTelemetryWebApplicationBuilderExtensions
 {
-    /// <summary>Registers ASP.NET Core, HTTP client, and runtime instrumentation with optional OTLP export.</summary>
     public static WebApplicationBuilder AddHermesOpenTelemetry(this WebApplicationBuilder builder)
     {
         IConfigurationSection section = builder.Configuration.GetSection(HermesTelemetryOptions.SECTION_NAME);

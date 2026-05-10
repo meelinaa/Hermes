@@ -3,14 +3,8 @@ using Hermes.Application.Ports;
 
 namespace Hermes.Worker.MailHog;
 
-/// <summary>
-/// Sends a minimal HTML message through the configured SMTP (e.g. MailHog on port 1025) after a scheduler tick.
-/// </summary>
 public static class MailHogSchedulerTestMail
 {
-    /// <summary>
-    /// Delivers a test mail to <paramref name="smtp"/>.<see cref="EmailSettings.DefaultFromAddress"/> (MailHog accepts any recipient).
-    /// </summary>
     public static async Task SendAsync(
         IEmailSender emailSender,
         EmailSettings smtp,

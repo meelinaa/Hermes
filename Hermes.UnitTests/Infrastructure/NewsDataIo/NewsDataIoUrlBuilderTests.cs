@@ -3,17 +3,11 @@ using Xunit;
 
 namespace Hermes.UnitTests.Infrastructure.NewsDataIo;
 
-/// <summary>
-/// Specifications for building NewsData.io request URLs: required api key, RFC 3986 query escaping, optional segments omitted when absent.
-/// </summary>
 public sealed class NewsDataIoUrlBuilderTests
 {
     [Fact]
     public void Build_ThrowsArgumentNull_WhenPartsNull() => Assert.Throws<ArgumentNullException>(() => NewsDataIoUrlBuilder.Build(null!));
 
-    /// <summary>
-    /// ApiKey must be non-whitespace — remote API always requires authentication query parameter.
-    /// </summary>
     [Fact]
     public void Build_Throws_WhenApiKeyMissing()
     {
@@ -24,9 +18,6 @@ public sealed class NewsDataIoUrlBuilderTests
             NewsDataIoUrlBuilder.Build(new ApiUrlParts { ApiKey = "   " }));
     }
 
-    /// <summary>
-    /// Base path includes latest endpoint; api key value is percent-encoded (+ and & → safe query literals).
-    /// </summary>
     [Fact]
     public void Build_StartsWithBaseAndEscapedApiKey()
     {
@@ -36,9 +27,6 @@ public sealed class NewsDataIoUrlBuilderTests
         Assert.Contains("apikey=key%2Bwith%26ampersand", url, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// List parameters join with commas (comma encoded as %2C); optional scalar parameters append when provided.
-    /// </summary>
     [Fact]
     public void Build_AppendsCommaSeparatedLists_AndOptionalParameters()
     {
@@ -67,9 +55,6 @@ public sealed class NewsDataIoUrlBuilderTests
         Assert.Contains("q=climate%20OR%20energy", url, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Empty segments in comma-separated lists must not emit stray commas-only groups.
-    /// </summary>
     [Fact]
     public void Build_SkipsNullOrEmptyCommaSeparatedSegments()
     {
@@ -83,9 +68,6 @@ public sealed class NewsDataIoUrlBuilderTests
         Assert.DoesNotContain("country=%2C", url);
     }
 
-    /// <summary>
-    /// Nullable optional integers omitted from URL when null (smaller query string when unused).
-    /// </summary>
     [Fact]
     public void Build_OmitsOptionalInts_WhenNull()
     {

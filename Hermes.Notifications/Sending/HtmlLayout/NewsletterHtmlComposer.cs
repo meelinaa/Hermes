@@ -5,19 +5,8 @@ using System.Text;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;
 
-/// <summary>
-/// Composes a full HTML newsletter from embedded templates (<c>NewsletterHeader.html</c>, <c>NewsletterItem.html</c>, <c>NewsletterFooter.html</c>).
-/// </summary>
 public sealed class NewsletterHtmlComposer
 {
-    /// <summary>
-    /// Builds the complete HTML document by filling placeholders in header, repeating the item template for each article, then appending the footer.
-    /// </summary>
-    /// <param name="header">Header and intro text placeholders.</param>
-    /// <param name="items">Article rows; empty collections produce no item rows.</param>
-    /// <param name="footer">Footer links and text.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>UTF-8 HTML suitable for an HTML e-mail body.</returns>
     public static async Task<string> BuildAsync(
         NewsletterHeaderContent header,
         IEnumerable<NewsletterItemContent> items,

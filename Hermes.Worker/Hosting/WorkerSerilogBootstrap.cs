@@ -2,7 +2,7 @@ using Serilog;
 
 namespace Hermes.Worker.Hosting;
 
-/// <summary>Minimal Serilog sink before merged configuration loads.</summary>
+/// <summary>Console Serilog until merged host/appsettings wiring (same bootstrap idea as Hermes.Api).</summary>
 public static class WorkerSerilogBootstrap
 {
     public static void InitializeBootstrapLogger() => Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();

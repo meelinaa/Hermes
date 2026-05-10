@@ -2,7 +2,6 @@ using Hermes.Domain.Enums;
 
 namespace Hermes.Application.Models.News;
 
-/// <summary>News row exposed by GET list/detail (API contract).</summary>
 public sealed record NewsResponse
 {
     public int Id { get; init; }

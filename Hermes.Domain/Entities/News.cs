@@ -21,10 +21,8 @@ public class News
 
     public List<TimeOnly> SendAtTimes { get; set; } = [];
 
-    /// <summary>UTC instant when this row is next eligible for digest dispatch (aligned to one-minute slots).</summary>
+    /// <summary>Materialized next digest eligibility (UTC minute boundary); query path may use JSON when unset.</summary>
     public DateTime? NextDigestSlotUtc { get; set; }
-
-    /// <summary>Applies validated digest schedule windows (weekdays + times).</summary>
     public void AssignDigestSchedule(ScheduleWindow schedule)
     {
         ArgumentNullException.ThrowIfNull(schedule);

@@ -10,9 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Hermes.IntegrationTests.Users;
 
-/// <summary>
-/// E-mail verification routes: <c>POST …/users/{id}/verify</c> and <c>POST …/verify/code</c> against MySQL.
-/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixture)

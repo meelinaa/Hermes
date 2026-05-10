@@ -2,7 +2,6 @@ using Hermes.Domain.Enums;
 
 namespace Hermes.Application.Models.NotificationLogs;
 
-/// <summary>Body for <c>POST …/notification-logs</c>; owner is the route user (no <c>userId</c> in JSON).</summary>
 public sealed record CreateNotificationLogRequest
 {
     public int? NewsId { get; init; }

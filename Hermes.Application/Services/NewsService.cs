@@ -10,7 +10,6 @@ namespace Hermes.Application.Services;
 
 public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsletterOptions) : INewsService
 {
-    /// <summary>Creates a news entry and returns its persisted identifier.</summary>
     public async Task<int> SetNewsAsync(News news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
@@ -23,7 +22,6 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
         return news.Id;
     }
 
-    /// <summary>Updates an existing news entry.</summary>
     public async Task UpdateNewsAsync(News news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
@@ -40,14 +38,12 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
             .ConfigureAwait(false);
     }
 
-    /// <summary>Deletes a news entry.</summary>
     public async Task DeleteNewsAsync(News news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         await db.DeleteNewsAsync(news, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Returns a single news entry by user and news identifiers.</summary>
     public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -57,7 +53,6 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
         return await db.GetNewsByIdAsync(userId, id, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Returns one page of news for the user (offset and/or cursor), with optional filter and sort.</summary>
     public async Task<NewsListResult> GetNewsListAsync(NewsListQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -77,7 +72,6 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
         return await db.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Deletes all news entries for the specified user and returns the deleted row count.</summary>
     public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)

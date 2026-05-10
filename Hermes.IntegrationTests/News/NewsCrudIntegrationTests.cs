@@ -9,9 +9,6 @@ using Hermes.IntegrationTests.Infrastructure;
 
 namespace Hermes.IntegrationTests.News;
 
-/// <summary>
-/// News REST CRUD under <c>/api/v1/users/…/news</c> against MySQL + JWT enforcement (401/403) and ProblemDetails for 404/400 paths.
-/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
@@ -29,7 +26,6 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendAtTimes = new[] { "09:00:00" },
         };
 
-    /// <summary>Creation route returns stable camelCase for the SPA (<see cref="Hermes.Application.Models.News.CreateNewsResponse"/>).</summary>
     [Fact]
     public async Task Post_news_contract_uses_userId_and_newsId_camelCase()
     {
@@ -52,20 +48,20 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
     [Fact]
     public async Task Crud_happy_path_create_list_get_update_delete()
     {
-        using HttpClient client = fixture.Factory.CreateClient(); // Create a new HttpClient instance from the fixture's factory.
-        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client); // Register a new user and extract the user ID and email for authentication.
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD); // Log in with the registered user's credentials to obtain an access token for authorized requests.
+        using HttpClient client = fixture.Factory.CreateClient();
+        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage createReq = Authorized(HttpMethod.Post, "/api/v1/users/news", access); // Create an authorized POST request to the news creation endpoint, including the access token in the Authorization header.
-        createReq.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: JsonWeb); // Set the request content to a JSON representation of the minimal news payload, which includes the user ID and other required fields for creating a news subscription.
+        using HttpRequestMessage createReq = Authorized(HttpMethod.Post, "/api/v1/users/news", access);
+        createReq.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: JsonWeb);
         using HttpResponseMessage create = await client.SendAsync(createReq);
-        Assert.Equal(HttpStatusCode.OK, create.StatusCode); // Assert that the response status code is 200 OK, indicating that the news subscription was successfully created.
+        Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         using JsonDocument createdJson = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
-        Assert.Equal(userId, createdJson.RootElement.GetProperty("userId").GetInt32()); // Assert that the userId in the response matches the userId of the authenticated user, ensuring that the news subscription is associated with the correct user.
+        Assert.Equal(userId, createdJson.RootElement.GetProperty("userId").GetInt32());
         int newsId = createdJson.RootElement.GetProperty("newsId").GetInt32();
-        Assert.True(newsId > 0); // Assert that the newsId is a positive integer, indicating that the news subscription was successfully created.
+        Assert.True(newsId > 0);
 
-        using HttpResponseMessage listResp = await client.SendAsync(Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news", access)); // Send an authorized GET request to the news listing endpoint for the authenticated user, including the access token in the Authorization header.
+        using HttpResponseMessage listResp = await client.SendAsync(Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news", access));
         listResp.EnsureSuccessStatusCode();
         using JsonDocument listDoc = JsonDocument.Parse(await listResp.Content.ReadAsStringAsync());
         JsonElement items = listDoc.RootElement.GetProperty("items");
@@ -83,10 +79,10 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.True(found);
 
         using HttpResponseMessage getOne = await client.SendAsync(
-            Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{newsId}", access)); // Send an authorized GET request to retrieve the specific news subscription by its ID, including the access token in the Authorization header.
-        getOne.EnsureSuccessStatusCode(); // Assert that the response status code indicates success (2xx), ensuring that the specific news subscription was successfully retrieved by its ID.
+            Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{newsId}", access));
+        getOne.EnsureSuccessStatusCode();
 
-        object updateBody = new // Payload for PUT: owning user comes from JWT; only editable fields plus news id.
+        object updateBody = new
         {
             id = newsId,
             keywords = new[] { "updated-keyword" },
@@ -96,23 +92,23 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendOnWeekdays = new[] { (int)Weekdays.Friday },
             sendAtTimes = new[] { "18:00:00" },
         };
-        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/news", access); // Create an authorized PUT request to the news update endpoint, including the access token in the Authorization header.
+        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/news", access);
         putReq.Content = JsonContent.Create(updateBody, options: JsonWeb);
         using HttpResponseMessage putResp = await client.SendAsync(putReq);
         Assert.Equal(HttpStatusCode.OK, putResp.StatusCode);
 
         using HttpResponseMessage getUpdated = await client.SendAsync(
-            Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{newsId}", access)); // Send an authorized GET request to retrieve the updated news subscription by its ID, including the access token in the Authorization header.
+            Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{newsId}", access));
         getUpdated.EnsureSuccessStatusCode();
         using JsonDocument updatedDoc = JsonDocument.Parse(await getUpdated.Content.ReadAsStringAsync());
         Assert.Equal("updated-keyword", updatedDoc.RootElement.GetProperty("keywords")[0].GetString());
 
         using HttpResponseMessage del = await client.SendAsync(
-            Authorized(HttpMethod.Delete, $"/api/v1/users/{userId}/news/{newsId}", access)); // Send an authorized DELETE request to delete the news subscription by its ID, including the access token in the Authorization header.
+            Authorized(HttpMethod.Delete, $"/api/v1/users/{userId}/news/{newsId}", access));
         Assert.Equal(HttpStatusCode.OK, del.StatusCode);
 
         using HttpResponseMessage getMissing = await client.SendAsync(
-            Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{newsId}", access)); // Send an authorized GET request to verify that the news subscription has been deleted, including the access token in the Authorization header.
+            Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{newsId}", access));
         Assert.Equal(HttpStatusCode.NotFound, getMissing.StatusCode);
     }
 
@@ -120,7 +116,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
     public async Task List_without_bearer_returns_Unauthorized()
     {
         using HttpClient client = fixture.Factory.CreateClient();
-        (int userId, _) = await AuthIntegrationFlows.RegisterUserAsync(client); // Register a new user to obtain a valid user ID for the news listing endpoint, but do not authenticate to test the behavior of the endpoint when no bearer token is provided.
+        (int userId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
 
         using HttpResponseMessage response = await client.GetAsync($"/api/v1/users/{userId}/news");
 
@@ -134,7 +130,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
 
         using HttpRequestMessage request = new(HttpMethod.Get, $"/api/v1/users/{userId}/news");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MALFORMED_JWT_MATERIAL); // Set the Authorization header with a malformed JWT token to test the API's response to invalid authentication credentials.
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MALFORMED_JWT_MATERIAL);
 
         using HttpResponseMessage response = await client.SendAsync(request);
 
@@ -145,8 +141,8 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
     public async Task List_for_foreign_user_returns_Forbidden()
     {
         using HttpClient client = fixture.Factory.CreateClient();
-        (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client); // Register a "victim" user to obtain a valid user ID for the news listing endpoint, which will be used to test access control when an "attacker" user attempts to access the victim's news listing.
-        (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client); // Register a second user to act as the "attacker" who will attempt to access the news listing of the "victim" user, testing the API's enforcement of resource ownership and authorization.
+        (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage response = await client.SendAsync(
@@ -225,7 +221,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpResponseMessage response = await client.SendAsync( // Attempt to retrieve a news subscription by an ID that is unlikely to exist (int.MaxValue) for the authenticated user, testing the API's response when the requested resource is not found.
+        using HttpResponseMessage response = await client.SendAsync(
             Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{int.MaxValue}", access));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -238,7 +234,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpResponseMessage response = await client.SendAsync( // Attempt to delete a news subscription by an ID that is unlikely to exist (int.MaxValue) for the authenticated user, testing the API's response when the requested resource is not found.
+        using HttpResponseMessage response = await client.SendAsync(
             Authorized(HttpMethod.Delete, $"/api/v1/users/{userId}/news/{int.MaxValue}", access));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -252,7 +248,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage req = Authorized(HttpMethod.Put, "/api/v1/users/news", access);
-        req.Content = new StringContent("{ not-json", Encoding.UTF8, "application/json"); // Intentionally malformed JSON to test the API's response to invalid JSON syntax.
+        req.Content = new StringContent("{ not-json", Encoding.UTF8, "application/json");
 
         using HttpResponseMessage response = await client.SendAsync(req);
 
@@ -266,10 +262,10 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        object badBody = new // This object represents a payload for updating a news subscription, but it intentionally sets the "keywords" property to a string instead of an array of strings, which is expected by the API.
+        object badBody = new
         {
             id = 1,
-            keywords = "must-be-array", // Incorrect type for keywords.
+            keywords = "must-be-array",
             category = new[] { (int)NewsCategory.Technology },
             languages = new[] { (int)Language.English },
             countries = new[] { (int)Country.Germany },
@@ -292,7 +288,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         using HttpClient client = fixture.Factory.CreateClient();
         (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD); // Authenticate as the "attacker" user and attempt to delete all news subscriptions for the "victim" user, testing the API's enforcement of resource ownership and authorization when attempting to perform a bulk delete operation on another user's resources.
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage response = await client.SendAsync(
             Authorized(HttpMethod.Delete, $"/api/v1/users/{victimId}/news/all", access));

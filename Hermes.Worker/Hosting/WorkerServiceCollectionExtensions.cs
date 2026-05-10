@@ -14,13 +14,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Worker.Hosting;
 
-/// <summary>Registers worker infrastructure, application services, and Hangfire processing components.</summary>
+/// <summary>Worker DI: shared MySQL EF + Hangfire storage, <c>NewsDataIo</c> HttpClient from configuration.</summary>
 public static class WorkerServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers EF Core, e-mail, NewsData.io, Hangfire storage/server, and worker-scoped jobs.
-    /// NewsData.io API key is read from the <c>NewsDataIo:Key</c> configuration section.
-    /// </summary>
     public static void AddHermesWorker(this HostApplicationBuilder builder)
     {
         string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")

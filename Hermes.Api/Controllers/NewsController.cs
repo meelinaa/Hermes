@@ -18,10 +18,6 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Api.Controllers;
 
-/// <summary>
-/// News resources under <c>/api/v1/users/…</c>; collection/item URLs use normal path segments (no query-like literals).
-/// Create/update bodies omit owning <c>userId</c> (JWT).
-/// </summary>
 [Authorize]
 [ApiController]
 [Route("api/v1/users")]
@@ -30,13 +26,7 @@ public class NewsController(
     INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger,
     IOptions<PaginationOptions> paginationOptions) : ControllerBase
 {
-    /// <summary>
-    /// Returns a page of news entries for the user.
-    /// Offset: <c>page</c> and <c>pageSize</c>. Cursor: optional <c>afterId</c> (ascending id; do not combine with <c>sort=-id</c>).
-    /// </summary>
-    /// <remarks>
-    /// <b>GET</b> <c>/api/v1/users/{userId}/news</c> — query: <c>page</c>, <c>pageSize</c>, <c>afterId</c>, <c>sort</c> (<c>id</c>|<c>-id</c>), <c>q</c>, <c>category</c>.
-    /// </remarks>
+    /// <summary>List: <c>afterId</c> cursor only with ascending <c>sort</c> (not with <c>-id</c>).</summary>
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/news")]
     public async Task<ActionResult<PagedNewsListResponse>> GetNewsList(
@@ -134,8 +124,6 @@ public class NewsController(
         return false;
     }
 
-    /// <summary>Returns a single news row for the user.</summary>
-    /// <remarks><b>GET</b> <c>/api/v1/users/{userId}/news/{newsId}</c> — no body.</remarks>
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/news/{newsId:int}")]
     public async Task<ActionResult<NewsResponse>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
@@ -151,10 +139,7 @@ public class NewsController(
         }
     }
 
-    /// <summary>Create news for the authenticated user (owner from JWT, not request body).</summary>
-    /// <remarks>
-    /// <b>POST</b> <c>/api/v1/users/news</c> — Body omits <c>userId</c>. Enum fields use underlying integer values or names (see <see cref="Hermes.Domain.Enums"/>).
-    /// </remarks>
+    /// <remarks><b>POST</b> <c>/api/v1/users/news</c>: body omits <c>userId</c> (from JWT).</remarks>
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPost("news")]
     public async Task<ActionResult<CreateNewsResponse>> SetNews(
@@ -178,7 +163,6 @@ public class NewsController(
         }
     }
 
-    /// <summary>Update news; <c>id</c> required in body; owner from JWT.</summary>
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPut("news")]
     public async Task<ActionResult> UpdateNews(
@@ -212,8 +196,6 @@ public class NewsController(
         return Ok();
     }
 
-    /// <summary>Delete all news rows for this user. No body.</summary>
-    /// <remarks><b>DELETE</b> <c>/api/v1/users/{userId}/news/all</c></remarks>
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/news/all")]
@@ -223,7 +205,6 @@ public class NewsController(
         return Ok(new DeleteAllNewsResponse(deleted));
     }
 
-    /// <remarks><b>DELETE</b> <c>/api/v1/users/{userId}/news/{newsId}</c> — no body.</remarks>
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/news/{newsId:int}")]

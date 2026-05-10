@@ -1,8 +1,5 @@
-﻿namespace Hermes.Notifications.Sending.HtmlLayout.Models;
+namespace Hermes.Notifications.Sending.HtmlLayout.Models;
 
-/// <summary>
-/// Placeholder values for the verification e-mail template.
-/// </summary>
 public sealed record VerificationContent(
     string Header,
     string Header2,

@@ -7,13 +7,6 @@ using Xunit;
 
 namespace Hermes.UnitTests.Infrastructure.Data;
 
-/// <summary>
-/// EF Core model behavior (InMemory surrogate): duplicate-notification window queries and refresh-token rotation semantics.
-/// </summary>
-/// <remarks>
-/// InMemory provider exercises LINQ/translations for queries used in production; it does not validate SQL Server-specific constraints.
-/// Each test uses a unique database name to isolate state.
-/// </remarks>
 public sealed class HermesDbContextTests
 {
     private static HermesDbContext CreateInMemoryContext()
@@ -37,9 +30,6 @@ public sealed class HermesDbContextTests
         return seededUser;
     }
 
-    /// <summary>
-    /// Sent log row with Sent status inside [windowStart, windowEnd) half-open interval counts as duplicate.
-    /// </summary>
     [Fact]
     public async Task ExistsSentNotificationInWindowAsync_ReturnsTrue_WhenSentRowInsideHalfOpenWindow()
     {
@@ -65,9 +55,6 @@ public sealed class HermesDbContextTests
         Assert.True(exists);
     }
 
-    /// <summary>
-    /// Outside window, Failed status, or Sent exactly at window end must not match (half-open end boundary).
-    /// </summary>
     [Fact]
     public async Task ExistsSentNotificationInWindowAsync_ReturnsFalse_WhenOutsideWindowOrWrongStatus()
     {
@@ -109,9 +96,6 @@ public sealed class HermesDbContextTests
         Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 3, windowStart, windowEnd, CancellationToken.None));
     }
 
-    /// <summary>
-    /// Refresh rotation revokes old token, persists new token, and links replacement chain on both tracked instances and DB round-trip.
-    /// </summary>
     [Fact]
     public async Task CompleteRefreshRotationAsync_SetsRevokedAndReplacementLink()
     {
@@ -150,9 +134,6 @@ public sealed class HermesDbContextTests
         Assert.Equal(persistedNew.Id, persistedOld.ReplacedByTokenId);
     }
 
-    /// <summary>
-    /// Empty hash cannot resolve an active refresh row (guard against accidental full-table scans or ambiguous queries).
-    /// </summary>
     [Fact]
     public async Task GetActiveRefreshTokenByHashAsync_Should_ReturnNull_WhenHashEmpty()
     {
@@ -164,7 +145,6 @@ public sealed class HermesDbContextTests
         Assert.Null(row);
     }
 
-    /// <summary>Changing e-mail on profile update clears verified flag (re-verification required).</summary>
     [Fact]
     public async Task UpdateUserAsync_Should_ClearIsEmailVerified_WhenEmailChanges()
     {

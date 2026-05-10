@@ -7,9 +7,6 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Security;
 
-/// <summary>
-/// Implements refresh-token persistence and rotation on top of <see cref="IJwtTokenIssuer"/> for access tokens.
-/// </summary>
 public sealed class AuthTokenService(
     IRefreshTokenStore db,
     IJwtTokenIssuer jwt,
@@ -18,7 +15,6 @@ public sealed class AuthTokenService(
 {
     private readonly JwtOptions _o = options.Value;
 
-    /// <summary>Issues a new access token and stores a hashed refresh token for the authenticated user.</summary>
     public async Task<AuthTokensResult> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
         if(userId <= 0)
@@ -41,7 +37,6 @@ public sealed class AuthTokenService(
             new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero));
     }
 
-    /// <summary>Rotates a valid refresh token and returns the next access/refresh token pair.</summary>
     public async Task<AuthTokensResult?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
@@ -80,7 +75,6 @@ public sealed class AuthTokenService(
             new DateTimeOffset(newRow.ExpiresAt, TimeSpan.Zero));
     }
 
-    /// <summary>Revokes one refresh token if it belongs to the specified user.</summary>
     public async Task<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, int userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
@@ -95,10 +89,9 @@ public sealed class AuthTokenService(
         return true;
     }
 
-    /// <summary>Revokes all active refresh tokens for the specified user.</summary>
     public Task RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default) =>
         db.RevokeAllRefreshTokensForUserAsync(userId, cancellationToken);
 
-    /// <summary>64 random bytes → Base64 string; unguessable refresh material.</summary>
+    /// <summary>64 bytes cryptographically random, Base64 — opaque high-entropy refresh material.</summary>
     private static string CreateRefreshPlain() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 }

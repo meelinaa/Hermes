@@ -5,10 +5,8 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Worker.Hosting;
 
-/// <summary>Helper methods for worker configuration binding, environment discovery, and startup diagnostics.</summary>
 public class WorkerServiceCollectionHelper
 {
-    /// <summary>Binds SMTP mail settings from configuration and validates required fields.</summary>
     internal static EmailSettings BindEmailSettings(IConfiguration configuration)
     {
         IConfigurationSection section = configuration.GetSection("Email");
@@ -30,7 +28,6 @@ public class WorkerServiceCollectionHelper
             section["XMailer"] ?? "Hermes.Worker");
     }
 
-    /// <summary>Logs SMTP target and MailHog web UI </summary>
     public static void LogMailHogDevHints(IHost host)
     {
         ILogger logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Hermes.Worker");

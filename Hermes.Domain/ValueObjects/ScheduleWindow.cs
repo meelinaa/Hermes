@@ -3,7 +3,7 @@ using Hermes.Domain.Enums;
 
 namespace Hermes.Domain.ValueObjects;
 
-/// <summary>Digest send schedule: at least one weekday and at least one clock time.</summary>
+/// <summary>Digest schedule invariant: at least one weekday and one send time.</summary>
 public sealed record ScheduleWindow
 {
     public IReadOnlyList<Weekdays> Weekdays { get; }
@@ -15,7 +15,6 @@ public sealed record ScheduleWindow
         Times = times;
     }
 
-    /// <summary>Builds a normalized schedule or throws when the invariant is violated.</summary>
     public static ScheduleWindow EnsureForDigestScheduling(IEnumerable<Weekdays>? weekdays, IEnumerable<TimeOnly>? times)
     {
         List<Weekdays> wd = weekdays is null ? [] : weekdays.Distinct().OrderBy(d => (int)d).ToList();
@@ -30,7 +29,6 @@ public sealed record ScheduleWindow
         return new ScheduleWindow(wd, tm);
     }
 
-    /// <summary>Persists the normalized schedule onto <paramref name="news"/>.</summary>
     public void ApplyToNews(News news)
     {
         ArgumentNullException.ThrowIfNull(news);

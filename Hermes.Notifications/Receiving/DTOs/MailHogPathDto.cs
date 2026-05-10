@@ -1,4 +1,4 @@
-﻿namespace Hermes.Notifications.Receiving.DTOs
+namespace Hermes.Notifications.Receiving.DTOs
 {
     internal sealed class MailHogPathDto
     {

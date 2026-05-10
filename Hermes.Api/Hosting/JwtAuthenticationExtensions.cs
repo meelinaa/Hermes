@@ -9,17 +9,8 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Hermes.Api.Hosting;
 
-/// <summary>
-/// Wires ASP.NET Core authentication so incoming requests can carry a JWT in the
-/// <c>Authorization: Bearer &lt;token&gt;</c> header. The same symmetric key and issuer/audience as in
-/// <see cref="JwtOptions"/> must be used when signing tokens in <see cref="IJwtTokenIssuer"/>.
-/// </summary>
 public static class JwtAuthenticationExtensions
 {
-    /// <summary>
-    /// Binds <see cref="JwtOptions"/> from configuration, registers <see cref="IJwtTokenIssuer"/> for creating tokens at login,
-    /// and configures the JWT bearer handler to validate tokens on each request to <c>[Authorize]</c> endpoints.
-    /// </summary>
     public static IServiceCollection AddHermesJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         IConfigurationSection jwtSection = configuration.GetSection(JwtOptions.SECTION_NAME);

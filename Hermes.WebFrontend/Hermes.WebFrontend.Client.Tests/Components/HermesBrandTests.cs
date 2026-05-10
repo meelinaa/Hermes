@@ -4,9 +4,6 @@ using Xunit;
 
 namespace Hermes.WebFrontend.Client.Tests.Components;
 
-/// <summary>
-/// Lightweight UI assertions for branding chrome (heavier panels rely on API integration tests).
-/// </summary>
 public sealed class HermesBrandTests : BunitContext
 {
     [Fact]

@@ -4,16 +4,10 @@ using Hermes.IntegrationTests.Infrastructure;
 
 namespace Hermes.IntegrationTests.Auth;
 
-/// <summary>
-/// Refresh rotation under contention: only one parallel caller may succeed rotating the same session token; the sibling refresh fails (<see cref="HttpStatusCode.Unauthorized"/>).
-/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class AuthRefreshConcurrencyIntegrationTests(MySqlApiFixture fixture)
 {
-    /// <summary>
-    /// Independent <see cref="HttpClient"/> instances race the refresh endpoint with identical refresh material — exactly one 200 OK.
-    /// </summary>
     [Fact]
     public async Task Parallel_refresh_same_token_yields_exactly_one_success()
     {

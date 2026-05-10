@@ -8,9 +8,6 @@ using Hermes.IntegrationTests.Infrastructure;
 
 namespace Hermes.IntegrationTests.NotificationLogs;
 
-/// <summary>
-/// POST endpoint under <c>api/v1/users/{userId}/notification-logs</c>; verifies inserts plus auth/binding failures (401/403/400).
-/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)

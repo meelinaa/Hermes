@@ -6,7 +6,6 @@ namespace Hermes.Application.Services;
 
 public sealed class NewsletterScheduleService(INewsStore dataStore) : INewsletterScheduleService
 {
-    /// <summary>Returns all (news,user) pairs due for the one-minute UTC window, using stored next-slot UTC when present.</summary>
     public async Task<IReadOnlyList<(int NewsId, int UserId)>> GetDueItemsAsync(
         DateTime nowLocal,
         DateTime slotStartUtc,

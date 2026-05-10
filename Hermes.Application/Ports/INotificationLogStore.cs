@@ -2,7 +2,6 @@ using Hermes.Domain.Entities;
 
 namespace Hermes.Application.Ports;
 
-/// <summary>Outbound notification delivery log persistence.</summary>
 public interface INotificationLogStore
 {
     Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default);

@@ -23,17 +23,8 @@ using System.Threading.RateLimiting;
 
 namespace Hermes.Api.Hosting;
 
-/// <summary>
-/// Registers all API dependencies: database, application services, OpenAPI, CORS, health checks, and request timeouts.
-/// </summary>
 public static class ApiServiceCollectionExtensions
 {
-    /// <summary>
-    /// Adds Hermes API services to the DI container.
-    /// </summary>
-    /// <param name="services">The application service collection.</param>
-    /// <param name="configuration">Application configuration (appsettings, environment variables).</param>
-    /// <param name="environment">Host environment; when <see cref="IHostEnvironment.EnvironmentName"/> is <c>Testing</c>, EF uses a pinned MySQL server capability version (no AutoDetect TCP probe during options setup).</param>
     public static void AddHermesApiServices(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         string? connectionString = configuration.GetConnectionString("DefaultConnection")
@@ -174,9 +165,6 @@ public static class ApiServiceCollectionExtensions
         });
     }
 
-    /// <summary>
-    /// In production, forbids wildcard CORS origins and requires an explicit allow-list (<see cref="IHostEnvironment.IsProduction"/>).
-    /// </summary>
     private static void EnsureProductionAllowedOrigins(string[] origins, IHostEnvironment environment)
     {
         if (!environment.IsProduction())
@@ -214,9 +202,6 @@ public static class ApiServiceCollectionExtensions
         }
     }
 
-    /// <summary>
-    /// Builds a fixed-window rate-limiter partition key from caller identity attributes and creates the limiter policy.
-    /// </summary>
     private static RateLimitPartition<string> CreateAuthPartition(HttpContext httpContext, int permitLimit, TimeSpan window)
     {
         string? ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
@@ -237,9 +222,6 @@ public static class ApiServiceCollectionExtensions
             });
     }
 
-    /// <summary>
-    /// Creates Hangfire storage backed by MySQL using the configured connection string.
-    /// </summary>
     private static JobStorage CreateHangfireJobStorage(IConfiguration configuration)
     {
         string connectionString = configuration.GetConnectionString("DefaultConnection")
@@ -255,9 +237,6 @@ public static class ApiServiceCollectionExtensions
         });
     }
 
-    /// <summary>
-    /// Configures Serilog as the sole logging provider, reading sinks and levels from configuration (e.g. appsettings.json).
-    /// </summary>
     public static void UseHermesSerilog(this IHostBuilder hostBuilder)
     {
         hostBuilder.UseSerilog((context, _, configuration) => configuration

@@ -11,10 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Worker.Scheduling;
 
-/// <summary>
-/// Minutely Hangfire entry point: resolves due <c>news</c> rows for the current wall-clock minute (materialized UTC slot and/or JSON schedule),
-/// enqueues <see cref="NotificationJobs.SendNewsDigestAsync"/> once per due row.
-/// </summary>
+/// <summary>Hangfire minutely tick: resolve due news (UTC slot wall clock) and enqueue one digest job per row.</summary>
 public sealed class NewsletterScheduler(
     INewsletterScheduleService newsletterScheduleService,
     ILogger<NewsletterScheduler> logger,
@@ -26,7 +23,6 @@ public sealed class NewsletterScheduler(
     private readonly TimeZoneInfo _newsletterTimeZone =
         NewsletterSchedulingClock.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
 
-    /// <summary>Evaluates due newsletter items for the current minute and enqueues one Hangfire job per due row.</summary>
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         DateTime wallNow = NewsletterSchedulingClock.GetWallClockNow(_newsletterTimeZone);

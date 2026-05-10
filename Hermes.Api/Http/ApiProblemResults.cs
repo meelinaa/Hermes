@@ -3,12 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Http;
 
-/// <summary>RFC 7807 <c>ProblemDetails</c> helpers for consistent JSON errors (400/401/403/404).</summary>
 public static class ApiProblemResults
 {
     private const string RFC_7231 = "https://tools.ietf.org/html/rfc7231";
 
-    /// <summary>Creates a 400 RFC 7807 response.</summary>
     public static ActionResult BadRequestProblem(this ControllerBase controller, string detail) =>
         controller.Problem(
             title: "Bad Request",
@@ -16,7 +14,6 @@ public static class ApiProblemResults
             statusCode: StatusCodes.Status400BadRequest,
             type: $"{RFC_7231}#section-6.5.1");
 
-    /// <summary>Creates a 404 RFC 7807 response.</summary>
     public static ActionResult NotFoundProblem(this ControllerBase controller, string? detail = null) =>
         controller.Problem(
             title: "Not Found",
@@ -24,7 +21,6 @@ public static class ApiProblemResults
             statusCode: StatusCodes.Status404NotFound,
             type: $"{RFC_7231}#section-6.5.4");
 
-    /// <summary>Creates a 401 RFC 7807 response.</summary>
     public static ActionResult UnauthorizedProblem(this ControllerBase controller, string? detail = null) =>
         controller.Problem(
             title: "Unauthorized",
@@ -32,7 +28,6 @@ public static class ApiProblemResults
             statusCode: StatusCodes.Status401Unauthorized,
             type: $"{RFC_7231}#section-6.5.2");
 
-    /// <summary>Creates a 403 RFC 7807 response.</summary>
     public static ActionResult ForbiddenProblem(this ControllerBase controller, string? detail = null) =>
         controller.Problem(
             title: "Forbidden",
@@ -40,7 +35,6 @@ public static class ApiProblemResults
             statusCode: StatusCodes.Status403Forbidden,
             type: $"{RFC_7231}#section-6.5.3");
 
-    /// <summary>400 for failed profile password change; <c>type</c> matches exception middleware mapping.</summary>
     public static ActionResult WrongCurrentPasswordProblem(this ControllerBase controller, string detail) =>
         controller.Problem(
             detail: detail,

@@ -1,6 +1,5 @@
 namespace Hermes.Application.Models.User;
 
-/// <summary>Public user projection returned by user GET/register/update and after successful e-mail verification.</summary>
 public sealed record UserResponse
 {
     public int UserId { get; init; }

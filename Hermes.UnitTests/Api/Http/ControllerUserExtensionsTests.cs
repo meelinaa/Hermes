@@ -6,27 +6,18 @@ using Xunit;
 
 namespace Hermes.UnitTests.Api.Http;
 
-/// <summary>
-/// Specifications for parsing authenticated user id from claims and enforcing resource ownership on controllers.
-/// </summary>
 public sealed class ControllerUserExtensionsTests
 {
     private sealed class TestController : ControllerBase
     {
     }
 
-    /// <summary>
-    /// Builds a minimal controller with optional authenticated principal for extension-method tests.
-    /// </summary>
     private static TestController CreateController(ClaimsPrincipal? user) =>
         new()
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = user ?? new ClaimsPrincipal() } },
         };
 
-    /// <summary>
-    /// Unauthenticated principal (no identity) cannot yield a user id.
-    /// </summary>
     [Fact]
     public void TryGetUserId_ShouldFail_WhenIdentityMissing()
     {
@@ -36,9 +27,6 @@ public sealed class ControllerUserExtensionsTests
         Assert.Equal(0, id);
     }
 
-    /// <summary>
-    /// NameIdentifier claim must parse as <see cref="int"/> — non-numeric values fail.
-    /// </summary>
     [Fact]
     public void TryGetUserId_ShouldFail_WhenClaimNotInteger()
     {
@@ -47,9 +35,6 @@ public sealed class ControllerUserExtensionsTests
         Assert.False(principal.TryGetUserId(out _));
     }
 
-    /// <summary>
-    /// Only strictly positive 32-bit integers are accepted (0, negative, int overflow rejected).
-    /// </summary>
     [Fact]
     public void TryGetUserId_ShouldFail_WhenClaimZeroOrNegativeOrOverflow()
     {
@@ -63,9 +48,6 @@ public sealed class ControllerUserExtensionsTests
         Assert.False(overflow.TryGetUserId(out _));
     }
 
-    /// <summary>
-    /// Valid positive integer in NameIdentifier resolves to user id.
-    /// </summary>
     [Fact]
     public void TryGetUserId_Should_Succeed_WhenPositiveIntegerClaim()
     {
@@ -75,9 +57,6 @@ public sealed class ControllerUserExtensionsTests
         Assert.Equal(404, id);
     }
 
-    /// <summary>
-    /// Controller helper reads the same claim from <see cref="ControllerBase.HttpContext"/> principal.
-    /// </summary>
     [Fact]
     public void TryGetCurrentUserId_Should_Read_FromControllerPrincipal()
     {
@@ -88,9 +67,6 @@ public sealed class ControllerUserExtensionsTests
         Assert.Equal(11, uid);
     }
 
-    /// <summary>
-    /// Resource matches caller user id — no authorization failure result.
-    /// </summary>
     [Fact]
     public void WhenCannotAccessUser_Should_Allow_WhenResourceMatchesCaller()
     {
@@ -100,9 +76,6 @@ public sealed class ControllerUserExtensionsTests
         Assert.Null(c.WhenCannotAccessUser(5));
     }
 
-    /// <summary>
-    /// Without resolvable user id in principal, return 401 Unauthorized.
-    /// </summary>
     [Fact]
     public void WhenCannotAccessUser_Should_Return401_WhenPrincipalMissingUserId()
     {
@@ -114,9 +87,6 @@ public sealed class ControllerUserExtensionsTests
         Assert.Equal(StatusCodes.Status401Unauthorized, obj.StatusCode);
     }
 
-    /// <summary>
-    /// Authenticated user id does not match resource owner — return 403 Forbidden.
-    /// </summary>
     [Fact]
     public void WhenCannotAccessUser_Should_Return403_WhenResourceBelongsToAnotherUser()
     {

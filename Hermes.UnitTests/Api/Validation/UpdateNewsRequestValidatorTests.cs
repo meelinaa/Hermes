@@ -5,7 +5,6 @@ using Xunit;
 
 namespace Hermes.UnitTests.Api.Validation;
 
-/// <summary>FluentValidation rules for <see cref="UpdateNewsRequest"/>.</summary>
 public sealed class UpdateNewsRequestValidatorTests
 {
     private readonly UpdateNewsRequestValidator _validator = new();

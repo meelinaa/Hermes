@@ -6,53 +6,38 @@ using Hermes.IntegrationTests.Infrastructure;
 
 namespace Hermes.IntegrationTests.Auth;
 
-/// <summary>
-/// End-to-end authentication coverage: anonymous login/refresh flows against MySQL-backed refresh rotation,
-/// plus bearer JWT rejection paths through a protected controller (<see cref="Hermes.Api.Controllers.UsersController"/>).
-/// </summary>
-/// <remarks>
-/// Uses the shared Docker-backed fixture; tests remain sequential assembly-wide so Serilog’s bootstrap logger is not frozen twice.
-/// </remarks>
+/// <summary>Auth flows and JWT edge cases against shared MySQL-backed API (collection serializes Serilog bootstrap).</summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
 {
     private static readonly JsonSerializerOptions _jsonWeb = new(JsonSerializerDefaults.Web);
 
-    /// <summary>
-    /// Successful credential validation issues access + refresh pairs persisted as hashed refresh rows in MySQL.
-    /// </summary>
     [Fact]
     public async Task Login_with_valid_credentials_returns_OK_and_tokens()
     {
         using HttpClient client = fixture.Factory.CreateClient();
-        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client); // Register a new user to ensure we have valid credentials; this also verifies the user registration flow and database connectivity as a prerequisite for login tests.
-        using HttpResponseMessage response = await AuthIntegrationFlows.LoginResponseAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD); // Attempt to log in with the registered user's email and known password; this tests the login endpoint's ability to validate credentials and issue tokens.
+        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        using HttpResponseMessage response = await AuthIntegrationFlows.LoginResponseAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync()); // Parse the JSON response to verify the presence and validity of the expected properties: success flag, userId, accessToken, and refreshToken.
+        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.True(json.RootElement.GetProperty("success").GetBoolean());
         Assert.Equal(userId, json.RootElement.GetProperty("userId").GetInt32());
         Assert.False(string.IsNullOrEmpty(json.RootElement.GetProperty("accessToken").GetString()));
         Assert.False(string.IsNullOrEmpty(json.RootElement.GetProperty("refreshToken").GetString()));
     }
 
-    /// <summary>
-    /// Failed credential lookup must map to HTTP 401 without leaking whether the identifier existed (service returns <see cref="Hermes.Application.Models.Login.LoginResult"/> failure).
-    /// </summary>
     [Fact]
     public async Task Login_with_invalid_password_returns_Unauthorized()
     {
         using HttpClient client = fixture.Factory.CreateClient();
-        (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client); // Register a new user to ensure we have a valid email in the system; this sets up the scenario for testing login with an incorrect password while keeping the email valid.
+        (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         using HttpResponseMessage response = await AuthIntegrationFlows.LoginResponseAsync(client, email, "WrongPassword_NoMatch!");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>
-    /// FluentValidation rejects empty identifiers/passwords before touching <see cref="Hermes.Application.Services.IUserService"/>—expect RFC 7807 validation problems.
-    /// </summary>
     [Theory]
     [InlineData("", "password")]
     [InlineData("user@test.dev", "")]
@@ -60,18 +45,15 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     {
         using HttpClient client = fixture.Factory.CreateClient();
 
-        using HttpResponseMessage response = await client.PostAsJsonAsync( 
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
             "/api/v1/auth/login",
-            new { nameOrEmail, password }, // This anonymous object represents the JSON payload sent to the login endpoint; it includes the parameters being tested (nameOrEmail and password) which are intentionally set to invalid values to trigger validation errors.
+            new { nameOrEmail, password },
             _jsonWeb);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("application/problem", response.Content.Headers.ContentType?.MediaType ?? "", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Refresh exchanges the opaque refresh secret for a rotated pair; server-side hash lookup ties the session to MySQL.
-    /// </summary>
     [Fact]
     public async Task Refresh_with_valid_refresh_token_returns_OK_and_new_tokens()
     {
@@ -79,7 +61,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string refresh = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpResponseMessage response = await AuthIntegrationFlows.RefreshResponseAsync(client, refresh); // Attempt to refresh the access token using the valid refresh token obtained from login.
+        using HttpResponseMessage response = await AuthIntegrationFlows.RefreshResponseAsync(client, refresh);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -88,9 +70,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.False(string.IsNullOrEmpty(json.RootElement.GetProperty("refreshToken").GetString()));
     }
 
-    /// <summary>
-    /// Sequential refresh rotation yields new tokens each time.
-    /// </summary>
     [Fact]
     public async Task Refresh_Sequential_Rotation_Works()
     {
@@ -106,57 +85,42 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.NotEqual(refreshAfterRotation, refreshSecondRotation);
     }
 
-    /// <summary>
-    /// Replay attack simulation: if a previously used (rotated) refresh token is used again, the entire token family is revoked.
-    /// The legitimate client will subsequently fail to refresh with its valid token.
-    /// </summary>
+    /// <summary>Replay of a rotated refresh revokes the chain; later valid-looking rotation also fails.</summary>
     [Fact]
     public async Task Refresh_Twice_WithSameToken_RevokesFamily()
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        
-        // Schritt 1: Login (liefert Token A).
+
         string tokenA = await AuthIntegrationFlows.LoginAndGetRefreshAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        // Schritt 2: Refresh mit Token A (liefert Token B).
         string tokenB = await AuthIntegrationFlows.RefreshAndGetNewRefreshAsync(client, tokenA);
 
-        // Schritt 3: Erneuter Refresh mit Token A (Simulierter Replay-Angriff).
-        // Erwartung: Der API-Call schlägt fehl (Unauthorized).
         using HttpResponseMessage replayResponse = await AuthIntegrationFlows.RefreshResponseAsync(client, tokenA);
         Assert.Equal(HttpStatusCode.Unauthorized, replayResponse.StatusCode);
 
-        // Schritt 4: Refresh mit Token B.
-        // Erwartung: Schlägt ebenfalls fehl, da Schritt 3 die gesamte Token-Familie widerrufen hat.
         using HttpResponseMessage subsequentRefreshResponse = await AuthIntegrationFlows.RefreshResponseAsync(client, tokenB);
         Assert.Equal(HttpStatusCode.Unauthorized, subsequentRefreshResponse.StatusCode);
     }
 
-    /// <summary>
-    /// Random refresh material never inserted into <see cref="Hermes.Domain.Entities.RefreshToken"/> must yield <c>null</c> rotation → 401 from controller.
-    /// </summary>
     [Fact]
     public async Task Refresh_with_unknown_refresh_token_returns_Unauthorized()
     {
         using HttpClient client = fixture.Factory.CreateClient();
 
-        using HttpResponseMessage response = await AuthIntegrationFlows.RefreshResponseAsync( // Attempt to refresh using a random refresh token that was never issued or stored in the database; this should fail with an Unauthorized status, demonstrating that the system correctly identifies and rejects unknown tokens that do not correspond to any valid session.
+        using HttpResponseMessage response = await AuthIntegrationFlows.RefreshResponseAsync(
             client,
             Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64)));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>
-    /// Refresh validator requires non-whitespace body token—mirrors <see cref="Hermes.Api.Validation.RefreshRequestValidator"/>.
-    /// </summary>
     [Fact]
     public async Task Refresh_with_empty_refresh_token_returns_BadRequest()
     {
         using HttpClient client = fixture.Factory.CreateClient();
 
-        using HttpResponseMessage response = await client.PostAsJsonAsync( // Attempt to refresh using an empty string as the refresh token; this should fail with a Bad Request status due to validation rules that require a non-empty token, demonstrating that the API correctly enforces input validation for the refresh endpoint.
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
             "/api/v1/auth/refresh",
             new { refreshToken = string.Empty },
             _jsonWeb);
@@ -164,9 +128,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    /// <summary>
-    /// Protected routes without <c>Authorization</c> bypass JWT middleware identity—must not reach controller logic with an authenticated user.
-    /// </summary>
     [Fact]
     public async Task Protected_route_without_bearer_returns_Unauthorized()
     {
@@ -178,9 +139,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>
-    /// Broken JWT wiring (three segments missing / garbage payload) cannot deserialize—handler rejects before controller executes.
-    /// </summary>
     [Fact]
     public async Task Protected_route_with_malformed_bearer_token_returns_Unauthorized()
     {
@@ -188,16 +146,13 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         (int userId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
 
         using HttpRequestMessage request = new(HttpMethod.Get, $"/api/v1/users/{userId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MALFORMED_JWT_MATERIAL); // Attempt to access a protected route using a malformed JWT token that does not conform to the expected structure (e.g., missing segments, invalid base64 encoding); this should fail with an Unauthorized status, demonstrating that the authentication middleware correctly identifies and rejects malformed tokens before they reach the controller logic.
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MALFORMED_JWT_MATERIAL);
 
         using HttpResponseMessage response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>
-    /// Tokens outside their validity window (<c>exp</c>) must fail validation even when symmetric signatures otherwise match configuration.
-    /// </summary>
     [Fact]
     public async Task Protected_route_with_expired_jwt_returns_Unauthorized()
     {
@@ -213,9 +168,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>
-    /// HS256 validation requires matching signing key bytes—tokens minted with attacker-controlled secrets must never authorize requests.
-    /// </summary>
+    /// <summary>Wrong symmetric key ⇒ signature invalid even when structure is plausible.</summary>
     [Fact]
     public async Task Protected_route_with_jwt_signed_using_wrong_key_returns_Unauthorized()
     {
@@ -231,9 +184,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>
-    /// Audience mismatch breaks <see cref="Microsoft.IdentityModel.Tokens.TokenValidationParameters.ValidateAudience"/>—prevents tokens minted for another relying party from working here.
-    /// </summary>
     [Fact]
     public async Task Protected_route_with_jwt_having_wrong_audience_returns_Unauthorized()
     {
@@ -249,9 +199,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>
-    /// Issuer mismatch mirrors stolen tokens from another issuer pretending to be Hermes—must fail issuer validation.
-    /// </summary>
     [Fact]
     public async Task Protected_route_with_jwt_having_wrong_issuer_returns_Unauthorized()
     {
@@ -267,9 +214,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    /// <summary>
-    /// Authenticated user requesting another user id hits <see cref="Hermes.Api.Http.ControllerUserExtensions.WhenCannotAccessUser"/> → HTTP 403 (distinct from unknown JWT).
-    /// </summary>
     [Fact]
     public async Task Authorized_request_for_foreign_user_returns_Forbidden()
     {
@@ -286,9 +230,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    /// <summary>
-    /// Revoking the current refresh session invalidates that plaintext for further rotation.
-    /// </summary>
     [Fact]
     public async Task Logout_with_refresh_token_body_returns_NoContent_and_refresh_rejected_after()
     {
@@ -308,9 +249,6 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
     }
 
-    /// <summary>
-    /// Empty-body logout revokes every refresh row for the JWT user.
-    /// </summary>
     [Fact]
     public async Task Logout_without_refresh_token_revokes_all_sessions()
     {
@@ -330,9 +268,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
     }
 
-    /// <summary>
-    /// Wrong refresh material for targeted logout yields 401 (same semantics as refresh failure; does not revoke all).
-    /// </summary>
+    /// <summary>Mismatched logout refresh must not widen to logout-all semantics.</summary>
     [Fact]
     public async Task Logout_with_foreign_refresh_token_returns_Unauthorized()
     {

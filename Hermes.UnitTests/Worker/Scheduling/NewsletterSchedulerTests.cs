@@ -11,9 +11,6 @@ using Xunit;
 
 namespace Hermes.UnitTests.Worker.Scheduling;
 
-/// <summary>
-/// Specifications for the worker scheduler loop: query due newsletter profiles once per run; optional MailHog test mail path stays isolated.
-/// </summary>
 public sealed class NewsletterSchedulerTests
 {
     private static EmailSettings CreateEmailSettings() =>
@@ -29,13 +26,9 @@ public sealed class NewsletterSchedulerTests
             DefaultReplyToName: "Reply",
             XMailer: "Hermes.UnitTests");
 
-    /// <summary>
-    /// Each scheduler tick asks schedule service for due items once; with nothing due and MailHog diagnostic disabled, no mail is sent.
-    /// </summary>
     [Fact]
     public async Task RunAsync_Should_QueryDueProfilesOnce_AndSkipMail_WhenNothingDue_AndMailHogDisabled()
     {
-        // Arrange
         Mock<INewsletterScheduleService> schedule = new();
         schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(
                 It.IsAny<DateTime>(),
@@ -53,11 +46,7 @@ public sealed class NewsletterSchedulerTests
             CreateEmailSettings(),
             Options.Create(new MailHogSettings { SendSchedulerTestMailEachMinute = false }),
             Options.Create(new NewsletterOptions()));
-
-        // Act
         await sut.RunAsync();
-
-        // Assert
         schedule.Verify(
             scheduleService => scheduleService.GetDueItemsAsync(
                 It.IsAny<DateTime>(),
@@ -70,13 +59,9 @@ public sealed class NewsletterSchedulerTests
             Times.Never);
     }
 
-    /// <summary>
-    /// Same cancellation token instance passed to <see cref="NewsletterScheduler.RunAsync(System.Threading.CancellationToken)"/> must reach <see cref="INewsletterScheduleService.GetDueItemsAsync"/>.
-    /// </summary>
     [Fact]
     public async Task RunAsync_Should_ForwardSameCancellationToken_ToScheduleService()
     {
-        // Arrange
         CancellationToken? captured = null;
         Mock<INewsletterScheduleService> schedule = new();
         schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(
@@ -96,11 +81,7 @@ public sealed class NewsletterSchedulerTests
             Options.Create(new NewsletterOptions()));
 
         using CancellationTokenSource cts = new();
-
-        // Act
         await sut.RunAsync(cts.Token);
-
-        // Assert
         Assert.True(captured.HasValue);
         Assert.Equal(cts.Token, captured.Value);
     }

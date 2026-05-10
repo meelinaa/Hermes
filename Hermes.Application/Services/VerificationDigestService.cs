@@ -12,9 +12,6 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Services;
 
-/// <summary>
-/// Persists a time-bound verification code on the user and sends the HTML verification e-mail (see <c>Verification.html</c>).
-/// </summary>
 public sealed class VerificationDigestService(
     IUserStore users,
     IEmailSender emailSender,
@@ -25,7 +22,6 @@ public sealed class VerificationDigestService(
     public const int VERIFICATION_CODE_VALIDITY_MINUTES = 15;
     private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
-    /// <summary>Generates and stores a verification challenge, then sends the verification e-mail.</summary>
     public async Task SendAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -79,14 +75,12 @@ public sealed class VerificationDigestService(
         }
     }
 
-    /// <summary>Creates a cryptographically secure six-digit numeric verification code.</summary>
     private static string GenerateNumericVerificationCode()
     {
         int randomNumber = RandomNumberGenerator.GetInt32(0, 1_000_000);
         return randomNumber.ToString("D6", CultureInfo.InvariantCulture);
     }
 
-    /// <summary>Builds the verification HTML body with user greeting, code, and footer links.</summary>
     private static async Task<string> BuildVerificationBodyAsync(
         string? userDisplayName,
         string recipientEmail,

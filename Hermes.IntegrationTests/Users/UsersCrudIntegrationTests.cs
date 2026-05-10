@@ -8,10 +8,6 @@ using Hermes.IntegrationTests.Infrastructure;
 
 namespace Hermes.IntegrationTests.Users;
 
-/// <summary>
-/// <see cref="Hermes.Api.Controllers.UsersController"/> integration coverage: CRUD-style flows, self-service 404 after delete,
-/// and cross-account access denied (403) on GET/PUT/DELETE and GET-by-email.
-/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
@@ -22,7 +18,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
     public async Task Register_anonymous_returns_OK_and_user_scope()
     {
         using HttpClient client = fixture.Factory.CreateClient();
-        string email = $"users-{Guid.NewGuid():N}@integration.hermes"; // Generate a unique email for the new user to ensure test isolation and avoid conflicts with existing users in the database; this allows the test to reliably create a new user account without interference from previous test runs or other data.
+        string email = $"users-{Guid.NewGuid():N}@integration.hermes";
         object dto = new
         {
             id = 0,
@@ -34,7 +30,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             twoFactorExpiry = (DateTime?)null,
         };
 
-        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, options: _jsonWeb); // Send a POST request to the user registration endpoint with the DTO as the JSON body; this should create a new user in the system and return a response containing the user's ID, email, and name, which are asserted in the test to confirm successful registration and correct data handling by the API.
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, options: _jsonWeb);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -87,7 +83,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             id = 0,
             name = "No Password User",
             email = $"nopwd-{Guid.NewGuid():N}@integration.hermes",
-            password = string.Empty, // Empty password should be rejected by API validation.
+            password = string.Empty,
             isEmailVerified = false,
             twoFactorCode = (string?)null,
             twoFactorExpiry = (DateTime?)null,
@@ -105,7 +101,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpResponseMessage response = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access)); // Send an authorized GET request to the user profile endpoint using the access token obtained from logging in; this should return the user's profile information, which is then asserted to confirm that the correct data is returned and that the authentication mechanism is functioning properly.
+        using HttpResponseMessage response = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -120,7 +116,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        string path = $"/api/v1/users/by-email/{Uri.EscapeDataString(email)}"; // Construct the API endpoint path for retrieving the user profile by email, ensuring that the email is properly URL-encoded to handle any special characters; this allows the test to verify that the API correctly processes email-based queries and returns the expected user information when accessed with valid authentication.
+        string path = $"/api/v1/users/by-email/{Uri.EscapeDataString(email)}";
         using HttpResponseMessage response = await client.SendAsync(AuthorizedGet(path, access));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -200,12 +196,12 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         {
             id = userId,
             name = "Renamed Integration User",
-            email = newEmail, // Update the email to a new unique value 
+            email = newEmail,
             newPassword = (string?)null,
             currentPassword = (string?)null,
         };
 
-        using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users"); // Create an HTTP PUT request to the user update endpoint with the updated profile information in the body.
+        using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users");
         put.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         put.Content = JsonContent.Create(body, options: _jsonWeb);
 
@@ -219,7 +215,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
 
         using HttpResponseMessage getResp = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access));
         getResp.EnsureSuccessStatusCode();
-        using JsonDocument got = JsonDocument.Parse(await getResp.Content.ReadAsStringAsync()); // Send an authorized GET request to retrieve the updated user profile and assert that the changes are reflected in the response, confirming that the update operation was successful and that the API correctly processes profile modifications.
+        using JsonDocument got = JsonDocument.Parse(await getResp.Content.ReadAsStringAsync());
         Assert.Equal("Renamed Integration User", got.RootElement.GetProperty("name").GetString());
         Assert.Equal(newEmail, got.RootElement.GetProperty("email").GetString());
     }
@@ -231,10 +227,10 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpResponseMessage deleteResp = await client.SendAsync(AuthorizedDelete($"/api/v1/users/{userId}", access)); // Send an authorized DELETE request to the user deletion endpoint to remove the user's account; this should return a success status code, and subsequent attempts to retrieve the deleted user profile should result in a NotFound response, confirming that the deletion was effective and that the API correctly handles resource removal.
+        using HttpResponseMessage deleteResp = await client.SendAsync(AuthorizedDelete($"/api/v1/users/{userId}", access));
         Assert.Equal(HttpStatusCode.OK, deleteResp.StatusCode);
 
-        using HttpResponseMessage getResp = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access)); // Send an authorized GET request to verify that the user profile has been deleted; this should return a NotFound status code, confirming that the deletion was successful and that the API correctly handles attempts to access removed resources.
+        using HttpResponseMessage getResp = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access));
         Assert.Equal(HttpStatusCode.NotFound, getResp.StatusCode);
     }
 

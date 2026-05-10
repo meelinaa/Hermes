@@ -4,9 +4,6 @@ using Hermes.IntegrationTests.Infrastructure;
 
 namespace Hermes.IntegrationTests.Auth;
 
-/// <summary>
-/// Guards wire contract for auth JSON DTOs consumed by the Blazor WASM client (<c>camelCase</c>).
-/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class AuthDtoContractIntegrationTests(MySqlApiFixture fixture)

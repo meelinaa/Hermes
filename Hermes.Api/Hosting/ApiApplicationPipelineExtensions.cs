@@ -15,14 +15,8 @@ using System.Text.Json;
 
 namespace Hermes.Api.Hosting;
 
-/// <summary>
-/// Configures the HTTP request pipeline: correlation IDs, timeouts, logging, exception handling, CORS, authorization, and health endpoints.
-/// </summary>
 public static class ApiApplicationPipelineExtensions
 {
-    /// <summary>
-    /// Registers middleware and endpoints for the Hermes REST API. Order matters (first registered = outermost for incoming requests).
-    /// </summary>
     public static void UseHermesApiPipeline(this WebApplication app)
     {
         app.UseMiddleware<CorrelationIdMiddleware>();
@@ -216,7 +210,6 @@ public static class ApiApplicationPipelineExtensions
         app.MapControllers();
     }
 
-    /// <summary>Short RFC 7807 body: title + status only (no exception message, type, or instance).</summary>
     private static ProblemDetails CreateMinimalProblem(string title, int status) => new()
     {
         Title = title,

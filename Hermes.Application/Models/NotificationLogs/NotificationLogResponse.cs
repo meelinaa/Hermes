@@ -2,7 +2,6 @@ using Hermes.Domain.Enums;
 
 namespace Hermes.Application.Models.NotificationLogs;
 
-/// <summary>Persisted notification log returned by the API.</summary>
 public sealed record NotificationLogResponse
 {
     public int Id { get; init; }

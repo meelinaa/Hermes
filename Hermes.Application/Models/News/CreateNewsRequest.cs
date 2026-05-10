@@ -2,7 +2,6 @@ using Hermes.Domain.Enums;
 
 namespace Hermes.Application.Models.News;
 
-/// <summary>Body for <c>POST /api/v1/users/news</c>; owning user comes from the JWT (no <c>userId</c> in JSON).</summary>
 public sealed record CreateNewsRequest
 {
     public List<string>? Keywords { get; init; }

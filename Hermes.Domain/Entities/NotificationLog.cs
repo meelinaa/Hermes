@@ -7,9 +7,8 @@ public class NotificationLog
     public int Id { get; set; }
     public int UserId { get; set; }
 
-    /// <summary>When set, this log row refers to a single <see cref="News"/> digest send (one e-mail per news profile).</summary>
+    /// <summary>Optional link to the news profile for digest-related sends.</summary>
     public int? NewsId { get; set; }
-
     public DateTime SentAt { get; set; }
     public NotificationStatus Status { get; set; } 
     public DeliveryChannel Channel { get; set; } 

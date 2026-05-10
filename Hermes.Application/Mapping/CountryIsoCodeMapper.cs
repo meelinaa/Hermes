@@ -4,18 +4,11 @@ using Hermes.Domain.Enums.Attribute;
 
 namespace Hermes.Application.Mapping;
 
-/// <summary>
-/// Maps <see cref="Country"/> to ISO 3166-1 alpha-2 codes and back using <see cref="CountryIsoCodeAttribute"/>.
-/// </summary>
 public static class CountryIsoCodeMapper
 {
     private static readonly IReadOnlyDictionary<Country, string> _toCode = BuildForward();
     private static readonly IReadOnlyDictionary<string, Country> _fromCode = BuildReverse();
 
-    /// <summary>
-    /// Returns the ISO 3166-1 alpha-2 code (lowercase) for the given country.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when the enum member has no attribute.</exception>
     public static string ToIso3166Alpha2(Country country)
     {
         if (!_toCode.TryGetValue(country, out string? code))
@@ -24,9 +17,6 @@ public static class CountryIsoCodeMapper
         return code;
     }
 
-    /// <summary>
-    /// Resolves a country from an ISO 3166-1 alpha-2 code (comparison is case-insensitive).
-    /// </summary>
     public static bool TryGetCountry(string iso3166Alpha2, out Country country)
     {
         country = default;
@@ -40,9 +30,6 @@ public static class CountryIsoCodeMapper
         return _fromCode.TryGetValue(normalized.ToLowerInvariant(), out country);
     }
 
-    /// <summary>
-    /// Resolves a country from an ISO 3166-1 alpha-2 code or throws if unknown.
-    /// </summary>
     public static Country ParseCountry(string iso3166Alpha2)
     {
         if (TryGetCountry(iso3166Alpha2, out Country country))
@@ -51,7 +38,6 @@ public static class CountryIsoCodeMapper
         throw new ArgumentException($"Unknown ISO 3166-1 alpha-2 code: {iso3166Alpha2}", nameof(iso3166Alpha2));
     }
 
-    /// <summary>Builds the mapping from <see cref="Country"/> enum values to ISO codes.</summary>
     private static Dictionary<Country, string> BuildForward()
     {
         Dictionary<Country, string> map = [];
@@ -68,7 +54,6 @@ public static class CountryIsoCodeMapper
         return map;
     }
 
-    /// <summary>Builds the reverse mapping from ISO codes to <see cref="Country"/> values.</summary>
     private static Dictionary<string, Country> BuildReverse()
     {
         Dictionary<string, Country> map = new(StringComparer.Ordinal);

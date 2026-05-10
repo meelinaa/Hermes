@@ -6,13 +6,9 @@ using Microsoft.AspNetCore.Routing;
 
 namespace Hermes.Api.Authorization;
 
-/// <summary>
-/// Validates <see cref="RouteUserMatchesClaimRequirement"/> using the current request route and JWT user id claim.
-/// </summary>
 public sealed class RouteUserMatchesClaimHandler(IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<RouteUserMatchesClaimRequirement>
 {
-    /// <inheritdoc />
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         RouteUserMatchesClaimRequirement requirement)

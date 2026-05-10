@@ -15,6 +15,5 @@ public interface INewsService
 
     Task<NewsListResult> GetNewsListAsync(NewsListQuery query, CancellationToken cancellationToken = default);
 
-    /// <summary>Deletes all news rows for the user; returns how many were removed.</summary>
     Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
 }

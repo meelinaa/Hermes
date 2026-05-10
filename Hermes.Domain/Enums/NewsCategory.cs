@@ -1,8 +1,5 @@
 namespace Hermes.Domain.Enums;
 
-/// <summary>
-/// News-Kategorien (wie in der UI / NewsData.io Filter).
-/// </summary>
 public enum NewsCategory
 {
     Breaking,

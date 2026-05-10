@@ -19,7 +19,6 @@ public sealed class UserService(
     IVerificationMailJobTrigger verificationMailJobTrigger,
     IOptions<SecurityOptions> securityOptions) : IUserService
 {
-    /// <summary>Registers a new user, normalizes fields, hashes the plain password, and returns the created user scope.</summary>
     public async Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -51,7 +50,6 @@ public sealed class UserService(
         return userScope;
     }
 
-    /// <summary>Authenticates a user by e-mail or name and verifies the supplied plain password.</summary>
     public async Task<LoginResult> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(nameOrEmail))
@@ -83,7 +81,6 @@ public sealed class UserService(
         return new LoginResult(true, null, user.Id, user.Email, user.Name);
     }
 
-    /// <summary>Updates user profile data and optionally changes the password after current-password verification.</summary>
     public async Task UpdateUserAsync(User user, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -128,14 +125,12 @@ public sealed class UserService(
         await db.UpdateUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Deletes the specified user scope.</summary>
     public async Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         await db.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Returns a user scope by display name.</summary>
     public async Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -143,7 +138,6 @@ public sealed class UserService(
         return await db.GetUserByNameAsync(name, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Returns a user scope by user identifier.</summary>
     public async Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
@@ -151,7 +145,6 @@ public sealed class UserService(
         return await db.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Returns a user scope by e-mail address.</summary>
     public async Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -159,7 +152,6 @@ public sealed class UserService(
         return await db.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Enqueues a verification e-mail for the user identified by e-mail address.</summary>
     public async Task SendVerificationMailAsync(string email, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -173,7 +165,6 @@ public sealed class UserService(
         verificationMailJobTrigger.EnqueueSendVerificationMail(user.Id);
     }
 
-    /// <summary>Validates and consumes a six-digit verification code for the specified user.</summary>
     public async Task CheckVerificationCodeAsync(int userId, int code, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -202,9 +193,7 @@ public sealed class UserService(
         await db.CompleteUserEmailVerificationAsync(userId, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Matches a user-entered six-digit string to the stored challenge. When hashing is enabled and the DB value looks like a SHA-256 hex digest, compares hashes; otherwise compares plaintext (legacy rows / hashing disabled).
-    /// </summary>
+    /// <summary>Hashed-at-rest path vs legacy plaintext; comparison uses fixed-time equality on UTF-8 bytes.</summary>
     private bool VerificationCodeMatchesStored(string stored, string providedSixDigit)
     {
         bool hashingEnabled = securityOptions.Value.HashEmailVerificationCodes;
@@ -221,7 +210,6 @@ public sealed class UserService(
         return CryptographicOperations.FixedTimeEquals(plainA, plainB);
     }
 
-    /// <summary>Heuristic: persisted value from <see cref="RefreshTokenHasher"/> is 64 uppercase hex chars.</summary>
     private static bool LooksLikeStoredVerificationCodeHash(string stored) =>
         stored.Length == 64 && IsUpperHex64(stored.AsSpan());
 

@@ -10,16 +10,10 @@ using Xunit;
 
 namespace Hermes.UnitTests.Services;
 
-/// <summary>
-/// Specifications for news CRUD orchestration: reject invalid keys early; delegate valid operations to <see cref="INewsStore"/>.
-/// </summary>
 public sealed class NewsServiceTests
 {
     private static readonly IOptions<NewsletterOptions> DefaultNewsletterOpts = Options.Create(new NewsletterOptions());
 
-    /// <summary>
-    /// Null entity cannot be persisted.
-    /// </summary>
     [Fact]
     public async Task SetNewsAsync_Should_Throw_WhenNewsNull()
     {
@@ -28,9 +22,6 @@ public sealed class NewsServiceTests
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetNewsAsync(null!));
     }
 
-    /// <summary>
-    /// Owning user id must be positive before insert/update.
-    /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-4)]
@@ -42,9 +33,6 @@ public sealed class NewsServiceTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SetNewsAsync(news));
     }
 
-    /// <summary>
-    /// Returned id reflects whatever the store assigns during insert (callback simulates identity column).
-    /// </summary>
     [Fact]
     public async Task SetNewsAsync_Should_ReturnPersistedId_AfterStoreAssignsKey()
     {
@@ -74,9 +62,6 @@ public sealed class NewsServiceTests
             Times.Once);
     }
 
-    /// <summary>
-    /// Both user id and news id must be positive for keyed reads.
-    /// </summary>
     [Theory]
     [InlineData(0, 1)]
     [InlineData(1, 0)]
@@ -88,9 +73,6 @@ public sealed class NewsServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsByIdAsync(userId, newsId));
     }
 
-    /// <summary>
-    /// Deletes should only hit persistence; digest slot advancement is tied to mutations that maintain newsletter scheduling.
-    /// </summary>
     [Fact]
     public async Task DeleteNewsAsync_Should_RemoveFromStore_WithoutAdvancingDigestSlot()
     {
@@ -118,11 +100,6 @@ public sealed class NewsServiceTests
             Times.Never);
     }
 
-    /// <summary>
-    /// <summary>
-    /// Updates that keep a schedule must recompute the materialized next-slot column after persist.
-    /// </summary>
-    /// </summary>
     [Fact]
     public async Task UpdateNewsAsync_Should_AdvanceDigestSlot_AfterPersist()
     {
@@ -149,9 +126,6 @@ public sealed class NewsServiceTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    /// <summary>
-    /// Listing news requires positive user id on the query.
-    /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-99)]
@@ -163,9 +137,6 @@ public sealed class NewsServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsListAsync(query));
     }
 
-    /// <summary>
-    /// Bulk delete by user requires positive user id.
-    /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-7)]
@@ -176,9 +147,6 @@ public sealed class NewsServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.DeleteAllNewsByUserAsync(invalidUserId));
     }
 
-    /// <summary>
-    /// Update throws when entity is null.
-    /// </summary>
     [Fact]
     public async Task UpdateNewsAsync_Should_Throw_WhenNewsNull()
     {

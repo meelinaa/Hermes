@@ -13,10 +13,6 @@ using Xunit;
 
 namespace Hermes.UnitTests.Services;
 
-/// <summary>
-/// Specifications for user registration and authentication: passwords hashed with BCrypt; normalized email;
-/// login messages avoid account enumeration; profile updates require verified current password when changing password.
-/// </summary>
 public sealed class UserServiceTests
 {
     private static UserService CreateUserService(
@@ -28,13 +24,9 @@ public sealed class UserServiceTests
             trigger ?? Mock.Of<IVerificationMailJobTrigger>(),
             Options.Create(new SecurityOptions { HashEmailVerificationCodes = hashEmailVerificationCodes }));
 
-    /// <summary>
-    /// Registration trims/normalizes email to lowercase, hashes plaintext password with BCrypt, assigns id from store callback.
-    /// </summary>
     [Fact]
     public async Task RegisterUserAsync_Should_NormalizeEmail_AndStoreOnlyBcryptHashOfPassword()
     {
-        // Arrange
         Mock<IUserStore> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((u, _) => u.Id = 100)
@@ -47,11 +39,7 @@ public sealed class UserServiceTests
             Email = "  Hello@Test.COM ",
             Password = "plain-secret",
         };
-
-        // Act
         UserScope scope = await sut.RegisterUserAsync(user);
-
-        // Assert
         Assert.Equal("hello@test.com", scope.Email);
         db.Verify(dataStore => dataStore.SetUserAsync(
             It.Is<User>(registeredUser => BCrypt.Net.BCrypt.Verify("plain-secret", registeredUser.PasswordHash)),
@@ -59,9 +47,6 @@ public sealed class UserServiceTests
         Assert.Equal(100, scope.UserId);
     }
 
-    /// <summary>
-    /// Display name cannot be whitespace-only; store must never be called (validation before persistence).
-    /// </summary>
     [Fact]
     public async Task RegisterUserAsync_Should_RejectWhitespaceOnlyDisplayName()
     {
@@ -77,9 +62,6 @@ public sealed class UserServiceTests
         db.Verify(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    /// <summary>
-    /// If SetUserAsync does not assign a positive id, registration fails (contract with persistence layer).
-    /// </summary>
     [Fact]
     public async Task RegisterUserAsync_Should_Fail_WhenDatabaseLeavesIdAtZero()
     {
@@ -92,9 +74,6 @@ public sealed class UserServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
     }
 
-    /// <summary>
-    /// Blank identifier fails fast without querying the database.
-    /// </summary>
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenIdentifierBlank()
     {
@@ -106,9 +85,7 @@ public sealed class UserServiceTests
         Assert.Contains("required", loginResult.ErrorMessage ?? "", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Blank password fails without revealing whether the account exists.
-    /// </summary>
+    /// <summary>Blank password yields a generic failure (no enumeration).</summary>
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenPasswordBlank()
     {
@@ -120,11 +97,8 @@ public sealed class UserServiceTests
         Assert.False(string.IsNullOrEmpty(loginResult.ErrorMessage));
     }
 
-    /// <summary>
-    /// Identifier containing '@' is treated as email lookup (normalized trim).
-    /// </summary>
     [Fact]
-    public async Task LoginAsync_Should_LookupByEmail_WhenIdentifierContainsAt()
+    public async Task LoginAsync_Should_LookupByEmail_WhenIdentifierContainsAtSign()
     {
         string hash = BCrypt.Net.BCrypt.HashPassword("good");
         Mock<IUserStore> db = new();
@@ -140,9 +114,6 @@ public sealed class UserServiceTests
         db.Verify(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    /// <summary>
-    /// Identifier without '@' uses display-name lookup path.
-    /// </summary>
     [Fact]
     public async Task LoginAsync_Should_LookupByName_WhenIdentifierHasNoAtSign()
     {
@@ -159,9 +130,7 @@ public sealed class UserServiceTests
         db.Verify(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    /// <summary>
-    /// Wrong password yields generic error message (no distinction from unknown user).
-    /// </summary>
+    /// <summary>Known user + wrong secret uses the same message as unknown user.</summary>
     [Fact]
     public async Task LoginAsync_Should_NotRevealWhetherAccountExists_OnFailure()
     {
@@ -178,9 +147,6 @@ public sealed class UserServiceTests
         Assert.Equal("Invalid login or password.", loginResult.ErrorMessage);
     }
 
-    /// <summary>
-    /// Password change hashes new secret after verifying current password against BCrypt hash.
-    /// </summary>
     [Fact]
     public async Task UpdateUserAsync_Should_HashNewPassword_WhenCurrentPasswordVerified()
     {
@@ -199,9 +165,6 @@ public sealed class UserServiceTests
         db.Verify(dataStore => dataStore.UpdateUserAsync(patch, It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    /// <summary>
-    /// Changing password requires supplying current password (cannot be null).
-    /// </summary>
     [Fact]
     public async Task UpdateUserAsync_Should_RequireCurrentPassword_WhenChangingPassword()
     {
@@ -212,9 +175,6 @@ public sealed class UserServiceTests
             sut.UpdateUserAsync(patch, currentPasswordPlain: null));
     }
 
-    /// <summary>
-    /// Wrong current password yields domain-specific exception before persisting.
-    /// </summary>
     [Fact]
     public async Task UpdateUserAsync_Should_RejectWrongCurrentPassword()
     {
@@ -229,7 +189,6 @@ public sealed class UserServiceTests
             sut.UpdateUserAsync(patch, currentPasswordPlain: "wrong-old"));
     }
 
-    /// <summary>When changing password, missing user row yields <see cref="UserNotFoundException"/>.</summary>
     [Fact]
     public async Task UpdateUserAsync_Should_ThrowUserNotFound_WhenChangingPassword_AndUserMissing()
     {
@@ -244,7 +203,6 @@ public sealed class UserServiceTests
             sut.UpdateUserAsync(patch, currentPasswordPlain: "old"));
     }
 
-    /// <summary>Cannot set new password if stored hash is missing (account without password).</summary>
     [Fact]
     public async Task UpdateUserAsync_Should_ThrowInvalidOperation_WhenStoredPasswordHashEmpty()
     {
@@ -259,7 +217,7 @@ public sealed class UserServiceTests
             sut.UpdateUserAsync(patch, currentPasswordPlain: "anything"));
     }
 
-    /// <summary>Profile update without new password must not load entity for password verification.</summary>
+    /// <summary>Skipping password change must avoid loading stored hash for verification.</summary>
     [Fact]
     public async Task UpdateUserAsync_Should_UpdateWithoutPassword_WhenNewPasswordOmitted()
     {
@@ -276,13 +234,12 @@ public sealed class UserServiceTests
         db.Verify(dataStore => dataStore.UpdateUserAsync(patch, It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    /// <summary>Name lookup delegates to store after trimming validation.</summary>
     [Fact]
     public async Task GetUserByNameAsync_Should_ReturnScope_FromStore()
     {
         UserScope expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" };
         Mock<IUserStore> db = new();
-        db.Setup(dataStore => dataStore.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync(expected); 
+        db.Setup(dataStore => dataStore.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
 
@@ -298,7 +255,6 @@ public sealed class UserServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByNameAsync("  "));
     }
 
-    /// <summary>Positive id delegates to store.</summary>
     [Fact]
     public async Task GetUserByIdAsync_Should_ReturnScope_FromStore()
     {
@@ -457,7 +413,7 @@ public sealed class UserServiceTests
         db.Verify(dataStore => dataStore.CompleteUserEmailVerificationAsync(8, It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    /// <summary>Migrating installs may still hold plaintext challenges until the next mail send; verification must succeed when hashing is enabled.</summary>
+    /// <summary>Gradual rollout: hashed-check path still accepts legacy plaintext challenges.</summary>
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_AcceptLegacyPlaintext_WhenHashingEnabled_ButStoredChallengeIsPlainSixDigits()
     {
@@ -508,9 +464,6 @@ public sealed class UserServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByIdAsync(invalidId));
     }
 
-    /// <summary>
-    /// Email lookup rejects blank/whitespace input.
-    /// </summary>
     [Fact]
     public async Task GetUserByEmailAsync_Should_RejectBlankEmail()
     {
@@ -519,9 +472,6 @@ public sealed class UserServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByEmailAsync("  "));
     }
 
-    /// <summary>
-    /// Delete delegates to store when scope is provided (authorization assumed upstream).
-    /// </summary>
     [Fact]
     public async Task DeleteUserAsync_Should_DelegateToStore_WhenScopeValid()
     {

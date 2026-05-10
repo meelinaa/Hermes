@@ -4,17 +4,8 @@ using Xunit;
 
 namespace Hermes.UnitTests.Domain.Mapping;
 
-/// <summary>
-/// Specifications mapping local calendar <see cref="DateTime"/> to domain <see cref="Weekdays"/> — host timezone defines "today".
-/// </summary>
-/// <remarks>
-/// Uses <see cref="DateTimeKind.Local"/> dates only; UTC normalization for scheduling windows happens elsewhere.
-/// </remarks>
 public sealed class WeekdayConverterTests
 {
-    /// <summary>
-    /// Representative local timestamps spanning Mon–Sun in ISO week consistent order for 2026.
-    /// </summary>
     public static TheoryData<DateTime, Weekdays> KnownMappings =>
         new()
         {
