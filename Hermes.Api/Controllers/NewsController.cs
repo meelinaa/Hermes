@@ -1,5 +1,6 @@
 using FluentValidation;
 using FluentValidation.Results;
+using Hermes.Api.Authorization;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Api.Validation;
@@ -12,6 +13,7 @@ using Hermes.Domain.Enums;
 using Hermes.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 namespace Hermes.Api.Controllers;
@@ -35,6 +37,7 @@ public class NewsController(
     /// <remarks>
     /// <b>GET</b> <c>/api/v1/users/{userId}/news</c> — query: <c>page</c>, <c>pageSize</c>, <c>afterId</c>, <c>sort</c> (<c>id</c>|<c>-id</c>), <c>q</c>, <c>category</c>.
     /// </remarks>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/news")]
     public async Task<ActionResult<PagedNewsListResponse>> GetNewsList(
         int userId,
@@ -46,9 +49,6 @@ public class NewsController(
         [FromQuery] NewsCategory? category = null,
         CancellationToken cancellationToken = default)
     {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
-
         PaginationOptions po = paginationOptions.Value;
         int size = pageSize ?? po.DefaultPageSize;
         if (size < 1)
@@ -136,12 +136,10 @@ public class NewsController(
 
     /// <summary>Returns a single news row for the user.</summary>
     /// <remarks><b>GET</b> <c>/api/v1/users/{userId}/news/{newsId}</c> — no body.</remarks>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/news/{newsId:int}")]
     public async Task<ActionResult<NewsResponse>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
-
         try
         {
             News? news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
@@ -157,6 +155,7 @@ public class NewsController(
     /// <remarks>
     /// <b>POST</b> <c>/api/v1/users/news</c> — Body omits <c>userId</c>. Enum fields use underlying integer values or names (see <see cref="Hermes.Domain.Enums"/>).
     /// </remarks>
+    [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPost("news")]
     public async Task<ActionResult<CreateNewsResponse>> SetNews(
         [FromBody] CreateNewsRequest request,
@@ -180,6 +179,7 @@ public class NewsController(
     }
 
     /// <summary>Update news; <c>id</c> required in body; owner from JWT.</summary>
+    [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPut("news")]
     public async Task<ActionResult> UpdateNews(
         [FromBody] UpdateNewsRequest request,
@@ -214,23 +214,21 @@ public class NewsController(
 
     /// <summary>Delete all news rows for this user. No body.</summary>
     /// <remarks><b>DELETE</b> <c>/api/v1/users/{userId}/news/all</c></remarks>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/news/all")]
     public async Task<ActionResult<DeleteAllNewsResponse>> DeleteAllNews(int userId, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
-
         int deleted = await newsService.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
         return Ok(new DeleteAllNewsResponse(deleted));
     }
 
     /// <remarks><b>DELETE</b> <c>/api/v1/users/{userId}/news/{newsId}</c> — no body.</remarks>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/news/{newsId:int}")]
     public async Task<ActionResult> DeleteNews(int userId, int newsId, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
-
         News? deleteNews;
         try
         {

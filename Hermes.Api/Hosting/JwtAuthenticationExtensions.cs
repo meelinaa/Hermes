@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using System.Text;
+using Hermes.Api.Authorization;
 using Hermes.Application.Options;
 using Hermes.Application.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Hermes.Api.Hosting;
@@ -40,6 +42,8 @@ public static class JwtAuthenticationExtensions
 
         services.AddSingleton<IJwtTokenIssuer, JwtTokenIssuer>();
 
+        services.AddSingleton<IAuthorizationHandler, RouteUserMatchesClaimHandler>();
+
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
@@ -57,7 +61,19 @@ public static class JwtAuthenticationExtensions
                 };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddRequirements(new RouteUserMatchesClaimRequirement("userId"));
+            });
+            options.AddPolicy(HermesAuthorizationPolicies.OWN_USER_ROUTE_ID, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddRequirements(new RouteUserMatchesClaimRequirement("id"));
+            });
+        });
         return services;
     }
 }

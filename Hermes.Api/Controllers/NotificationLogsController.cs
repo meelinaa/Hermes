@@ -1,5 +1,6 @@
 using FluentValidation;
 using FluentValidation.Results;
+using Hermes.Api.Authorization;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Api.Validation;
@@ -8,6 +9,7 @@ using Hermes.Application.Services;
 using Hermes.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Hermes.Api.Controllers;
 
@@ -34,6 +36,8 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     /// <c>status</c>: <c>Pending</c>, <c>Sent</c>, <c>Failed</c> — stored as string in DB.
     /// <c>channel</c>: <c>Email</c>, <c>Telegram</c>.
     /// </remarks>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPost]
     public async Task<ActionResult<NotificationLogResponse>> Post(
         int userId,
@@ -41,9 +45,6 @@ public class NotificationLogsController(INotificationLogService notificationLogS
         [FromServices] IValidator<CreateNotificationLogRequest> validator,
         CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
-
         ValidationResult fv = await validator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);

@@ -45,6 +45,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
         builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         builder.Services.Configure<NewsletterOptions>(builder.Configuration.GetSection(NewsletterOptions.SectionName));
+        builder.Services.Configure<SecurityOptions>(builder.Configuration.GetSection(SecurityOptions.SECTION_NAME));
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
         builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();

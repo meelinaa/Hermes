@@ -1,10 +1,13 @@
 using Hermes.Application.Models.Login;
+using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;
+using Hermes.Application.Security;
 using Hermes.Application.Services;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -16,8 +19,14 @@ namespace Hermes.UnitTests.Services;
 /// </summary>
 public sealed class UserServiceTests
 {
-    private static UserService CreateUserService(IUserStore db, IVerificationMailJobTrigger? trigger = null) =>
-        new(db, trigger ?? Mock.Of<IVerificationMailJobTrigger>());
+    private static UserService CreateUserService(
+        IUserStore db,
+        IVerificationMailJobTrigger? trigger = null,
+        bool hashEmailVerificationCodes = true) =>
+        new(
+            db,
+            trigger ?? Mock.Of<IVerificationMailJobTrigger>(),
+            Options.Create(new SecurityOptions { HashEmailVerificationCodes = hashEmailVerificationCodes }));
 
     /// <summary>
     /// Registration trims/normalizes email to lowercase, hashes plaintext password with BCrypt, assigns id from store callback.
@@ -402,7 +411,7 @@ public sealed class UserServiceTests
             .ReturnsAsync(new User
             {
                 Id = 1,
-                TwoFactorCode = "123456",
+                TwoFactorCode = RefreshTokenHasher.Hash("123456"),
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(-5),
             });
 
@@ -419,7 +428,7 @@ public sealed class UserServiceTests
             .ReturnsAsync(new User
             {
                 Id = 1,
-                TwoFactorCode = "999999",
+                TwoFactorCode = RefreshTokenHasher.Hash("999999"),
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(10),
             });
 
@@ -436,7 +445,7 @@ public sealed class UserServiceTests
             .ReturnsAsync(new User
             {
                 Id = 8,
-                TwoFactorCode = " 123456 ",
+                TwoFactorCode = RefreshTokenHasher.Hash("123456"),
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
             });
         db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(8, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -447,6 +456,48 @@ public sealed class UserServiceTests
 
         db.Verify(dataStore => dataStore.CompleteUserEmailVerificationAsync(8, It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    /// <summary>Migrating installs may still hold plaintext challenges until the next mail send; verification must succeed when hashing is enabled.</summary>
+    [Fact]
+    public async Task CheckVerificationCodeAsync_Should_AcceptLegacyPlaintext_WhenHashingEnabled_ButStoredChallengeIsPlainSixDigits()
+    {
+        Mock<IUserStore> db = new();
+        db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                Id = 2,
+                TwoFactorCode = "123456",
+                TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
+            });
+        db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(2, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        UserService sut = CreateUserService(db.Object, trigger: null, hashEmailVerificationCodes: true);
+
+        await sut.CheckVerificationCodeAsync(2, 123456);
+
+        db.Verify(dataStore => dataStore.CompleteUserEmailVerificationAsync(2, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CheckVerificationCodeAsync_Should_UsePlaintextPersisted_WhenHashingDisabled()
+    {
+        Mock<IUserStore> db = new();
+        db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(3, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                Id = 3,
+                TwoFactorCode = "654321",
+                TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
+            });
+        db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(3, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        UserService sut = CreateUserService(db.Object, trigger: null, hashEmailVerificationCodes: false);
+
+        await sut.CheckVerificationCodeAsync(3, 654321);
+
+        db.Verify(dataStore => dataStore.CompleteUserEmailVerificationAsync(3, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

@@ -159,6 +159,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # Full SARIF upload (never blocks). On main only, an additional gate fails the job when CRITICAL CVEs are present — forces patching before green main.
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -194,6 +195,7 @@ jobs:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-${{ matrix.service }}:sha-${{ github.sha }}
           format: sarif
           output: trivy-results.sarif
+          exit-code: '0'
         env:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
@@ -204,3 +206,15 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: ${{ matrix.service }}
+
+      - name: Fail on CRITICAL vulnerabilities (main only)
+        if: github.ref_name == 'main'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-${{ matrix.service }}:sha-${{ github.sha }}
+          format: table
+          severity: CRITICAL
+          exit-code: '1'
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}

@@ -1,3 +1,4 @@
+using Hermes.Api.Authorization;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Application.Models.User;
@@ -7,6 +8,7 @@ using Hermes.Domain.Exceptions;
 using Hermes.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Collections.Concurrent;
 
 namespace Hermes.Api.Controllers;
@@ -62,6 +64,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// }
     /// </code>
     /// </remarks>
+    [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPut]
     public async Task<ActionResult<UserResponse>> UpdateUser([FromBody] UserProfileUpdateRequest request, CancellationToken cancellationToken)
     {
@@ -114,12 +117,11 @@ public class UsersController(IUserService userService) : ControllerBase
 
     /// <summary>Delete user by id. No body.</summary>
     /// <remarks><b>DELETE</b> <c>api/v1/users/{id}</c></remarks>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_ID)]
+    [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteUser(int id, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(id) is { } denied)
-            return denied;
-
         UserScope? user;
         try
         {
@@ -139,12 +141,10 @@ public class UsersController(IUserService userService) : ControllerBase
 
     /// <summary>Get user by id. No body.</summary>
     /// <remarks><b>GET</b> <c>api/v1/users/{id}</c></remarks>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_ID)]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserResponse>> GetUserById(int id, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(id) is { } denied)
-            return denied;
-
         try
         {
             UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
@@ -184,14 +184,13 @@ public class UsersController(IUserService userService) : ControllerBase
     }
 
     /// <summary>Sends a verification email to the authenticated user identified by <paramref name="id"/>.</summary>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_ID)]
+    [EnableRateLimiting("VerifyMailPolicy")]
     [HttpPost("{id:int}/verify")]
     public async Task<ActionResult<SendVerificationMailResponse>> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
         if (id <= 0)
             return this.BadRequestProblem("A valid user id is required.");
-
-        if (this.WhenCannotAccessUser(id) is { } denied)
-            return denied;
 
         UserScope? user;
         try
@@ -215,6 +214,7 @@ public class UsersController(IUserService userService) : ControllerBase
     }
 
     /// <summary>Submit e-mail verification code (six-digit). Returns updated profile when verified.</summary>
+    [EnableRateLimiting("VerifyCodePolicy")]
     [HttpPost("verify/code")]
     public async Task<ActionResult<UserResponse>> CheckVerificationCode([FromBody] UserVerificationCodeRequest request, CancellationToken cancellationToken)
     {

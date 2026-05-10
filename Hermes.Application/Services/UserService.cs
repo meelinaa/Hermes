@@ -1,7 +1,12 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using Hermes.Application.Models.Login;
+using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Security;
 using Hermes.Application.Scheduling;
+using Microsoft.Extensions.Options;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
@@ -9,7 +14,10 @@ using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services;
 
-public sealed class UserService(IUserStore db, IVerificationMailJobTrigger verificationMailJobTrigger) : IUserService
+public sealed class UserService(
+    IUserStore db,
+    IVerificationMailJobTrigger verificationMailJobTrigger,
+    IOptions<SecurityOptions> securityOptions) : IUserService
 {
     /// <summary>Registers a new user, normalizes fields, hashes the plain password, and returns the created user scope.</summary>
     public async Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default)
@@ -187,10 +195,45 @@ public sealed class UserService(IUserStore db, IVerificationMailJobTrigger verif
         if (DateTime.UtcNow >= expiresUtc)
             throw new VerificationCodeMismatchException();
 
-        string? provided = code.ToString("D6", CultureInfo.InvariantCulture);
-        if (!string.Equals(stored.Trim(), provided, StringComparison.Ordinal))
+        string provided = code.ToString("D6", CultureInfo.InvariantCulture);
+        if (!VerificationCodeMatchesStored(stored.Trim(), provided))
             throw new VerificationCodeMismatchException();
 
         await db.CompleteUserEmailVerificationAsync(userId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Matches a user-entered six-digit string to the stored challenge. When hashing is enabled and the DB value looks like a SHA-256 hex digest, compares hashes; otherwise compares plaintext (legacy rows / hashing disabled).
+    /// </summary>
+    private bool VerificationCodeMatchesStored(string stored, string providedSixDigit)
+    {
+        bool hashingEnabled = securityOptions.Value.HashEmailVerificationCodes;
+        if (hashingEnabled && LooksLikeStoredVerificationCodeHash(stored))
+        {
+            string expectedHash = RefreshTokenHasher.Hash(providedSixDigit);
+            ReadOnlySpan<byte> a = Encoding.UTF8.GetBytes(stored);
+            ReadOnlySpan<byte> b = Encoding.UTF8.GetBytes(expectedHash);
+            return CryptographicOperations.FixedTimeEquals(a, b);
+        }
+
+        ReadOnlySpan<byte> plainA = Encoding.UTF8.GetBytes(stored);
+        ReadOnlySpan<byte> plainB = Encoding.UTF8.GetBytes(providedSixDigit);
+        return CryptographicOperations.FixedTimeEquals(plainA, plainB);
+    }
+
+    /// <summary>Heuristic: persisted value from <see cref="RefreshTokenHasher"/> is 64 uppercase hex chars.</summary>
+    private static bool LooksLikeStoredVerificationCodeHash(string stored) =>
+        stored.Length == 64 && IsUpperHex64(stored.AsSpan());
+
+    private static bool IsUpperHex64(ReadOnlySpan<char> s)
+    {
+        foreach (char c in s)
+        {
+            if (c is (>= '0' and <= '9') or (>= 'A' and <= 'F'))
+                continue;
+            return false;
+        }
+
+        return true;
     }
 }

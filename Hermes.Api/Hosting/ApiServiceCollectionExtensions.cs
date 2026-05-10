@@ -59,6 +59,8 @@ public static class ApiServiceCollectionExtensions
         services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         services.Configure<PaginationOptions>(configuration.GetSection(PaginationOptions.SECTION_NAME));
         services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SectionName));
+        services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
+        services.AddHttpContextAccessor();
         services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
 
@@ -78,7 +80,11 @@ public static class ApiServiceCollectionExtensions
 
         services.AddProblemDetails();
 
-        string[]? allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"];
+        string[] allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                                  ?? ["http://localhost:5269", "https://localhost:7016"];
+
+        EnsureProductionAllowedOrigins(allowedOrigins, environment);
+
         services.AddCors(options =>
         {
             options.AddPolicy("FrontendPolicy", policy =>
@@ -145,12 +151,67 @@ public static class ApiServiceCollectionExtensions
 
                 options.AddPolicy("AuthRefreshPolicy", httpContext =>
                     CreateAuthPartition(httpContext, permitLimit: 30, window: TimeSpan.FromMinutes(1)));
-                return;
+
+                options.AddPolicy("VerifyCodePolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 10, window: TimeSpan.FromMinutes(1)));
+
+                options.AddPolicy("VerifyMailPolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 8, window: TimeSpan.FromMinutes(1)));
+
+                options.AddPolicy("SensitiveWritePolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 120, window: TimeSpan.FromMinutes(1)));
+            }
+            else
+            {
+                foreach (string policyName in new[]
+                         {
+                             "AuthLoginPolicy", "AuthRefreshPolicy", "VerifyCodePolicy", "VerifyMailPolicy", "SensitiveWritePolicy",
+                         })
+                {
+                    options.AddPolicy(policyName, _ => RateLimitPartition.GetNoLimiter("testing-" + policyName));
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// In production, forbids wildcard CORS origins and requires an explicit allow-list (<see cref="IHostEnvironment.IsProduction"/>).
+    /// </summary>
+    private static void EnsureProductionAllowedOrigins(string[] origins, IHostEnvironment environment)
+    {
+        if (!environment.IsProduction())
+            return;
+
+        if (origins.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Cors:AllowedOrigins must contain at least one origin in Production. Wildcards are not allowed.");
+        }
+
+        foreach (string origin in origins)
+        {
+            if (string.IsNullOrWhiteSpace(origin))
+                throw new InvalidOperationException("Cors:AllowedOrigins cannot contain blank entries.");
+
+            string trimmed = origin.Trim();
+            if (trimmed is "*" || trimmed.Contains('*', StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Cors:AllowedOrigins must list explicit HTTPS (or localhost HTTP) origins in Production; wildcards are not permitted.");
             }
 
-            options.AddPolicy("AuthLoginPolicy", _ => RateLimitPartition.GetNoLimiter("testing-login"));
-            options.AddPolicy("AuthRefreshPolicy", _ => RateLimitPartition.GetNoLimiter("testing-refresh"));
-        });
+            if (!Uri.TryCreate(trimmed, UriKind.Absolute, out Uri? uri))
+            {
+                throw new InvalidOperationException(
+                    $"Cors:AllowedOrigins value '{trimmed}' is not a valid absolute URI.");
+            }
+
+            if (uri.Scheme != Uri.UriSchemeHttps && !(uri.Scheme == Uri.UriSchemeHttp && string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException(
+                    $"Cors:AllowedOrigins in Production expects https origins (http is only permitted for localhost). Got: '{trimmed}'.");
+            }
+        }
     }
 
     /// <summary>

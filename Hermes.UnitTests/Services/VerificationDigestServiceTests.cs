@@ -1,6 +1,8 @@
+using System.Text.RegularExpressions;
 using Hermes.Application.Models.Email;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Security;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,17 +16,23 @@ public sealed class VerificationDigestServiceTests
 {
     private static VerificationDigestService CreateSut(
         IUserStore db,
-        IEmailSender? emailSender = null)
+        IEmailSender? emailSender = null,
+        bool hashEmailVerificationCodes = true)
     {
         IOptions<HermesSiteUrlsOptions> site = Options.Create(new HermesSiteUrlsOptions
         {
             PublicBaseUrl = "https://test.example",
             SupportEmail = "support@test.example",
         });
+        IOptions<SecurityOptions> security = Options.Create(new SecurityOptions
+        {
+            HashEmailVerificationCodes = hashEmailVerificationCodes,
+        });
         return new VerificationDigestService(
             db,
             emailSender ?? Mock.Of<IEmailSender>(),
             site,
+            security,
             NullLogger<VerificationDigestService>.Instance);
     }
 
@@ -99,12 +107,39 @@ public sealed class VerificationDigestServiceTests
         await sut.SendAsync(10);
 
         Assert.NotNull(capturedCode);
+        Assert.Matches("^[0-9A-F]{64}$", capturedCode!);
+        db.Verify(
+            dataStore => dataStore.SetUserEmailVerificationChallengeAsync(10, capturedCode!, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        mail.Verify(
+            emailSender => emailSender.SendAsync(
+                It.Is<EmailMessage>(m => Regex.IsMatch(m.Body, @"\b\d{6}\b")),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SendAsync_Should_PersistPlainSixDigitCode_WhenHashingDisabled()
+    {
+        User user = new() { Id = 11, Name = "Pat", Email = "pat@test.dev" };
+        Mock<IUserStore> db = new();
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(11, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        string? capturedCode = null;
+        db.Setup(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(11, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Callback<int, string, DateTime, CancellationToken>((_, code, _, _) => capturedCode = code)
+            .Returns(Task.CompletedTask);
+
+        Mock<IEmailSender> mail = new();
+        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        VerificationDigestService sut = CreateSut(db.Object, mail.Object, hashEmailVerificationCodes: false);
+
+        await sut.SendAsync(11);
+
+        Assert.NotNull(capturedCode);
         Assert.Equal(6, capturedCode!.Length);
         Assert.True(capturedCode.All(char.IsDigit));
-        db.Verify(
-            dataStore => dataStore.SetUserEmailVerificationChallengeAsync(10, capturedCode, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-        mail.Verify(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

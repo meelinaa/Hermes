@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Hermes.Application.Models.Email;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Security;
 using Hermes.Domain.Entities;
 using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Notifications.Sending.HtmlLayout.Models;
@@ -18,6 +19,7 @@ public sealed class VerificationDigestService(
     IUserStore users,
     IEmailSender emailSender,
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,
+    IOptions<SecurityOptions> securityOptions,
     ILogger<VerificationDigestService> logger) : IVerificationDigestService
 {
     public const int VERIFICATION_CODE_VALIDITY_MINUTES = 15;
@@ -36,8 +38,12 @@ public sealed class VerificationDigestService(
         string? code = GenerateNumericVerificationCode();
         DateTime expiresAt = DateTime.UtcNow.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
 
+        string persisted = securityOptions.Value.HashEmailVerificationCodes
+            ? RefreshTokenHasher.Hash(code)
+            : code;
+
         await users
-            .SetUserEmailVerificationChallengeAsync(userId, code, expiresAt, cancellationToken)
+            .SetUserEmailVerificationChallengeAsync(userId, persisted, expiresAt, cancellationToken)
             .ConfigureAwait(false);
 
         HermesSiteUrlsOptions site = siteUrlsOptions.Value;
