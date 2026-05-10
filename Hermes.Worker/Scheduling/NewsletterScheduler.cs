@@ -12,8 +12,8 @@ using Microsoft.Extensions.Options;
 namespace Hermes.Worker.Scheduling;
 
 /// <summary>
-/// Minutely Hangfire entry point: loads all news profiles, enqueues <see cref="NotificationJobs.SendNewsDigestAsync"/>
-/// once <b>per matching news row</b> (same user, same time, two profiles → two jobs, two e-mails — not merged).
+/// Minutely Hangfire entry point: resolves due <c>news</c> rows for the current wall-clock minute (materialized UTC slot and/or JSON schedule),
+/// enqueues <see cref="NotificationJobs.SendNewsDigestAsync"/> once per due row.
 /// </summary>
 public sealed class NewsletterScheduler(
     INewsletterScheduleService newsletterScheduleService,
@@ -41,8 +41,10 @@ public sealed class NewsletterScheduler(
             slotStartWall,
             slotStartUtc);
 
+        DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
+
         IReadOnlyList<(int NewsId, int UserId)> due = await newsletterScheduleService
-            .GetDueItemsAsync(wallNow, cancellationToken)
+            .GetDueItemsAsync(wallNow, slotStartUtc, slotEndUtc, cancellationToken)
             .ConfigureAwait(false);
 
         foreach ((int newsId, int userId) in due)

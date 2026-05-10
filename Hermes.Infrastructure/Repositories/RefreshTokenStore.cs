@@ -101,35 +101,81 @@ public sealed class RefreshTokenStore(HermesDbContext db) : IRefreshTokenStore
     public async Task RevokeTokenFamilyAsync(RefreshToken compromisedToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(compromisedToken);
-        DateTime utc = DateTime.UtcNow;
-
-        List<RefreshToken> userTokens = await db.RefreshTokens
-            .Where(t => t.UserId == compromisedToken.UserId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        var queue = new Queue<RefreshToken>();
-        queue.Enqueue(compromisedToken);
-
-        bool changesMade = false;
-        while (queue.Count > 0)
+        if (db.Database.IsRelational())
         {
-            var current = queue.Dequeue();
-            if (current.RevokedAt == null)
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                current.RevokedAt = utc;
-                changesMade = true;
-            }
+                DateTime utc = DateTime.UtcNow;
 
-            if (current.ReplacedByTokenId is { } successorId)
+                List<RefreshToken> userTokens = await db.RefreshTokens
+                    .Where(t => t.UserId == compromisedToken.UserId)
+                    .ToListAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var queue = new Queue<RefreshToken>();
+                queue.Enqueue(compromisedToken);
+
+                bool changesMade = false;
+                while (queue.Count > 0)
+                {
+                    var current = queue.Dequeue();
+                    if (current.RevokedAt == null)
+                    {
+                        current.RevokedAt = utc;
+                        changesMade = true;
+                    }
+
+                    if (current.ReplacedByTokenId is { } successorId)
+                    {
+                        RefreshToken? successor = userTokens.FirstOrDefault(t => t.Id == successorId);
+                        if (successor != null)
+                            queue.Enqueue(successor);
+                    }
+                }
+
+                if (changesMade)
+                    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch
             {
-                RefreshToken? successor = userTokens.FirstOrDefault(t => t.Id == successorId);
-                if (successor != null)
-                    queue.Enqueue(successor);
+                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                throw;
             }
         }
+        else
+        {
+            DateTime utc = DateTime.UtcNow;
 
-        if (changesMade)
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            List<RefreshToken> userTokens = await db.RefreshTokens
+                .Where(t => t.UserId == compromisedToken.UserId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var queue = new Queue<RefreshToken>();
+            queue.Enqueue(compromisedToken);
+
+            bool changesMade = false;
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                if (current.RevokedAt == null)
+                {
+                    current.RevokedAt = utc;
+                    changesMade = true;
+                }
+
+                if (current.ReplacedByTokenId is { } successorId)
+                {
+                    RefreshToken? successor = userTokens.FirstOrDefault(t => t.Id == successorId);
+                    if (successor != null)
+                        queue.Enqueue(successor);
+                }
+            }
+
+            if (changesMade)
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 }

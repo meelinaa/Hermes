@@ -1,11 +1,14 @@
 using Hermes.Application.Models.News;
+using Hermes.Application.Options;
+using Hermes.Application.Ports;
+using Hermes.Application.Scheduling;
 using Hermes.Domain.Entities;
 using Hermes.Domain.ValueObjects;
-using Hermes.Application.Ports;
+using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Services;
 
-public sealed class NewsService(INewsStore db) : INewsService
+public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsletterOptions) : INewsService
 {
     /// <summary>Creates a news entry and returns its persisted identifier.</summary>
     public async Task<int> SetNewsAsync(News news, CancellationToken cancellationToken = default)
@@ -16,6 +19,7 @@ public sealed class NewsService(INewsStore db) : INewsService
         ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
         news.AssignDigestSchedule(window);
         await db.SetNewsAsync(news, cancellationToken).ConfigureAwait(false);
+        await AdvanceDigestSlotAfterMutationAsync(news, cancellationToken).ConfigureAwait(false);
         return news.Id;
     }
 
@@ -26,6 +30,14 @@ public sealed class NewsService(INewsStore db) : INewsService
         ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
         news.AssignDigestSchedule(window);
         await db.UpdateNewsAsync(news, cancellationToken).ConfigureAwait(false);
+        await AdvanceDigestSlotAfterMutationAsync(news, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task AdvanceDigestSlotAfterMutationAsync(News news, CancellationToken cancellationToken)
+    {
+        TimeZoneInfo zone = NewsletterSchedulingClock.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
+        await db.AdvanceNextDigestSlotAsync(news.Id, news.UserId, zone, DateTime.UtcNow, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>Deletes a news entry.</summary>

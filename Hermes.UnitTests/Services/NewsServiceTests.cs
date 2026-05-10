@@ -1,8 +1,10 @@
 using Hermes.Application.Models.News;
+using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -13,13 +15,15 @@ namespace Hermes.UnitTests.Services;
 /// </summary>
 public sealed class NewsServiceTests
 {
+    private static readonly IOptions<NewsletterOptions> DefaultNewsletterOpts = Options.Create(new NewsletterOptions());
+
     /// <summary>
     /// Null entity cannot be persisted.
     /// </summary>
     [Fact]
     public async Task SetNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsService sut = new(Mock.Of<INewsStore>());
+        NewsService sut = new(Mock.Of<INewsStore>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetNewsAsync(null!));
     }
@@ -32,7 +36,7 @@ public sealed class NewsServiceTests
     [InlineData(-4)]
     public async Task SetNewsAsync_Should_RejectNonPositiveOwningUserId(int invalidUserId)
     {
-        NewsService sut = new(Mock.Of<INewsStore>());
+        NewsService sut = new(Mock.Of<INewsStore>(), DefaultNewsletterOpts);
         News news = new() { Id = 0, UserId = invalidUserId };
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SetNewsAsync(news));
@@ -49,13 +53,25 @@ public sealed class NewsServiceTests
         db.Setup(dataStore => dataStore.SetNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
             .Callback<News, CancellationToken>((n, _) => n.Id = 55)
             .Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<TimeZoneInfo>(), It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        NewsService sut = new(db.Object);
+        NewsService sut = new(db.Object, DefaultNewsletterOpts);
 
         int id = await sut.SetNewsAsync(news);
 
         Assert.Equal(55, id);
         db.Verify(dataStore => dataStore.SetNewsAsync(news, It.IsAny<CancellationToken>()), Times.Once);
+        db.Verify(
+            dataStore => dataStore.AdvanceNextDigestSlotAsync(
+                55,
+                1,
+                It.IsAny<TimeZoneInfo>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     /// <summary>
@@ -67,7 +83,7 @@ public sealed class NewsServiceTests
     [InlineData(-2, 5)]
     public async Task GetNewsByIdAsync_Should_RejectNonPositiveIdentifiers(int userId, int newsId)
     {
-        NewsService sut = new(Mock.Of<INewsStore>());
+        NewsService sut = new(Mock.Of<INewsStore>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsByIdAsync(userId, newsId));
     }
@@ -82,7 +98,7 @@ public sealed class NewsServiceTests
         db.Setup(dataStore => dataStore.GetNewsByIdAsync(3, 9, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new News { Id = 9, UserId = 3 });
 
-        NewsService sut = new(db.Object);
+        NewsService sut = new(db.Object, DefaultNewsletterOpts);
 
         News? news = await sut.GetNewsByIdAsync(3, 9);
 
@@ -98,7 +114,7 @@ public sealed class NewsServiceTests
     [InlineData(-99)]
     public async Task GetNewsListAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
-        NewsService sut = new(Mock.Of<INewsStore>());
+        NewsService sut = new(Mock.Of<INewsStore>(), DefaultNewsletterOpts);
         NewsListQuery query = new(invalidUserId, 1, 10, AfterId: null, SortDescending: false, Search: null, Category: null);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsListAsync(query));
@@ -122,7 +138,7 @@ public sealed class NewsServiceTests
         db.Setup(dataStore => dataStore.GetNewsListAsync(It.IsAny<NewsListQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
-        NewsService sut = new(db.Object);
+        NewsService sut = new(db.Object, DefaultNewsletterOpts);
         NewsListQuery q = new(2, 1, 10, null, false, null, NewsCategory.Technology);
 
         NewsListResult result = await sut.GetNewsListAsync(q);
@@ -140,7 +156,7 @@ public sealed class NewsServiceTests
     [InlineData(-7)]
     public async Task DeleteAllNewsByUserAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
-        NewsService sut = new(Mock.Of<INewsStore>());
+        NewsService sut = new(Mock.Of<INewsStore>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.DeleteAllNewsByUserAsync(invalidUserId));
     }
@@ -154,7 +170,7 @@ public sealed class NewsServiceTests
         Mock<INewsStore> db = new();
         db.Setup(dataStore => dataStore.DeleteAllNewsByUserAsync(4, It.IsAny<CancellationToken>())).ReturnsAsync(7);
 
-        NewsService sut = new(db.Object);
+        NewsService sut = new(db.Object, DefaultNewsletterOpts);
 
         Assert.Equal(7, await sut.DeleteAllNewsByUserAsync(4));
     }
@@ -167,9 +183,16 @@ public sealed class NewsServiceTests
     {
         News news = new() { Id = 1, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
         Mock<INewsStore> db = new();
+        db.Setup(dataStore => dataStore.UpdateNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.DeleteNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<TimeZoneInfo>(), It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        NewsService sut = new(db.Object);
-
+        NewsService sut = new(db.Object, DefaultNewsletterOpts);
         await sut.UpdateNewsAsync(news);
         await sut.DeleteNewsAsync(news);
 
@@ -180,7 +203,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task UpdateNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsService sut = new(Mock.Of<INewsStore>());
+        NewsService sut = new(Mock.Of<INewsStore>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.UpdateNewsAsync(null!));
     }
@@ -188,7 +211,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task DeleteNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsService sut = new(Mock.Of<INewsStore>());
+        NewsService sut = new(Mock.Of<INewsStore>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.DeleteNewsAsync(null!));
     }

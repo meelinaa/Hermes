@@ -83,6 +83,9 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
                     serializedSendAtTimes => string.IsNullOrWhiteSpace(serializedSendAtTimes)
                         ? new List<TimeOnly>()
                         : JsonSerializer.Deserialize<List<TimeOnly>>(serializedSendAtTimes, (JsonSerializerOptions?)null) ?? new List<TimeOnly>());
+
+            entity.Property(newsEntity => newsEntity.NextDigestSlotUtc);
+            entity.HasIndex(newsEntity => newsEntity.NextDigestSlotUtc);
         });
 
         modelBuilder.Entity<NotificationLog>(entity =>
@@ -96,8 +99,15 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.Property(notificationLog => notificationLog.NewsId);
-            entity.Property(notificationLog => notificationLog.Status).HasConversion<string>();
-            entity.Property(notificationLog => notificationLog.Channel).HasConversion<string>();
+            entity.Property(notificationLog => notificationLog.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(notificationLog => notificationLog.Channel).HasConversion<string>().HasMaxLength(32);
+
+            entity.HasIndex(
+                    notificationLog => new { notificationLog.UserId, notificationLog.NewsId, notificationLog.Channel, notificationLog.Status, notificationLog.SentAt })
+                .HasDatabaseName("IX_notification_logs_dedupe_window");
+            entity.HasIndex(
+                    notificationLog => new { notificationLog.Status, notificationLog.NextRetryAt, notificationLog.Id })
+                .HasDatabaseName("IX_notification_logs_pending_retry");
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>

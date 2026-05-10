@@ -7,7 +7,7 @@ using Xunit;
 namespace Hermes.UnitTests.Services;
 
 /// <summary>
-/// Specifications for <see cref="NewsletterScheduleService"/>: forwards local wall-clock to the data store’s due-slot query.
+/// Specifications for <see cref="NewsletterScheduleService"/>: forwards local wall-clock and UTC slot window to the due-slot query.
 /// </summary>
 public sealed class NewsletterScheduleServiceTests
 {
@@ -16,6 +16,10 @@ public sealed class NewsletterScheduleServiceTests
     /// </summary>
     private static DateTime MondayAt(int hour, int minute) =>
         new(2026, 1, 5, hour, minute, 0, DateTimeKind.Local);
+
+    private static readonly DateTime SampleSlotStartUtc = new(2026, 6, 10, 7, 30, 0, DateTimeKind.Utc);
+
+    private static readonly DateTime SampleSlotEndUtc = SampleSlotStartUtc.AddMinutes(1);
 
     /// <summary>
     /// Empty result when the store returns nothing for that slot.
@@ -28,11 +32,14 @@ public sealed class NewsletterScheduleServiceTests
                 Weekdays.Monday,
                 9,
                 30,
+                SampleSlotStartUtc,
+                SampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         NewsletterScheduleService sut = new(store.Object);
 
-        IReadOnlyList<(int NewsId, int UserId)> result = await sut.GetDueItemsAsync(MondayAt(9, 30));
+        IReadOnlyList<(int NewsId, int UserId)> result =
+            await sut.GetDueItemsAsync(MondayAt(9, 30), SampleSlotStartUtc, SampleSlotEndUtc);
 
         Assert.Empty(result);
     }
@@ -48,11 +55,14 @@ public sealed class NewsletterScheduleServiceTests
                 Weekdays.Monday,
                 9,
                 30,
+                SampleSlotStartUtc,
+                SampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([(42, 7), (43, 7)]);
         NewsletterScheduleService sut = new(store.Object);
 
-        IReadOnlyList<(int NewsId, int UserId)> result = await sut.GetDueItemsAsync(MondayAt(9, 30));
+        IReadOnlyList<(int NewsId, int UserId)> result =
+            await sut.GetDueItemsAsync(MondayAt(9, 30), SampleSlotStartUtc, SampleSlotEndUtc);
 
         Assert.Equal(2, result.Count);
         Assert.Contains((42, 7), result);
@@ -71,15 +81,19 @@ public sealed class NewsletterScheduleServiceTests
                 Weekdays.Tuesday,
                 14,
                 5,
+                SampleSlotStartUtc,
+                SampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([(1, 2)]);
         NewsletterScheduleService sut = new(store.Object);
 
-        IReadOnlyList<(int NewsId, int UserId)> result = await sut.GetDueItemsAsync(slot);
+        IReadOnlyList<(int NewsId, int UserId)> result =
+            await sut.GetDueItemsAsync(slot, SampleSlotStartUtc, SampleSlotEndUtc);
 
         Assert.Single(result);
         store.Verify(
-            dataStore => dataStore.GetDueNewsScheduleForSlotAsync(Weekdays.Tuesday, 14, 5, It.IsAny<CancellationToken>()),
+            dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
+                Weekdays.Tuesday, 14, 5, SampleSlotStartUtc, SampleSlotEndUtc, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -94,18 +108,22 @@ public sealed class NewsletterScheduleServiceTests
                 It.IsAny<Weekdays>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         NewsletterScheduleService sut = new(store.Object);
         using CancellationTokenSource cts = new();
 
-        await sut.GetDueItemsAsync(MondayAt(9, 30), cts.Token);
+        await sut.GetDueItemsAsync(MondayAt(9, 30), SampleSlotStartUtc, SampleSlotEndUtc, cts.Token);
 
         store.Verify(
             dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 Weekdays.Monday,
                 9,
                 30,
+                SampleSlotStartUtc,
+                SampleSlotEndUtc,
                 cts.Token),
             Times.Once);
     }

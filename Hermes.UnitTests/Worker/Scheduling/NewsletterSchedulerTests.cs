@@ -37,7 +37,11 @@ public sealed class NewsletterSchedulerTests
     {
         // Arrange
         Mock<INewsletterScheduleService> schedule = new();
-        schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<(int NewsId, int UserId)>());
 
         Mock<IEmailSender> emailSender = new();
@@ -55,7 +59,11 @@ public sealed class NewsletterSchedulerTests
 
         // Assert
         schedule.Verify(
-            scheduleService => scheduleService.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            scheduleService => scheduleService.GetDueItemsAsync(
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()),
             Times.Once);
         emailSender.Verify(
             sender => sender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
@@ -71,8 +79,12 @@ public sealed class NewsletterSchedulerTests
         // Arrange
         CancellationToken? captured = null;
         Mock<INewsletterScheduleService> schedule = new();
-        schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .Callback<DateTime, CancellationToken>((_, ct) => captured = ct)
+        schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<DateTime, DateTime, DateTime, CancellationToken>((_, _, _, ct) => captured = ct)
             .ReturnsAsync([]);
 
         NewsletterScheduler sut = new(

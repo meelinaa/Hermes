@@ -1,10 +1,10 @@
 using Hermes.Application.Models.News;
 using Hermes.Application.Ports;
-using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Domain.Exceptions;
 using Hermes.Infrastructure.Data;
+using Hermes.Infrastructure.Scheduling;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -124,19 +124,12 @@ public sealed class NewsStore(HermesDbContext db) : INewsStore
     }
 
     /// <inheritdoc />
-    public async Task<List<NewsScheduleRow>> GetNewsScheduleRowsAsync(CancellationToken cancellationToken = default)
-    {
-        return await db.News.AsNoTracking()
-            .Select(newsEntity => new NewsScheduleRow(newsEntity.Id, newsEntity.UserId, newsEntity.SendOnWeekdays, newsEntity.SendAtTimes))
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
     public async Task<List<(int NewsId, int UserId)>> GetDueNewsScheduleForSlotAsync(
         Weekdays weekday,
         int hour,
         int minute,
+        DateTime slotStartUtc,
+        DateTime slotEndUtc,
         CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(hour, 0);
@@ -144,14 +137,30 @@ public sealed class NewsStore(HermesDbContext db) : INewsStore
         ArgumentOutOfRangeException.ThrowIfLessThan(minute, 0);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(minute, 59);
 
+        DateTime slotStart = DateTime.SpecifyKind(slotStartUtc, DateTimeKind.Utc);
+        DateTime slotEnd = DateTime.SpecifyKind(slotEndUtc, DateTimeKind.Utc);
+
+        var rawMaterialized = await db.News.AsNoTracking()
+            .Where(n => n.Id > 0 && n.UserId > 0
+                && n.NextDigestSlotUtc != null
+                && n.NextDigestSlotUtc >= slotStart
+                && n.NextDigestSlotUtc < slotEnd)
+            .OrderBy(n => n.Id)
+            .Select(n => new { n.Id, n.UserId })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        List<(int Id, int UserId)> materialized = rawMaterialized.Select(x => (x.Id, x.UserId)).ToList();
+
         string weekdayLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(weekday, HermesJsonOptions.ForEnums))!;
         string timeLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(new TimeOnly(hour, minute)))!;
-        List<DueNewsScheduleSlotRow> rows = await db.Database
+        List<DueNewsScheduleSlotRow> fromJson = await db.Database
             .SqlQueryRaw<DueNewsScheduleSlotRow>(
                 """
                 SELECT n.Id AS Id, n.UserId AS UserId
                 FROM news n
                 WHERE n.Id > 0 AND n.UserId > 0
+                  AND n.NextDigestSlotUtc IS NULL
                   AND JSON_SEARCH(
                     IF(
                       n.SendOnWeekdays IS NOT NULL
@@ -181,11 +190,46 @@ public sealed class NewsStore(HermesDbContext db) : INewsStore
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        List<(int NewsId, int UserId)> result = new(rows.Count);
-        foreach (DueNewsScheduleSlotRow row in rows)
-            result.Add((row.Id, row.UserId));
+        HashSet<(int Id, int UserId)> merged = new();
+        foreach ((int id, int uid) in materialized)
+            merged.Add((id, uid));
+        foreach (DueNewsScheduleSlotRow row in fromJson)
+            merged.Add((row.Id, row.UserId));
 
-        return result;
+        return merged.OrderBy(t => t.Id).Select(t => (t.Id, t.UserId)).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task AdvanceNextDigestSlotAsync(
+        int newsId,
+        int userId,
+        TimeZoneInfo newsletterTimeZone,
+        DateTime referenceUtcExclusive,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(newsletterTimeZone);
+        News? row = await db.News
+            .FirstOrDefaultAsync(n => n.Id == newsId && n.UserId == userId, cancellationToken)
+            .ConfigureAwait(false);
+        if (row is null)
+            return;
+        if (row.SendOnWeekdays.Count == 0 || row.SendAtTimes.Count == 0)
+            return;
+
+        try
+        {
+            DateTime next = NewsletterNextRunCalculator.ComputeNextOccurrenceUtcAfter(
+                row.SendOnWeekdays,
+                row.SendAtTimes,
+                newsletterTimeZone,
+                referenceUtcExclusive);
+            row.NextDigestSlotUtc = next;
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            // Leave NextDigestSlotUtc unchanged if no future slot exists (should not occur for valid schedules).
+        }
     }
 
     /// <inheritdoc />

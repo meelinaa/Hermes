@@ -59,10 +59,17 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
         };
         await newsStore.SetNewsAsync(wrongTime, CancellationToken.None);
 
+        // Direct INewsStore inserts leave NextDigestSlotUtc null, so matching uses the JSON_SEARCH path only;
+        // slot UTC bounds still apply to materialized rows and must be supplied.
+        DateTime slotStartUtc = new(2026, 5, 4, 7, 0, 0, DateTimeKind.Utc);
+        DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
+
         List<(int NewsId, int UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
             Weekdays.Monday,
             9,
             30,
+            slotStartUtc,
+            slotEndUtc,
             CancellationToken.None);
 
         Assert.Contains((mondaySlot.Id, userId), due);
