@@ -8,13 +8,13 @@ using Hermes.Application.Scheduling;
 using Hermes.Application.Security;
 using Hermes.Application.Services;
 using Hermes.Application.Ports;
-using Hermes.Domain.Interfaces.Services;
 using Hermes.Infrastructure.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Serilog.Enrichers.Span;
 using Serilog;
 using System.Text.Json.Serialization;
@@ -32,14 +32,19 @@ public static class ApiServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The application service collection.</param>
     /// <param name="configuration">Application configuration (appsettings, environment variables).</param>
-    public static void AddHermesApiServices(this IServiceCollection services, IConfiguration configuration)
+    /// <param name="environment">Host environment; when <see cref="IHostEnvironment.EnvironmentName"/> is <c>Testing</c>, EF uses a pinned MySQL server capability version (no AutoDetect TCP probe during options setup).</param>
+    public static void AddHermesApiServices(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         string? connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
 
+        ServerVersion serverVersion = string.Equals(environment.EnvironmentName, "Testing", StringComparison.OrdinalIgnoreCase)
+            ? HermesMySqlServerVersions.PinnedMysql84
+            : ServerVersion.AutoDetect(connectionString);
+
         services.AddDbContext<HermesDbContext>(options =>
-            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+            options.UseMySql(connectionString, serverVersion));
         services.AddScoped<IHermesDataStore>(sp => sp.GetRequiredService<HermesDbContext>());
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 

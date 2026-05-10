@@ -17,10 +17,8 @@ internal static class HermesDatabaseMigrator
     /// </summary>
     public static async Task MigrateAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        ServerVersion serverVersion = ServerVersion.AutoDetect(connectionString) // AutoDetect queries the database for version information, which is necessary for Pomelo to generate compatible SQL; it may throw if the server is unreachable or credentials are wrong, which would indicate a test setup issue
-            ?? throw new InvalidOperationException("Failed to detect MySQL server version; check connection string and server availability.");
-        DbContextOptions<HermesDbContext> options = new DbContextOptionsBuilder<HermesDbContext>() // We use the same provider and version detection as the API to ensure compatibility; if this migration step fails, the API's own migrations would likely fail too, causing readiness checks to fail and tests to break in less obvious ways.
-            .UseMySql(connectionString, serverVersion)
+        DbContextOptions<HermesDbContext> options = new DbContextOptionsBuilder<HermesDbContext>()
+            .UseMySql(connectionString, HermesMySqlServerVersions.PinnedMysql84)
             .Options;
 
         await using HermesDbContext db = new(options); // creates a new instance of the DbContext with the specified options; this is a standalone context used only for applying migrations, not shared with the API's DI container

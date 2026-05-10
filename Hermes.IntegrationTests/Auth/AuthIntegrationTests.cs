@@ -51,7 +51,7 @@ public sealed class AuthIntegrationTests(MySqlApiFixture fixture)
     }
 
     /// <summary>
-    /// FluentValidation rejects empty identifiers/passwords before touching <see cref="Hermes.Domain.Interfaces.Services.IUserService"/>—expect RFC 7807 validation problems.
+    /// FluentValidation rejects empty identifiers/passwords before touching <see cref="Hermes.Application.Services.IUserService"/>—expect RFC 7807 validation problems.
     /// </summary>
     [Theory]
     [InlineData("", "password")]

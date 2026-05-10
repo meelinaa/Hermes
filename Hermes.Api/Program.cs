@@ -10,7 +10,7 @@ try
     builder.AddHermesOpenTelemetry();
     builder.Host.UseHermesSerilog();
 
-    builder.Services.AddHermesApiServices(builder.Configuration);
+    builder.Services.AddHermesApiServices(builder.Configuration, builder.Environment);
 
     var app = builder.Build();
     Log.Information("Built WebApplication");

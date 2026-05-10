@@ -74,7 +74,7 @@ The sections below show typical payloads. **Authoritative property lists** are t
 
 ### Auth
 
-**Login**: request type `[LoginRequest](../Hermes.Domain/Models/LoginRequest.cs)` (namespace `Hermes.Application.Models`).
+**Login**: request type `[LoginRequest](../Hermes.Application/Models/Login/LoginRequest.cs)` (namespace `Hermes.Application.Models.Login`).
 
 ```json
 {

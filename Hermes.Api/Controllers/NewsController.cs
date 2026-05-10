@@ -186,7 +186,15 @@ public class NewsController(
             return fv.ToValidationProblem(this);
 
         News entity = request.ToEntity(currentUserId);
-        await newsService.UpdateNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await newsService.UpdateNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+        }
+        catch (NewsAccessDeniedException)
+        {
+            return Problem(title: "News access denied.", statusCode: StatusCodes.Status403Forbidden);
+        }
+
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         return Ok();
     }

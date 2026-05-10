@@ -1,3 +1,4 @@
+using Hermes.Domain;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Http;
@@ -38,4 +39,12 @@ public static class ApiProblemResults
             detail: detail,
             statusCode: StatusCodes.Status403Forbidden,
             type: $"{RFC_7231}#section-6.5.3");
+
+    /// <summary>400 for failed profile password change; <c>type</c> matches exception middleware mapping.</summary>
+    public static ActionResult WrongCurrentPasswordProblem(this ControllerBase controller, string detail) =>
+        controller.Problem(
+            detail: detail,
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Aktuelles Passwort ungültig",
+            type: HermesProblemTypes.WRONG_CURRENT_PASSWORD);
 }

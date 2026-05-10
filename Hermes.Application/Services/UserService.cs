@@ -1,11 +1,10 @@
 using System.Globalization;
-using Hermes.Application.Models;
+using Hermes.Application.Models.Login;
 using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
-using Hermes.Domain.Interfaces.Services;
 
 namespace Hermes.Application.Services;
 

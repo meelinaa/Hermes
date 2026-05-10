@@ -1,4 +1,4 @@
-namespace Hermes.Application.Models;
+namespace Hermes.Application.Models.Login;
 
 /// <summary>Credentials for login: either display name or email in <see cref="NameOrEmail"/>.</summary>
 public sealed class LoginRequest

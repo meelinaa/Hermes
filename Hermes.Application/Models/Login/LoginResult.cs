@@ -1,4 +1,4 @@
-namespace Hermes.Application.Models;
+namespace Hermes.Application.Models.Login;
 
 /// <summary>
 /// Outcome of a login attempt (no secrets in this object).

@@ -1,5 +1,5 @@
 using FluentValidation;
-using Hermes.Application.Models;
+using Hermes.Application.Models.Login;
 
 namespace Hermes.Api.Validation;
 

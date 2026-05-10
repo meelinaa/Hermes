@@ -1,4 +1,4 @@
-using Hermes.Application.Models;
+using Hermes.Application.Models.Login;
 using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Services;

@@ -4,7 +4,7 @@ using Hermes.Application.Models.User;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
-using Hermes.Domain.Interfaces.Services;
+using Hermes.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Concurrent;
@@ -89,6 +89,10 @@ public class UsersController(IUserService userService) : ControllerBase
         try
         {
             await userService.UpdateUserAsync(user, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
+        }
+        catch (WrongCurrentPasswordException wcp)
+        {
+            return this.WrongCurrentPasswordProblem(wcp.Message);
         }
         catch (ArgumentException ex)
         {

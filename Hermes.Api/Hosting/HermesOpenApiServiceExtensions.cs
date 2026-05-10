@@ -1,4 +1,3 @@
-using Hermes.Application.Models;
 using Hermes.Application.Models.Login;
 using Hermes.Application.Options;
 using Microsoft.AspNetCore.Authorization;

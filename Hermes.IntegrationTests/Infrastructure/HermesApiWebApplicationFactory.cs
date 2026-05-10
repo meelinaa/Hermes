@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using Hermes.Api;
+
 namespace Hermes.IntegrationTests.Infrastructure;
 
 /// <summary>
@@ -10,15 +12,14 @@ namespace Hermes.IntegrationTests.Infrastructure;
 /// <para>
 /// We inject connection strings and JWT settings via <see cref="IWebHostBuilder.UseSetting(string,string?)"/> so they participate in configuration
 /// <strong>before</strong> services read values from merged configuration (same mechanism as command-line overrides). Relying only on
-/// <c>appsettings.json</c> would point EF Core at a developer MySQL host during host construction and cause <c>ServerVersion.AutoDetect</c>
-/// to fail or hang while Docker-backed tests already expose a different server.
+/// <c>appsettings.json</c> would point EF Core at a developer MySQL during host startup; in <c>Testing</c> the API pins the Pomelo MySQL capability version (<see cref="Hermes.Infrastructure.Data.HermesMySqlServerVersions.PinnedMysql84"/>) instead of probing the server at options setup time.
 /// </para>
 /// <para>
 /// JWT settings must satisfy <see cref="Hermes.Api.Hosting.JwtAuthenticationExtensions"/> (minimum signing-key length, issuer, audience).
 /// Values here are non-secret test defaults only.
 /// </para>
 /// </remarks>
-public sealed class HermesApiWebApplicationFactory(string connectionString) : WebApplicationFactory<Program>
+public sealed class HermesApiWebApplicationFactory(string connectionString) : WebApplicationFactory<ApiWebApplicationMarker>
 {
     private readonly string _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
 
