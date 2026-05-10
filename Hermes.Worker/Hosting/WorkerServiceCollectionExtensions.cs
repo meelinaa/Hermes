@@ -5,6 +5,7 @@ using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Services;
 using Hermes.Infrastructure.Data;
+using Hermes.Infrastructure.Repositories;
 using Hermes.Infrastructure.Email;
 using Hermes.Infrastructure.NewsDataIo;
 using Hermes.Notifications.Receiving.Models;
@@ -34,10 +35,10 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-        builder.Services.AddScoped<IUserStore>(static sp => sp.GetRequiredService<HermesDbContext>());
-        builder.Services.AddScoped<INewsStore>(static sp => sp.GetRequiredService<HermesDbContext>());
-        builder.Services.AddScoped<IRefreshTokenStore>(static sp => sp.GetRequiredService<HermesDbContext>());
-        builder.Services.AddScoped<INotificationLogStore>(static sp => sp.GetRequiredService<HermesDbContext>());
+        builder.Services.AddScoped<IUserStore, UserStore>();
+        builder.Services.AddScoped<INewsStore, NewsStore>();
+        builder.Services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
+        builder.Services.AddScoped<INotificationLogStore, NotificationLogStore>();
         builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailSettings(builder.Configuration));
         builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
         builder.Services.Configure<MailHogSettings>(builder.Configuration.GetSection("MailHog"));

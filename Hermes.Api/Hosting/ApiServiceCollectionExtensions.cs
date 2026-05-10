@@ -9,6 +9,7 @@ using Hermes.Application.Security;
 using Hermes.Application.Services;
 using Hermes.Application.Ports;
 using Hermes.Infrastructure.Data;
+using Hermes.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
@@ -45,10 +46,10 @@ public static class ApiServiceCollectionExtensions
 
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, serverVersion));
-        services.AddScoped<IUserStore>(static sp => sp.GetRequiredService<HermesDbContext>());
-        services.AddScoped<INewsStore>(static sp => sp.GetRequiredService<HermesDbContext>());
-        services.AddScoped<IRefreshTokenStore>(static sp => sp.GetRequiredService<HermesDbContext>());
-        services.AddScoped<INotificationLogStore>(static sp => sp.GetRequiredService<HermesDbContext>());
+        services.AddScoped<IUserStore, UserStore>();
+        services.AddScoped<INewsStore, NewsStore>();
+        services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
+        services.AddScoped<INotificationLogStore, NotificationLogStore>();
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();

@@ -1,6 +1,7 @@
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Infrastructure.Data;
+using Hermes.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -43,6 +44,7 @@ public sealed class HermesDbContextTests
     public async Task ExistsSentNotificationInWindowAsync_ReturnsTrue_WhenSentRowInsideHalfOpenWindow()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
+        var logStore = new NotificationLogStore(ctx);
         User user = await SeedUserAsync(ctx);
 
         DateTime windowStart = new(2026, 4, 10, 8, 15, 0, DateTimeKind.Utc);
@@ -58,7 +60,7 @@ public sealed class HermesDbContextTests
         });
         await ctx.SaveChangesAsync();
 
-        bool exists = await ctx.ExistsSentNotificationInWindowAsync(user.Id, 42, windowStart, windowEnd, CancellationToken.None);
+        bool exists = await logStore.ExistsSentNotificationInWindowAsync(user.Id, 42, windowStart, windowEnd, CancellationToken.None);
 
         Assert.True(exists);
     }
@@ -70,6 +72,7 @@ public sealed class HermesDbContextTests
     public async Task ExistsSentNotificationInWindowAsync_ReturnsFalse_WhenOutsideWindowOrWrongStatus()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
+        var logStore = new NotificationLogStore(ctx);
         User user = await SeedUserAsync(ctx);
 
         DateTime windowStart = new(2026, 4, 10, 8, 15, 0, DateTimeKind.Utc);
@@ -101,9 +104,9 @@ public sealed class HermesDbContextTests
         });
         await ctx.SaveChangesAsync();
 
-        Assert.False(await ctx.ExistsSentNotificationInWindowAsync(user.Id, 1, windowStart, windowEnd, CancellationToken.None));
-        Assert.False(await ctx.ExistsSentNotificationInWindowAsync(user.Id, 2, windowStart, windowEnd, CancellationToken.None));
-        Assert.False(await ctx.ExistsSentNotificationInWindowAsync(user.Id, 3, windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 1, windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 2, windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 3, windowStart, windowEnd, CancellationToken.None));
     }
 
     /// <summary>
@@ -113,6 +116,7 @@ public sealed class HermesDbContextTests
     public async Task CompleteRefreshRotationAsync_SetsRevokedAndReplacementLink()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
+        var tokens = new RefreshTokenStore(ctx);
         User user = await SeedUserAsync(ctx);
 
         RefreshToken oldToken = new()
@@ -133,7 +137,7 @@ public sealed class HermesDbContextTests
             CreatedAt = DateTime.UtcNow,
         };
 
-        await ctx.CompleteRefreshRotationAsync(oldToken, newToken, CancellationToken.None);
+        await tokens.CompleteRefreshRotationAsync(oldToken, newToken, CancellationToken.None);
 
         Assert.True(oldToken.RevokedAt.HasValue);
         Assert.Equal(newToken.Id, oldToken.ReplacedByTokenId);
@@ -152,8 +156,9 @@ public sealed class HermesDbContextTests
     public async Task GetActiveRefreshTokenByHashAsync_Should_ReturnNull_WhenHashEmpty()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
+        var tokens = new RefreshTokenStore(ctx);
 
-        RefreshToken? row = await ctx.GetActiveRefreshTokenByHashAsync("", CancellationToken.None);
+        RefreshToken? row = await tokens.GetActiveRefreshTokenByHashAsync("", CancellationToken.None);
 
         Assert.Null(row);
     }
@@ -163,6 +168,7 @@ public sealed class HermesDbContextTests
     public async Task UpdateUserAsync_Should_ClearIsEmailVerified_WhenEmailChanges()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
+        var users = new UserStore(ctx);
         User user = await SeedUserAsync(ctx);
         user.IsEmailVerified = true;
         await ctx.SaveChangesAsync();
@@ -175,7 +181,7 @@ public sealed class HermesDbContextTests
             PasswordHash = null,
         };
 
-        await ctx.UpdateUserAsync(patch, CancellationToken.None);
+        await users.UpdateUserAsync(patch, CancellationToken.None);
 
         User? reloaded = await ctx.Users.AsNoTracking().FirstOrDefaultAsync(userEntity => userEntity.Id == user.Id);
         Assert.NotNull(reloaded);
