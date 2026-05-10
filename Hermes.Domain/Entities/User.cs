@@ -1,3 +1,5 @@
+using Hermes.Domain.ValueObjects;
+
 namespace Hermes.Domain.Entities;
 
 public class User
@@ -16,4 +18,29 @@ public class User
     public ICollection<NotificationLog> NotificationLogs { get; set; } = [];
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+
+    /// <summary>Updates display name (trimmed).</summary>
+    public void Rename(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Name is required.", nameof(name));
+        Name = name.Trim();
+    }
+
+    /// <summary>Sets primary e-mail (already normalized via <see cref="Email"/>). Clears verification when the address changes.</summary>
+    public void ChangePrimaryEmail(Email email)
+    {
+        string next = email.Value;
+        string? previous = Email;
+        Email = next;
+        if (!string.Equals(previous, next, StringComparison.Ordinal))
+            IsEmailVerified = false;
+    }
+
+    /// <summary>Replaces stored password hash after application-layer hashing.</summary>
+    public void ReplacePasswordHash(string bcryptHash)
+    {
+        ArgumentNullException.ThrowIfNull(bcryptHash);
+        PasswordHash = bcryptHash;
+    }
 }

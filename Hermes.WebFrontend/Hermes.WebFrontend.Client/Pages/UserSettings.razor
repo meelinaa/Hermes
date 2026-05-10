@@ -5,8 +5,7 @@
 @using System.Net.Http.Json
 @using System.Text.Json
 @using System.Threading
-@using Hermes.Domain
-@using Hermes.Domain.DTOs
+@using Hermes.WebFrontend.Client.ApiModels
 @using Hermes.WebFrontend.Client.Services
 @using Hermes.WebFrontend.Client.Services.Auth
 @using Hermes.WebFrontend.Client.Services.User
@@ -344,7 +343,7 @@
                 return;
             }
 
-            UserScope? scope = await response.Content.ReadFromJsonAsync<UserScope>(JsonSerializerOptions.Web).ConfigureAwait(false);
+            UserScopeDto? scope = await response.Content.ReadFromJsonAsync<UserScopeDto>(JsonSerializerOptions.Web).ConfigureAwait(false);
             if (scope is not null)
             {
                 profileName = scope.Name ?? string.Empty;
@@ -668,7 +667,7 @@
                 ProblemRead problem = await TryReadProblemAsync(response).ConfigureAwait(false);
                 string? msg = ProblemUserMessage(problem, response);
                 if (newPw is not null
-                    && string.Equals(problem.Type, HermesProblemTypes.WRONG_CURRENT_PASSWORD, StringComparison.Ordinal))
+                    && string.Equals(problem.Type, HermesApiProblemTypes.WrongCurrentPassword, StringComparison.Ordinal))
                 {
                     oldPasswordFieldError = msg;
                     profileFeedback = null;

@@ -44,7 +44,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task SetNewsAsync_Should_ReturnPersistedId_AfterStoreAssignsKey()
     {
-        News news = new() { Id = 0, UserId = 1 };
+        News news = new() { Id = 0, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
         Mock<INewsStore> db = new();
         db.Setup(dataStore => dataStore.SetNewsAsync(It.IsAny<News>(), It.IsAny<CancellationToken>()))
             .Callback<News, CancellationToken>((n, _) => n.Id = 55)
@@ -165,7 +165,7 @@ public sealed class NewsServiceTests
     [Fact]
     public async Task UpdateNewsAsync_And_DeleteNewsAsync_Should_DelegateToStore_WhenEntitiesNonNull()
     {
-        News news = new() { Id = 1, UserId = 1 };
+        News news = new() { Id = 1, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
         Mock<INewsStore> db = new();
 
         NewsService sut = new(db.Object);

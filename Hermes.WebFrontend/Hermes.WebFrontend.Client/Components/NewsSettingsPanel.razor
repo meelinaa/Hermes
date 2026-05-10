@@ -1,8 +1,8 @@
 @using System.Globalization
 @using System.Net.Http.Json
 @using System.Text.Json
-@using Hermes.Domain.Entities
-@using Hermes.Domain.Enums
+@using Hermes.WebFrontend.Client.ApiModels
+@using Hermes.WebFrontend.Client.ApiModels.Enums
 @using Hermes.WebFrontend.Client.Enums
 @using Hermes.WebFrontend.Client.Services
 @using Hermes.WebFrontend.Client.Services.Auth
@@ -87,7 +87,7 @@
         else
         {
             <ul class="news-settings-list">
-                @foreach (News n in items)
+                @foreach (NewsSubscriptionDto n in items)
                 {
                     <li class="news-settings-card">
                         <div class="news-settings-card-head">
@@ -144,9 +144,9 @@
 @code {
     [Parameter] public bool StartInCreateMode { get; set; }
 
-    private List<News> items = new();
+    private List<NewsSubscriptionDto> items = new();
     private bool showForm;
-    private News? editModel;
+    private NewsSubscriptionDto? editModel;
     private bool loading = true;
     private string? loadError;
     private int? deletingId;
@@ -238,7 +238,7 @@
         if (userId is null)
         {
             loadError = "Bitte erneut anmelden.";
-            items = new List<News>();
+            items = new List<NewsSubscriptionDto>();
             totalCount = null;
             totalPages = null;
             hasNextPage = false;
@@ -259,7 +259,7 @@
 
         if (err is not null)
         {
-            items = new List<News>();
+            items = new List<NewsSubscriptionDto>();
             totalCount = null;
             totalPages = null;
             hasNextPage = false;
@@ -267,7 +267,7 @@
         }
         else if (data is not null)
         {
-            items = data.Items ?? new List<News>();
+            items = data.Items ?? new List<NewsSubscriptionDto>();
             totalCount = data.TotalCount;
             totalPages = data.TotalPages;
             hasNextPage = data.HasNextPage;
@@ -283,7 +283,7 @@
         showForm = true;
     }
 
-    private void StartEdit(News n)
+    private void StartEdit(NewsSubscriptionDto n)
     {
         editModel = n;
         showForm = true;
@@ -301,7 +301,7 @@
         }
     }
 
-    private async Task DeleteAsync(News n)
+    private async Task DeleteAsync(NewsSubscriptionDto n)
     {
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
         int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
@@ -327,30 +327,30 @@
         }
     }
 
-    private static string TitleFor(News n) =>
+    private static string TitleFor(NewsSubscriptionDto n) =>
         n.Keywords is { Count: > 0 } ? string.Join(", ", n.Keywords) : "Ohne Schlagworte";
 
-    private static string FormatKeywords(News n) =>
+    private static string FormatKeywords(NewsSubscriptionDto n) =>
         n.Keywords is { Count: > 0 } ? string.Join(", ", n.Keywords) : "—";
 
-    private static string FormatCategories(News n) =>
+    private static string FormatCategories(NewsSubscriptionDto n) =>
         n.Category is { Count: > 0 }
             ? string.Join(", ", n.Category.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplay.CategoryDe(c)))
             : "—";
 
-    private static string FormatLanguages(News n) =>
+    private static string FormatLanguages(NewsSubscriptionDto n) =>
         n.Languages is { Count: > 0 }
             ? string.Join(", ", n.Languages.OrderBy(l => l.ToString()).Select(l => NewsEnumGermanDisplay.LanguageDe(l)))
             : "—";
 
-    private static string FormatCountries(News n) =>
+    private static string FormatCountries(NewsSubscriptionDto n) =>
         n.Countries is { Count: > 0 }
             ? string.Join(", ", n.Countries.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplay.CountryDe(c)))
             : "—";
 
-    private static string FormatWeekdays(News n) =>
-        n.SendOnWeekdays.Count > 0
-            ? string.Join(", ", n.SendOnWeekdays.OrderBy(d => (int)d).Select(ShortWeekday))
+    private static string FormatWeekdays(NewsSubscriptionDto n) =>
+        n.SendOnWeekdays is { Count: > 0 } w
+            ? string.Join(", ", w.OrderBy(d => (int)d).Select(ShortWeekday))
             : "—";
 
     private static string ShortWeekday(Weekdays d) => d switch
@@ -365,9 +365,9 @@
         _ => d.ToString()
     };
 
-    private static string FormatTimes(News n) =>
-        n.SendAtTimes.Count > 0
-            ? string.Join(", ", n.SendAtTimes.OrderBy(t => t).Select(t => t.ToString("HH:mm")))
+    private static string FormatTimes(NewsSubscriptionDto n) =>
+        n.SendAtTimes is { Count: > 0 } t
+            ? string.Join(", ", t.OrderBy(x => x).Select(x => x.ToString("HH:mm")))
             : "—";
 
     private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)

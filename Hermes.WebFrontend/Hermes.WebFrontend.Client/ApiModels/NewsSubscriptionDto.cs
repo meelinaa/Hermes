@@ -1,9 +1,9 @@
-using Hermes.Domain.Enums;
-using Hermes.Domain.ValueObjects;
+using Hermes.WebFrontend.Client.ApiModels.Enums;
 
-namespace Hermes.Domain.Entities;
+namespace Hermes.WebFrontend.Client.ApiModels;
 
-public class News
+/// <summary>News configuration row (list/detail JSON from the API).</summary>
+public sealed class NewsSubscriptionDto
 {
     public int Id { get; set; }
 
@@ -20,11 +20,4 @@ public class News
     public List<Weekdays> SendOnWeekdays { get; set; } = [];
 
     public List<TimeOnly> SendAtTimes { get; set; } = [];
-
-    /// <summary>Applies validated digest schedule windows (weekdays + times).</summary>
-    public void AssignDigestSchedule(ScheduleWindow schedule)
-    {
-        ArgumentNullException.ThrowIfNull(schedule);
-        schedule.ApplyToNews(this);
-    }
 }

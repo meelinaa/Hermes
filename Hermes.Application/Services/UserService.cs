@@ -5,6 +5,7 @@ using Hermes.Application.Scheduling;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services;
 
@@ -18,8 +19,10 @@ public sealed class UserService(IUserStore db, IVerificationMailJobTrigger verif
             throw new InvalidOperationException("User name is required.");
         request.Name = request.Name.Trim();
 
-        if (!string.IsNullOrEmpty(request.Email))
-            request.Email = request.Email.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new InvalidOperationException("User email is required.");
+        Email email = Email.Parse(request.Email);
+        request.Email = email.Value;
         request.Password = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "");
         User user = new()
         {
@@ -30,8 +33,6 @@ public sealed class UserService(IUserStore db, IVerificationMailJobTrigger verif
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id <= 0)
             throw new InvalidOperationException("Failed to create user.");
-        if (string.IsNullOrEmpty(user.Email))
-            throw new InvalidOperationException("User email is required.");
         UserScope userScope = new()
         {
             Name = user.Name,
@@ -83,8 +84,8 @@ public sealed class UserService(IUserStore db, IVerificationMailJobTrigger verif
         if (string.IsNullOrEmpty(user.Email))
             throw new ArgumentException("Email is required.", nameof(user));
 
-        if (!string.IsNullOrWhiteSpace(user.Email))
-            user.Email = user.Email.Trim().ToLowerInvariant();
+        Email normalizedEmail = Email.Parse(user.Email);
+        user.Email = normalizedEmail.Value;
 
         string? newPlain = user.PasswordHash;
         string? hashedForDb = null;
@@ -156,10 +157,10 @@ public sealed class UserService(IUserStore db, IVerificationMailJobTrigger verif
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
 
-        string? normalized = email.Trim().ToLowerInvariant();
-        User? user = await db.GetUserEntityForAuthenticationByEmailAsync(normalized, cancellationToken).ConfigureAwait(false);
+        Email normalized = Email.Parse(email);
+        User? user = await db.GetUserEntityForAuthenticationByEmailAsync(normalized.Value, cancellationToken).ConfigureAwait(false);
         if (user is null)
-            throw new UserNotFoundException($"User with email '{normalized}' was not found.");
+            throw new UserNotFoundException($"User with email '{normalized.Value}' was not found.");
 
         verificationMailJobTrigger.EnqueueSendVerificationMail(user.Id);
     }

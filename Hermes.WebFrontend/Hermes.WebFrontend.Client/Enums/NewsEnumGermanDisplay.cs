@@ -1,4 +1,4 @@
-using Hermes.Domain.Enums;
+using Hermes.WebFrontend.Client.ApiModels.Enums;
 
 namespace Hermes.WebFrontend.Client.Enums;
 

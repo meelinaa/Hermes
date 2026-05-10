@@ -2,6 +2,7 @@ using Hermes.Application.Ports;
 using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
+using EmailAddress = Hermes.Domain.ValueObjects.Email;
 using Hermes.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,10 +20,10 @@ public sealed class UserStore(HermesDbContext db) : IUserStore
 
         if (!string.IsNullOrWhiteSpace(user.Email))
         {
-            string normalized = user.Email.Trim().ToLowerInvariant();
-            user.Email = normalized;
+            EmailAddress email = EmailAddress.Parse(user.Email);
+            user.Email = email.Value;
             bool exists = await db.Users.AsNoTracking()
-                .AnyAsync(userEntity => userEntity.Email == normalized, cancellationToken)
+                .AnyAsync(userEntity => userEntity.Email == email.Value, cancellationToken)
                 .ConfigureAwait(false);
             if (exists)
                 throw new EmailAlreadyExistsException();
@@ -51,9 +52,9 @@ public sealed class UserStore(HermesDbContext db) : IUserStore
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be empty.", nameof(email));
 
-        string normalized = email.Trim().ToLowerInvariant();
+        EmailAddress normalized = EmailAddress.Parse(email);
         User? user = await db.Users.AsNoTracking()
-            .FirstOrDefaultAsync(userEntity => userEntity.Email != null && userEntity.Email == normalized, cancellationToken)
+            .FirstOrDefaultAsync(userEntity => userEntity.Email != null && userEntity.Email == normalized.Value, cancellationToken)
             .ConfigureAwait(false);
 
         return user is null ? throw new UserNotFoundException($"User with email '{email}' was not found.") : MapToUserScope(user);
@@ -88,10 +89,10 @@ public sealed class UserStore(HermesDbContext db) : IUserStore
         if (string.IsNullOrWhiteSpace(email))
             return null;
 
-        string normalized = email.Trim().ToLowerInvariant();
+        EmailAddress normalized = EmailAddress.Parse(email);
 
         User? user = await db.Users.AsNoTracking()
-            .FirstOrDefaultAsync(userEntity => userEntity.Email == normalized, cancellationToken)
+            .FirstOrDefaultAsync(userEntity => userEntity.Email == normalized.Value, cancellationToken)
             .ConfigureAwait(false);
 
         return user ?? throw new UserNotFoundException();
@@ -131,14 +132,11 @@ public sealed class UserStore(HermesDbContext db) : IUserStore
         if (entity is null)
             throw new UserNotFoundException($"User with id {user.Id} was not found.");
 
-        entity.Name = user.Name;
-
-        if (entity.Email != user.Email)
-            entity.IsEmailVerified = false;
-        entity.Email = user.Email;
+        entity.Rename(user.Name!);
+        entity.ChangePrimaryEmail(EmailAddress.Parse(user.Email!));
 
         if (!string.IsNullOrWhiteSpace(user.PasswordHash))
-            entity.PasswordHash = user.PasswordHash;
+            entity.ReplacePasswordHash(user.PasswordHash!);
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

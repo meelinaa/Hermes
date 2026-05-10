@@ -1,11 +1,11 @@
-using Hermes.Domain.Entities;
+using Hermes.WebFrontend.Client.ApiModels;
 
 namespace Hermes.WebFrontend.Client.Services.NewsService;
 
 /// <summary>Matches the paged news list JSON from the API (camelCase properties).</summary>
 public sealed class NewsListPageDto
 {
-    public List<News> Items { get; set; } = [];
+    public List<NewsSubscriptionDto> Items { get; set; } = [];
 
     public int Page { get; set; }
 

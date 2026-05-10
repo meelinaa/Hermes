@@ -1,8 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text;
-using Hermes.Domain.Entities;
-using Hermes.Domain.Enums;
+using Hermes.WebFrontend.Client.ApiModels.Enums;
 
 namespace Hermes.WebFrontend.Client.Services.NewsService;
 

@@ -166,9 +166,17 @@ public class NewsController(
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
         News entity = request.ToEntity(currentUserId);
-        int newsId = await newsService.SetNewsAsync(entity, cancellationToken).ConfigureAwait(false);
-        newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
-        return Ok(new CreateNewsResponse(currentUserId, newsId));
+        try
+        {
+            int newsId = await newsService.SetNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+            newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
+            return Ok(new CreateNewsResponse(currentUserId, newsId));
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return ValidationProblem(ModelState);
+        }
     }
 
     /// <summary>Update news; <c>id</c> required in body; owner from JWT.</summary>
@@ -193,6 +201,11 @@ public class NewsController(
         catch (NewsAccessDeniedException)
         {
             return Problem(title: "News access denied.", statusCode: StatusCodes.Status403Forbidden);
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return ValidationProblem(ModelState);
         }
 
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();

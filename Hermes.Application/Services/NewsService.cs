@@ -1,5 +1,6 @@
 using Hermes.Application.Models.News;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 using Hermes.Application.Ports;
 
 namespace Hermes.Application.Services;
@@ -12,6 +13,8 @@ public sealed class NewsService(INewsStore db) : INewsService
         ArgumentNullException.ThrowIfNull(news);
         if(news.UserId <= 0)
             throw new ArgumentOutOfRangeException(nameof(news.UserId), "Owning user ID must be greater than zero.");
+        ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
+        news.AssignDigestSchedule(window);
         await db.SetNewsAsync(news, cancellationToken).ConfigureAwait(false);
         return news.Id;
     }
@@ -20,6 +23,8 @@ public sealed class NewsService(INewsStore db) : INewsService
     public async Task UpdateNewsAsync(News news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
+        ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
+        news.AssignDigestSchedule(window);
         await db.UpdateNewsAsync(news, cancellationToken).ConfigureAwait(false);
     }
 

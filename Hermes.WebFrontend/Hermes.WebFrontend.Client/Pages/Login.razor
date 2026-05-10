@@ -3,7 +3,7 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using System.Net.Http.Json
 @using System.Text.Json
-@using Hermes.Application.Models.Login
+@using Hermes.WebFrontend.Client.ApiModels
 @using Hermes.WebFrontend.Client.Components.Auth
 @using Hermes.WebFrontend.Client.Model
 @using Hermes.WebFrontend.Client.Services
@@ -91,7 +91,7 @@
         {
             HttpResponseMessage response = await Http.PostAsJsonAsync(
                 "api/v1/auth/login",
-                new LoginRequest { NameOrEmail = userName.Trim(), Password = password },
+                new LoginRequestDto { NameOrEmail = userName.Trim(), Password = password },
                 JsonSerializerOptions.Web);
 
             if (!response.IsSuccessStatusCode)
