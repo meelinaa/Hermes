@@ -93,11 +93,22 @@
                         <div class="news-settings-card-head">
                             <h3 class="news-settings-card-title">@TitleFor(n)</h3>
                             <div class="news-settings-card-actions">
+                                <label class="hermes-toggle-switch @(deletingId.HasValue || togglingId == n.Id ? "hermes-toggle-switch--disabled" : string.Empty)">
+                                    <input type="checkbox"
+                                           class="hermes-toggle-switch__input"
+                                           role="switch"
+                                           aria-label="E-Mail-Versand umschalten"
+                                           checked="@n.IsEnabled"
+                                           disabled="@(deletingId.HasValue || togglingId == n.Id)"
+                                           @onchange="e => OnToggleEnabledChangeAsync(n, e)" />
+                                    <span class="hermes-toggle-switch__track" aria-hidden="true"></span>
+                                </label>
                                 <button type="button" class="news-settings-icon news-settings-icon--danger" title="Löschen"
-                                        disabled="@deletingId.HasValue" @onclick="() => DeleteAsync(n)">
+                                        disabled="@(deletingId.HasValue || togglingId == n.Id)" @onclick="() => DeleteAsync(n)">
                                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9m0 5h2v9H9V8m4 0h2v9h-2V8Z"/></svg>
                                 </button>
                                 <button type="button" class="news-settings-icon news-settings-icon--primary" title="Bearbeiten"
+                                        disabled="@(deletingId.HasValue || togglingId == n.Id)"
                                         @onclick="() => StartEdit(n)">
                                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg>
                                 </button>
@@ -118,17 +129,17 @@
             @if (totalPages is int tp && totalCount is int tc)
             {
                 <div class="news-settings-pagination" role="navigation" aria-label="Seiten">
-                    <button type="button" class="news-settings-btn" disabled="@(currentPage <= 1 || deletingId.HasValue)" @onclick="PrevPageAsync">Zurück</button>
+                    <button type="button" class="news-settings-btn" disabled="@(currentPage <= 1 || deletingId.HasValue || togglingId.HasValue)" @onclick="PrevPageAsync">Zurück</button>
                     <span class="news-settings-pageinfo">Seite @currentPage von @tp (@tc Einträge)</span>
-                    <button type="button" class="news-settings-btn" disabled="@(!hasNextPage || deletingId.HasValue)" @onclick="NextPageAsync">Weiter</button>
+                    <button type="button" class="news-settings-btn" disabled="@(!hasNextPage || deletingId.HasValue || togglingId.HasValue)" @onclick="NextPageAsync">Weiter</button>
                 </div>
             }
             else if (hasNextPage || currentPage > 1)
             {
                 <div class="news-settings-pagination" role="navigation" aria-label="Seiten">
-                    <button type="button" class="news-settings-btn" disabled="@(currentPage <= 1 || deletingId.HasValue)" @onclick="PrevPageAsync">Zurück</button>
+                    <button type="button" class="news-settings-btn" disabled="@(currentPage <= 1 || deletingId.HasValue || togglingId.HasValue)" @onclick="PrevPageAsync">Zurück</button>
                     <span class="news-settings-pageinfo">@(totalCount is int t ? $"{t} Einträge · " : "")Seite @currentPage</span>
-                    <button type="button" class="news-settings-btn" disabled="@(!hasNextPage || deletingId.HasValue)" @onclick="NextPageAsync">Weiter</button>
+                    <button type="button" class="news-settings-btn" disabled="@(!hasNextPage || deletingId.HasValue || togglingId.HasValue)" @onclick="NextPageAsync">Weiter</button>
                 </div>
             }
         }
@@ -150,6 +161,7 @@
     private bool loading = true;
     private string? loadError;
     private int? deletingId;
+    private int? togglingId;
 
     private int currentPage = 1;
     private int pageSize = 20;
@@ -298,6 +310,54 @@
             NewsListCache.Invalidate();
             currentPage = 1;
             await LoadListAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task OnToggleEnabledChangeAsync(NewsSubscriptionDto n, ChangeEventArgs e)
+    {
+        if (e.Value is not bool targetEnabled)
+            return;
+        if (n.IsEnabled == targetEnabled)
+            return;
+
+        await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
+        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        if (userId is null)
+        {
+            loadError = "Bitte erneut anmelden.";
+            return;
+        }
+
+        togglingId = n.Id;
+        loadError = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        try
+        {
+            var payload = new UpdateNewsPayloadDto
+            {
+                Id = n.Id,
+                Keywords = n.Keywords,
+                Category = n.Category,
+                Languages = n.Languages,
+                Countries = n.Countries,
+                SendOnWeekdays = n.SendOnWeekdays,
+                SendAtTimes = n.SendAtTimes,
+                IsEnabled = targetEnabled,
+            };
+
+            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/news", payload, HermesNewsJson.Options).ConfigureAwait(false);
+            if (response.IsSuccessStatusCode)
+            {
+                NewsListCache.Invalidate();
+                await LoadListAsync().ConfigureAwait(false);
+            }
+            else
+                loadError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+        }
+        finally
+        {
+            togglingId = null;
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
         }
     }
 

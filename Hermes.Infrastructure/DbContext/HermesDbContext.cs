@@ -86,6 +86,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
             entity.Property(newsEntity => newsEntity.NextDigestSlotUtc);
             entity.HasIndex(newsEntity => newsEntity.NextDigestSlotUtc);
+            entity.Property(newsEntity => newsEntity.IsEnabled).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<NotificationLog>(entity =>

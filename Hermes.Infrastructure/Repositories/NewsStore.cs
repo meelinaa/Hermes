@@ -141,7 +141,7 @@ public sealed class NewsStore(HermesDbContext db) : INewsStore
         DateTime slotEnd = DateTime.SpecifyKind(slotEndUtc, DateTimeKind.Utc);
 
         var rawMaterialized = await db.News.AsNoTracking()
-            .Where(n => n.Id > 0 && n.UserId > 0
+            .Where(n => n.Id > 0 && n.UserId > 0 && n.IsEnabled
                 && n.NextDigestSlotUtc != null
                 && n.NextDigestSlotUtc >= slotStart
                 && n.NextDigestSlotUtc < slotEnd)
@@ -160,6 +160,7 @@ public sealed class NewsStore(HermesDbContext db) : INewsStore
                 SELECT n.Id AS Id, n.UserId AS UserId
                 FROM news n
                 WHERE n.Id > 0 AND n.UserId > 0
+                  AND n.IsEnabled = 1
                   AND n.NextDigestSlotUtc IS NULL
                   AND JSON_SEARCH(
                     IF(

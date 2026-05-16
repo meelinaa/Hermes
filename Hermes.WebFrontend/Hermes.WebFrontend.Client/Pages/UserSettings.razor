@@ -13,10 +13,11 @@
 @inject AuthTokenStore AuthTokens
 @inject HttpClient Http
 @inject UserProfileRefreshNotifier ProfileRefresh
+@inject AuthLogoutService Logout
 
 <PageTitle>Profil — Hermes</PageTitle>
 
-<div class="home-content @((showVerificationModal ? " home-content--modal-open" : ""))">
+<div class="home-content @((showVerificationModal || showDeleteAccountModal) ? " home-content--modal-open" : ""))">
     <h2 class="home-welcome">Profil &amp; Sicherheit</h2>
 
     <section class="home-panel user-profile-panel">
@@ -148,6 +149,15 @@
             </button>
         </div>
     </section>
+
+    <div class="user-profile-delete-account">
+        <button type="button"
+                class="user-profile-delete-account__btn"
+                disabled="@(profileUserId is null || deleteAccountBusy)"
+                @onclick="OpenDeleteAccountModal">
+            Benutzer löschen
+        </button>
+    </div>
 </div>
 
 @if (showVerificationModal)
@@ -214,6 +224,48 @@
             @if (!string.IsNullOrEmpty(verificationSendError))
             {
                 <p class="verify-email-dialog__feedback" role="alert">@verificationSendError</p>
+            }
+        </div>
+    </div>
+}
+
+@if (showDeleteAccountModal)
+{
+    <div class="verify-email-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-account-dialog-title">
+        <div class="verify-email-overlay__backdrop" aria-hidden="true"></div>
+        <div class="verify-email-overlay__dialog" @onclick:stopPropagation>
+            <div class="verify-email-dialog__header">
+                <h3 id="delete-account-dialog-title" class="verify-email-dialog__title">Benutzerkonto löschen</h3>
+                <button type="button" class="verify-email-dialog__close"
+                        @onclick="CloseDeleteAccountModal"
+                        disabled="@deleteAccountBusy"
+                        aria-label="Dialog schließen">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                        <path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <p class="verify-email-dialog__delete-question">
+                Bist du dir sicher, dass du diesen Account unwiderruflich löschen willst?
+            </p>
+
+            <div class="verify-email-dialog__delete-actions">
+                <button type="button" class="verify-email-dialog__delete-cancel"
+                        disabled="@deleteAccountBusy"
+                        @onclick="CloseDeleteAccountModal">
+                    Nein
+                </button>
+                <button type="button" class="verify-email-dialog__delete-confirm"
+                        disabled="@deleteAccountBusy"
+                        @onclick="OnConfirmDeleteAccountAsync">
+                    @(deleteAccountBusy ? "Wird gelöscht…" : "Ja")
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(deleteAccountError))
+            {
+                <p class="verify-email-dialog__feedback" role="alert">@deleteAccountError</p>
             }
         </div>
     </div>
@@ -292,6 +344,9 @@
         ok ? "hermes-reg-rule hermes-reg-rule--ok" : "hermes-reg-rule";
 
     private bool showVerificationModal;
+    private bool showDeleteAccountModal;
+    private bool deleteAccountBusy;
+    private string? deleteAccountError;
     private bool modalOpenBusy;
     private bool modalSendBusy;
     private bool confirmCodeBusy;
@@ -469,6 +524,57 @@
         verificationCodeError = null;
         verificationSendError = null;
         StateHasChanged();
+    }
+
+    private void OpenDeleteAccountModal()
+    {
+        deleteAccountError = null;
+        showDeleteAccountModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseDeleteAccountModal()
+    {
+        if (deleteAccountBusy)
+            return;
+        showDeleteAccountModal = false;
+        deleteAccountError = null;
+        StateHasChanged();
+    }
+
+    private async Task OnConfirmDeleteAccountAsync()
+    {
+        if (profileUserId is null)
+        {
+            deleteAccountError = "Benutzer konnte nicht ermittelt werden. Bitte erneut anmelden.";
+            return;
+        }
+
+        deleteAccountError = null;
+        deleteAccountBusy = true;
+        StateHasChanged();
+
+        try
+        {
+            using HttpResponseMessage response = await Http.DeleteAsync($"api/v1/users/{profileUserId.Value}").ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                deleteAccountError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                return;
+            }
+
+            showDeleteAccountModal = false;
+            await InvokeAsync(() => Logout.SignOutAndReloadAsync()).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            deleteAccountError = $"Löschen fehlgeschlagen: {ex.Message}";
+        }
+        finally
+        {
+            deleteAccountBusy = false;
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        }
     }
 
     private async Task OpenEmailVerificationModalAsync()

@@ -43,11 +43,19 @@ public sealed class NewsletterScheduler(
             .GetDueItemsAsync(wallNow, slotStartUtc, slotEndUtc, cancellationToken)
             .ConfigureAwait(false);
 
+        if (due.Count > 0)
+        {
+            logger.LogInformation(
+                "[NewsletterScheduler] Found {Count} due news items. Enqueuing jobs for NewsIds: {NewsIds}",
+                due.Count,
+                string.Join(", ", due.Select(d => d.NewsId)));
+        }
+
         foreach ((int newsId, int userId) in due)
         {
             string? jobId = BackgroundJob.Enqueue<NotificationJobs>(notificationJobs =>
                 notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
-            logger.LogInformation(
+            logger.LogDebug(
                 "[NewsletterScheduler] Enqueued NotificationJobs newsId={NewsId} userId={UserId}, Hangfire job id={JobId}.",
                 newsId,
                 userId,

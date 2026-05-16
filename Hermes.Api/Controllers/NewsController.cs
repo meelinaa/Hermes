@@ -177,7 +177,20 @@ public class NewsController(
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
-        News entity = request.ToEntity(currentUserId);
+        News? existing;
+        try
+        {
+            existing = await newsService.GetNewsByIdAsync(currentUserId, request.Id, cancellationToken).ConfigureAwait(false);
+        }
+        catch (NewsNotFoundException)
+        {
+            return this.NotFoundProblem();
+        }
+
+        if (existing is null)
+            return this.NotFoundProblem();
+
+        News entity = request.ToEntity(currentUserId, existing);
         try
         {
             await newsService.UpdateNewsAsync(entity, cancellationToken).ConfigureAwait(false);

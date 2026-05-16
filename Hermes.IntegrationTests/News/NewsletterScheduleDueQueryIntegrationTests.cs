@@ -73,4 +73,57 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
         Assert.DoesNotContain((wrongWeekday.Id, userId), due);
         Assert.DoesNotContain((wrongTime.Id, userId), due);
     }
+
+    [Fact]
+    public async Task GetDueNewsScheduleForSlotAsync_excludes_rows_with_IsEnabled_false()
+    {
+        using IServiceScope scope = fixture.Factory.Services.CreateScope();
+        IUserStore users = scope.ServiceProvider.GetRequiredService<IUserStore>();
+        INewsStore newsStore = scope.ServiceProvider.GetRequiredService<INewsStore>();
+
+        User user = new()
+        {
+            Id = 0,
+            Name = "schedule-disabled-test",
+            Email = $"sched-off-{Guid.NewGuid():N}@test.local",
+            PasswordHash = "hash",
+            IsEmailVerified = true,
+        };
+        await users.SetUserAsync(user, CancellationToken.None);
+        int userId = user.Id;
+
+        NewsEntity enabledRow = new()
+        {
+            Id = 0,
+            UserId = userId,
+            SendOnWeekdays = [Weekdays.Monday],
+            SendAtTimes = [new TimeOnly(9, 30)],
+            IsEnabled = true,
+        };
+        await newsStore.SetNewsAsync(enabledRow, CancellationToken.None);
+
+        NewsEntity disabledRow = new()
+        {
+            Id = 0,
+            UserId = userId,
+            SendOnWeekdays = [Weekdays.Monday],
+            SendAtTimes = [new TimeOnly(9, 30)],
+            IsEnabled = false,
+        };
+        await newsStore.SetNewsAsync(disabledRow, CancellationToken.None);
+
+        DateTime slotStartUtc = new(2026, 5, 4, 7, 0, 0, DateTimeKind.Utc);
+        DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
+
+        List<(int NewsId, int UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
+            Weekdays.Monday,
+            9,
+            30,
+            slotStartUtc,
+            slotEndUtc,
+            CancellationToken.None);
+
+        Assert.Contains((enabledRow.Id, userId), due);
+        Assert.DoesNotContain((disabledRow.Id, userId), due);
+    }
 }

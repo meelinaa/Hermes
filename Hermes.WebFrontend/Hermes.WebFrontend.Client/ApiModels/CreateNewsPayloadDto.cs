@@ -16,4 +16,6 @@ public sealed class CreateNewsPayloadDto
     public List<Weekdays> SendOnWeekdays { get; set; } = [];
 
     public List<TimeOnly> SendAtTimes { get; set; } = [];
+
+    public bool IsEnabled { get; set; } = true;
 }

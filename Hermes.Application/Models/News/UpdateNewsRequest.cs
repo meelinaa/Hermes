@@ -17,4 +17,6 @@ public sealed record UpdateNewsRequest
     public List<Weekdays> SendOnWeekdays { get; init; } = [];
 
     public List<TimeOnly> SendAtTimes { get; init; } = [];
+
+    public bool? IsEnabled { get; init; }
 }

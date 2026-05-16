@@ -97,6 +97,24 @@
     </div>
 
     <div class="news-sub-field">
+        <span class="news-sub-label">E-Mail-Versand</span>
+        <div class="hermes-toggle-switch-row">
+            <label class="hermes-toggle-switch @(isSaving ? "hermes-toggle-switch--disabled" : string.Empty)">
+                <input class="hermes-toggle-switch__input"
+                       type="checkbox"
+                       role="switch"
+                       id="ns-enabled"
+                       aria-describedby="ns-enabled-caption"
+                       disabled="@isSaving"
+                       @bind="isEnabled" />
+                <span class="hermes-toggle-switch__track" aria-hidden="true"></span>
+            </label>
+            <span class="hermes-toggle-switch-caption" id="ns-enabled-caption">Newsletter für diese Konfiguration senden</span>
+        </div>
+        <p class="news-sub-hint">Ausgeschaltet bleibt die Konfiguration erhalten; es werden nur keine E-Mails mehr verschickt.</p>
+    </div>
+
+    <div class="news-sub-field">
         <span class="news-sub-label">Sende-Tage</span>
         <p class="news-sub-hint mb-2">Tage auswählen, an denen Benachrichtigungen gesendet werden sollen.</p>
         <div class="news-dow-row" role="group" aria-label="Wochentage">
@@ -221,6 +239,7 @@
 
     private string? newsFeedback;
     private bool isSaving;
+    private bool isEnabled = true;
 
     protected override void OnParametersSet() => ApplyInitialModel();
 
@@ -235,6 +254,7 @@
         }
 
         _editingId = InitialModel.Id;
+        isEnabled = InitialModel.IsEnabled;
         keywordsRaw = InitialModel.Keywords is { Count: > 0 } ? string.Join(", ", InitialModel.Keywords) : string.Empty;
 
         selectedCategories.Clear();
@@ -281,6 +301,7 @@
         categorySearch = string.Empty;
         languageSearch = string.Empty;
         countrySearch = string.Empty;
+        isEnabled = true;
         selectedCategories.Clear();
         selectedLanguages.Clear();
         selectedCountries.Clear();
@@ -404,7 +425,8 @@
                     Languages = selectedLanguages.Count > 0 ? selectedLanguages.ToList() : null,
                     Countries = selectedCountries.Count > 0 ? selectedCountries.ToList() : null,
                     SendOnWeekdays = weekdays,
-                    SendAtTimes = times
+                    SendAtTimes = times,
+                    IsEnabled = isEnabled,
                 };
 
                 response = await Http.PostAsJsonAsync("api/v1/users/news", createPayload, HermesNewsJson.Options).ConfigureAwait(false);
@@ -434,7 +456,8 @@
                     Languages = selectedLanguages.Count > 0 ? selectedLanguages.ToList() : null,
                     Countries = selectedCountries.Count > 0 ? selectedCountries.ToList() : null,
                     SendOnWeekdays = weekdays,
-                    SendAtTimes = times
+                    SendAtTimes = times,
+                    IsEnabled = isEnabled,
                 };
 
                 response = await Http.PutAsJsonAsync("api/v1/users/news", updatePayload, HermesNewsJson.Options).ConfigureAwait(false);

@@ -81,6 +81,12 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         using HttpResponseMessage getOne = await client.SendAsync(
             Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/news/{newsId}", access));
         getOne.EnsureSuccessStatusCode();
+        using (JsonDocument oneDoc = JsonDocument.Parse(await getOne.Content.ReadAsStringAsync()))
+        {
+            Assert.True(
+                oneDoc.RootElement.TryGetProperty("isEnabled", out JsonElement en) && en.GetBoolean(),
+                "New row should default to isEnabled true.");
+        }
 
         object updateBody = new
         {
@@ -91,6 +97,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             countries = new[] { (int)Country.Austria },
             sendOnWeekdays = new[] { (int)Weekdays.Friday },
             sendAtTimes = new[] { "18:00:00" },
+            isEnabled = false,
         };
         using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/news", access);
         putReq.Content = JsonContent.Create(updateBody, options: JsonWeb);
@@ -102,6 +109,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         getUpdated.EnsureSuccessStatusCode();
         using JsonDocument updatedDoc = JsonDocument.Parse(await getUpdated.Content.ReadAsStringAsync());
         Assert.Equal("updated-keyword", updatedDoc.RootElement.GetProperty("keywords")[0].GetString());
+        Assert.True(
+            updatedDoc.RootElement.TryGetProperty("isEnabled", out JsonElement off) && !off.GetBoolean(),
+            "PUT should persist isEnabled false.");
 
         using HttpResponseMessage del = await client.SendAsync(
             Authorized(HttpMethod.Delete, $"/api/v1/users/{userId}/news/{newsId}", access));

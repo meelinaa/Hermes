@@ -2,10 +2,20 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 WORKDIR /src
 
-COPY . .
+# Copy project files and restore as distinct layers for better caching
+COPY ["Hermes.Api/Hermes.Api.csproj", "Hermes.Api/"]
+COPY ["Hermes.Application/Hermes.Application.csproj", "Hermes.Application/"]
+COPY ["Hermes.Domain/Hermes.Domain.csproj", "Hermes.Domain/"]
+COPY ["Hermes.Infrastructure/Hermes.Infrastructure.csproj", "Hermes.Infrastructure/"]
+COPY ["Hermes.Notifications/Hermes.Notifications.csproj", "Hermes.Notifications/"]
+COPY ["Hermes.Worker/Hermes.Worker.csproj", "Hermes.Worker/"]
+
 RUN dotnet restore "Hermes.Api/Hermes.Api.csproj"
-WORKDIR /src/Hermes.Api
-RUN dotnet publish -c Release -o /app/publish --no-restore
+
+# Copy the remaining source code
+COPY . .
+WORKDIR "/src/Hermes.Api"
+RUN dotnet publish "Hermes.Api.csproj" -c Release -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime

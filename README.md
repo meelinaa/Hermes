@@ -6,6 +6,18 @@ The codebase is intentionally structured for **clarity and maintainability**: la
 
 For **HTTP route details, request/response examples, and controller-focused OpenAPI notes**, see `[Hermes.Api/README.md](Hermes.Api/README.md)`.
 
+**Screenshots** in this file point at [`Documentation/`](Documentation/) (paths are **relative to the repository root**, so they render correctly on GitHub). **Diagrams** that do not yet have exported PNG assets are included as **Mermaid** figures (rendered natively by GitHub). Static exports can replace or supplement those blocks when committed under `Documentation/`.
+
+---
+
+## Visual overview
+
+After sign-in, the Blazor UI presents the authenticated **home** experience (layout, typography, navigation):
+
+![Hermes home page after login: poster-style chrome, welcome area, and top navigation.](Documentation/HomePage.png)
+
+*Caption: authenticated **home** entry point.*
+
 ---
 
 ## Product vision (end state)
@@ -28,7 +40,7 @@ The solution is organized into focused projects:
 | **Hermes.Domain**                                      | Core **entities** (`User`, `News`, `NotificationLog`), **DTOs** (e.g. `UserScope` with **e-mail verification** flag), **RFC 7807 problem type** constants (`HermesProblemTypes` for API clients), **enums** (categories, languages, countries, weekdays, delivery channel, notification status), **domain exceptions** mapped by the API to HTTP status codes, and **abstractions** the application depends on.                                                                                                                                                                                                                                                                                                       |
 | **Hermes.Application**                                 | **Use cases** and **services** (users, authentication, news configuration, etc.) that orchestrate domain rules and call into persistence through interfaces.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **Hermes.Infrastructure**                              | **Entity Framework Core** with **Pomelo.EntityFrameworkCore.MySql**; **repositories**; `HermesDbContext`; resilience helpers (e.g. **Polly**) where appropriate. The database is **MySQL**.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| **Hermes.Api**                                         | **ASP.NET Core** host: **path versioning** (`/api/v1/`; see `[Hermes.Api/README.md](Hermes.Api/README.md)` § API versioning), controllers, **JWT** authentication, **FluentValidation**, global exception handling mapped to **Problem Details**, **health** endpoints (live/ready), **CORS** and DI composition. **OpenAPI** document `v1` (JWT + error models); see § **Observability & OpenAPI**. **Serilog** and optional **OpenTelemetry** (OTLP).                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Hermes.Api**                                         | **ASP.NET Core** host: **path versioning** (`/api/v1/`; see `[Hermes.Api/README.md](Hermes.Api/README.md)` for versioning), controllers, **JWT** authentication, **FluentValidation**, global exception handling mapped to **Problem Details**, **health** endpoints (live/ready), **CORS** and DI composition. **OpenAPI** document `v1` (JWT + error models); see **Observability & OpenAPI** below. **Serilog** and optional **OpenTelemetry** (OTLP).                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | **Hermes.NewsClient**                                  | Optional **reference** project under `Hermes.NewsClient/`: typed HTTP client for **[NewsData.io](https://newsdata.io/)** (`NewsDataIoUrlBuilder`, `ApiUrlParts`, DTOs). It is **not** included in `Hermes.slnx`; the running pipeline uses `Hermes.Infrastructure` (`NewsDataIoClient` / `INewsArticleProvider`).                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **Hermes.Notifications**                               | **Email sending** (`IEmailSender`, `SmtpEmailSender` using `System.Net.Mail.SmtpClient`), configuration models, and **HTML newsletter composition** (`NewsletterHtmlComposer`) from **embedded** partial templates (header, repeating item row, footer).                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | **Hermes.UnitTests**                                   | **Unit tests** (xUnit, Moq): `UserService` (incl. e-mail verification helpers), `VerificationDigestService`, `NewsService`, `AuthTokenService`, JWT issuer, refresh-token hashing, `NotificationJobs`, thin wrappers such as `NotificationLogService`, `UpdateNewsRequestValidator`, `ControllerUserExtensions`, `NewsDataIoUrlBuilder`, ISO-code mappers / weekday converter, `HermesDbContext` helpers (e.g. notification-window query, profile e-mail / verification flags), `NewsletterScheduler`, `NewsletterScheduleService`, `NewsletterDigestService`. Uses **EF Core InMemory** where persistence is exercised without MySQL.                                                                                        |
@@ -37,6 +49,9 @@ The solution is organized into focused projects:
 | **Hermes.WebFrontend** / **Hermes.WebFrontend.Client** | **Blazor Web App** (.NET 10) with **Interactive WebAssembly**: authentication (login, register + auto-login), JWT/refresh via `HttpClient`, home, user profile, and CRUD UI for **news digest profiles**. See `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **Hermes**                                             | Small **console** executable (currently oriented around **Notifications**), useful as a **local playground**. It is **not** the production scheduler; use `Hermes.Worker` for scheduled digests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
+### Architecture (high level)
+
+Below is an **architecture overview**: browser client, API and worker hosts, shared application/infrastructure libraries, MySQL, and NewsData.io. For a pinned PNG companion (e.g. `Documentation/architecture-overview.png`), export this diagram from the Mermaid live editor or your diagram tool—see **[Documentation assets](#documentation-assets-screenshots--diagrams)**.
 
 ```mermaid
 flowchart LR
@@ -66,7 +81,11 @@ flowchart LR
   WRK --> NT
 ```
 
+*Caption: layered runtime—**Hermes.Api** and **Hermes.Worker** both use **Hermes.Application** / **Hermes.Infrastructure** against **MySQL**; worker composes mail via **Hermes.Notifications** and calls **NewsData.io**.*
 
+### Solution dependency shape (conceptual)
+
+The table above is authoritative for ownership; **how projects reference each other** can be summarized as *Domain ← Application ← (Infrastructure | Notifications); Api/Worker/App reference Application + Infrastructure*. A dedicated **`Documentation/project-structure.png`** export is optional if you prefer a diagram over this text summary.
 
 ---
 
@@ -78,6 +97,66 @@ flowchart LR
 - **Login** returns a **short-lived JWT** access token and an **opaque refresh token**. Refresh tokens are stored **hashed** server-side; rotation is supported via a dedicated **refresh** endpoint. **Logout** can revoke the current refresh session or all sessions for the user.
 - JWT signing and validation settings live under configuration (e.g. `Jwt` in `appsettings`); production secrets should be supplied via **environment variables** or a secret store, not committed files.
 
+#### UI: login & registration
+
+The Blazor **auth** layouts call the anonymous API endpoints; tokens end up in **local storage** for subsequent calls.
+
+![Hermes login form in the Swiss-style auth layout.](Documentation/LoginPage.png)
+
+*Caption: **login** (`POST /api/v1/auth/login`) returns access + refresh tokens.*
+
+<!-- Note: bundled filename uses this spelling (`Restister`). Consider renaming file to register-page.png in a future documentation pass for consistency with kebab-case. -->
+
+![Hermes registration page before submitting the form.](Documentation/RestisterPage.png)
+
+*Caption: **register** invokes `POST /api/v1/users` (then the client performs login); file on disk is `RestisterPage.png`.*
+
+![Hermes registration form with realistic sample fields filled in.](Documentation/FilledOutRegisterPage.png)
+
+*Caption: Example of the **register** form used while exercising validation and API wiring.*
+
+#### E-mail verification (UI + MailHog)
+
+Profile updates expose **verification** badges and codes; outgoing mail can be inspected locally with **[MailHog](https://github.com/mailhog/MailHog)** when SMTP points at port **1025**.
+
+![Modal dialog prompting for the six-digit e-mail verification code.](Documentation/VerificationPopup.png)
+
+*Caption: **verification** code entry triggers `POST /api/v1/users/verify/code`.*
+
+![MailHog inbox showing Hermes verification e-mail preview.](Documentation/MailHogVerificationCode.png)
+
+*Caption: **MailHog** capture of the outbound verification HTML mail (local dev SMTP sink).*
+
+#### Auth flow (HTTP / sequence)
+
+Equivalent to a **`Documentation/auth-flow-diagram.png`** export (not committed yet)—GitHub renders the Mermaid source below inline.
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant Fe as WebFrontend
+  participant Api as Hermes.Api
+  participant Db as MySQL
+
+  User->>Fe: Enter credentials / register
+  alt Register
+    Fe->>Api: POST /api/v1/users
+    Api->>Db: Persist user (+ hash)
+    Db-->>Api: OK
+    Api-->>Fe: User created
+    Fe->>Api: POST /api/v1/auth/login
+  else Login
+    Fe->>Api: POST /api/v1/auth/login
+  end
+  Api->>Db: Verify credentials
+  Db-->>Api: User identity
+  Api->>Api: Issue JWT + refresh (hash refresh server-side)
+  Api-->>Fe: Access + refresh tokens
+  Fe->>Fe: Persist tokens locally
+```
+
+*Caption: high-level authentication path for **register**, **login**, and **verification** persistence.*
+
 ### Personalized news configuration (`News` entity)
 
 Each row represents a **digest profile** for a user, including:
@@ -86,6 +165,30 @@ Each row represents a **digest profile** for a user, including:
 - **SendOnWeekdays** and **SendAtTimes**: the data model captures *when* a digest should run; `Hermes.Worker` (via `INewsletterScheduleService` / `INewsletterDigestService`) evaluates due rows and sends mail (see `[Hermes.Worker/README.md](Hermes.Worker/README.md)`).
 
 The API exposes **list**, **get by id**, **create**, **update**, and **delete** (including delete-all for a user) under versioned routes. Authorization ensures callers can only access their own user’s data where applicable.
+
+#### UI: digest profiles listing & editing
+
+Screenshots illustrate the **news settings** flows (`/news-settings`, `/news-settings/new`) built with `NewsSettingsPanel` / `NewsSubscriptionCard`.
+
+![Empty news settings state inviting the user to create a first digest profile.](Documentation/EmptyNewsSettings.png)
+
+*Caption: **empty state**—no profiles yet for the authenticated user.*
+
+![Grid/list of digest profile cards.](Documentation/NewsCardOverview.png)
+
+*Caption: **news profile overview**.*
+
+![Overview with filters/search applied.](Documentation/NewsCardOverviewWithFilters.png)
+
+*Caption: **filtered overview** illustrating list query parameters (sort, filters, paging) against the UI.*
+
+![Create/edit digest profile card with schedules and targeting fields.](Documentation/NewsForm.png)
+
+*Caption: **profile form** skeleton (keywords, schedule, locales, etc.).*
+
+![Completed digest profile form before save.](Documentation/NewsFormFilledOut.png)
+
+*Caption: Example **filled** profile used for manual/UI testing.*
 
 ### Notification logs
 
@@ -110,6 +213,32 @@ The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, c
 - **UI:** Swiss-style poster chrome (main layout, home rail, auth side panel), top navigation for authenticated areas, `GlobalAuthGuard` for protected navigation.
 - **CORS:** The API must list the Blazor dev origin (e.g. `http://localhost:5269`) under `Cors:AllowedOrigins`; see `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.
 
+#### UI: `/user-settings` (profile & verification)
+
+`/user-settings` surfaces **identity**, optional **password** change flows, and **e-mail verification** status.
+
+![User settings page with verified e-mail state.](Documentation/UserSettingsVerifiedMail.png)
+
+*Caption: **verified mail** badges and profile controls.*
+
+![User settings page while e-mail verification is pending (filename keeps repository spelling “NotVerfied”).](Documentation/UserSettingsNotVerfiedMail.png)
+
+*Caption: **unverified** path—shows warning/call-to-action until a code confirms the inbox (file name on disk retains the typo **`NotVerfied`**—consider renaming later).*
+
+#### Front-end layering (conceptual)
+
+For a richer **`Documentation/frontend-architecture.png`**, duplicate the WASM host split already described in **[`Hermes.WebFrontend/README.md`](Hermes.WebFrontend/README.md)**; schematically:
+
+```mermaid
+flowchart TB
+  Browser[Browser] --> Wasm[Hermes.WebFrontend.Client WASM]
+  Wasm --> Handler[AuthMessageHandler + HttpClient]
+  Handler --> Api[Hermes.Api REST /api/v1]
+  Wasm --> Ui[Layouts & components]
+```
+
+*Caption: **Blazor WASM** renders UI in-browser; **`HttpClient`** calls the REST API.*
+
 ### Email and HTML layout (`Hermes.Notifications`)
 
 - **SMTP** delivery is abstracted behind `IEmailSender` with a concrete `SmtpEmailSender` taking **host, port, SSL, credentials, from/reply-to**, etc.
@@ -117,11 +246,36 @@ The **Hermes.Api** stores *what* to ask for per user (`News` entity: keywords, c
 - **Verification** e-mails use **embedded** `Verification.html` via `VerificationHtmlComposer` (six-digit code and branding placeholders).
 - Together, this is the **presentation layer** for the digest email; `Hermes.Worker` feeds it **live article data** on the configured schedule.
 
+Compiled HTML aggregates **header + repeated item rows + footer** placeholders; **`Documentation/email-template-structure.png`** is optional if you need a boxed call-out diagram—for now the rendered sample below stands in.
+
+![HTML newsletter preview snippet as shown in MailHog or browser dev tools.](Documentation/NewsMailSneekPeek.png)
+
+*Caption: **newsletter** layout preview (composed via `NewsletterHtmlComposer`; filename uses **`NewsMailSneekPeek`** on disk—a future rename could align with **`newsletter-preview.png`**).*
+
 ### Scheduled delivery (`Hermes.Worker`)
 
 - **Hangfire** recurring job (minutely by default in code) loads due digest profiles and enqueues **one background job per matching `(userId, newsId)`** (multiple profiles for the same user at the same time produce **separate** emails).
 - **Shared MySQL** is used for Hermes data and (by default) Hangfire storage so `Hermes.Api` can trigger the scheduler after news CRUD for faster local feedback.
 - **SMTP** configuration matches `Hermes.Notifications`; local dev often uses **MailHog** (see `[Hermes.Worker/README.md](Hermes.Worker/README.md)`).
+
+#### Worker pipeline (`Documentation/worker-flow.png` substitute)
+
+Hangfire recurrence, due detection, and digest jobs can be summarized as follows (PNG export recommended for slide decks):
+
+```mermaid
+flowchart TD
+  R[Hangfire recurrent tick / manual trigger]
+  R --> NS[NewsletterScheduler]
+  NS --> Due[Resolve due profiles]
+  Due --> Jobs[Enqueue per userId/newsId digest jobs]
+  Jobs --> Digest[NewsletterDigestService.SendAsync]
+  Digest --> Nd[NewsData.io fetch]
+  Digest --> Cmp[NewsletterHtmlComposer]
+  Cmp --> SMTP[SMTP / Mail delivery]
+  Digest --> Logs[NotificationLog persistence]
+```
+
+*Caption: **worker** executes scheduled digests independently from interactive API traffic.*
 
 ### API quality and operations
 
@@ -152,6 +306,36 @@ Hermes uses **Serilog** for application logs, optional **OpenTelemetry** export 
 - **Hermes.Api** registers instrumentation for **ASP.NET Core** (with health endpoints filtered out of noise where configured), **HttpClient**, and **.NET runtime** metrics, all exported with **OTLP**.
 - **Hermes.Worker** registers **Entity Framework Core** client instrumentation, **runtime** metrics, and **OTLP** export.
 - **Integration tests** disable telemetry on the in-memory API host (`OpenTelemetry:Enabled=false`) so CI does not require a collector.
+
+#### Observability stack (diagram substitute for `Documentation/observability-stack.png`)
+
+Hermes aligns **structured logging** with **optional distributed tracing**:
+
+```mermaid
+flowchart LR
+  subgraph apps [Hermes processes]
+    API[Hermes.Api]
+    WK[Hermes.Worker]
+  end
+  subgraph telemetry [Telemetry]
+    L[Serilog sinks / stdout JSON]
+    O[OpenTelemetry traces + metrics]
+  end
+  subgraph export [Exports]
+    COL[OTLP collector / backend]
+    UI[Visualizer UI Jaeger Grafana etc]
+  end
+  API --> L
+  WK --> L
+  API --> O
+  WK --> O
+  O -->|gRPC OTLP| COL
+  COL --> UI
+```
+
+*Caption: both hosts emit **structured logs**; OTLP transports **signals** onward when enabled.*
+
+<!-- TODO: Add Documentation/trace-example.png — Grafana Tempo Jaeger-compatible waterfall after enabling OTLP for Hermes.Api and Hermes.Worker (include HTTP NewsData SMTP child spans where visible). -->
 
 ### OpenAPI contract (`Hermes.Api`)
 
@@ -193,9 +377,42 @@ The target runtime is **containerized**:
 
 Compose files and Dockerfiles are committed under `Docker/`. The migration service is available and can be enabled in Compose to bootstrap the schema on first startup.
 
+Conceptual Compose wiring ( **`Documentation/docker-compose-diagram.png`** / **`Documentation/container-deployment.png`** can mirror this exported from draw.io):
+
+```mermaid
+flowchart TB
+  FE[Hermes.WebFrontend UI]
+  API[Hermes.Api]
+  WK[Hermes.Worker]
+  DB[(MySQL)]
+  MH[MailHog optional SMTP sink]
+  MIG[Hermes.Migrate EF migrations optional]
+  FE -->|JWT REST| API
+  API --> DB
+  WK --> DB
+  WK --> MH
+  API --> MH
+  MIG --> DB
+```
+
+*Caption: local production-like stack—**frontend** consumes **API**; **worker** pulls queue storage from shared **MySQL**; **MailHog** substitutes SMTP locally.*
+
 ---
 
 ## Testing
+
+The automated testing stack follows a pragmatic **testing pyramid**: fast unit suites at the bottom, narrower integration coverage at the top (Docker-hosted MySQL for `Hermes.IntegrationTests`).
+
+```mermaid
+flowchart TB
+  E2E[E2E UI tests roadmap]
+  INT[Hermes.IntegrationTests + Testcontainers MySQL]
+  UNIT[Hermes.UnitTests breadth]
+  E2E --- INT
+  INT --- UNIT
+```
+
+*Caption: **unit tests** dominate; **Docker-backed integration tests** widen coverage; fuller **UI E2E** remains backlog (see roadmap). Export **`Documentation/test-pyramid.png`** if you prefer a raster slide asset.*
 
 From the repository root:
 
@@ -225,8 +442,34 @@ Requirements: **.NET SDK** matching the solution target (currently **.NET 10** i
 dotnet build Hermes.slnx
 ```
 
-Run the API from the `Hermes.Api` project directory. For the OpenAPI JSON (`GET /openapi/v1.json` by default), see § **Observability & OpenAPI** above and `[Hermes.Api/README.md](Hermes.Api/README.md)` for endpoint summaries.
+Run the API from the `Hermes.Api` project directory. For the OpenAPI JSON (`GET /openapi/v1.json` by default), see **Observability & OpenAPI** above and `[Hermes.Api/README.md](Hermes.Api/README.md)` for endpoint summaries.
 
 Run the Blazor app from `Hermes.WebFrontend/Hermes.WebFrontend` (`dotnet run`). Configure `ApiBaseUrl` and CORS as described in `[Hermes.WebFrontend/README.md](Hermes.WebFrontend/README.md)`.
 
 Run the worker from `Hermes.Worker` (`dotnet run`) with MySQL, NewsData.io, and SMTP (or MailHog) configured; details in `[Hermes.Worker/README.md](Hermes.Worker/README.md)`.
+
+---
+
+## Documentation assets (screenshots & diagrams)
+
+| Guideline | Recommendation |
+|-----------|----------------|
+| Filenames | Use **kebab-case** descriptive names (`news-profile-form-empty.png`). Legacy Hermes filenames in `Documentation/` still include typos (**`Restister`**, **`SneekPeek`**, **`NotVerfied`**); fixing them improves consistency once links are batch-updated across docs. |
+| Formats | **PNG** / **JPEG** / **SVG** exported from tooling; prefer **PNG** at ~1–2× for UI retina; **SVG** for crisp diagrams checked into Git. |
+| Screenshots | Target **1920×1080**, crop aggressively, annotate key UI hotspots sparingly—record during light/dark mode decisions for consistency with product branding. |
+| Diagrams | Reuse **[Mermaid live editor](https://mermaid.live/)**, **[draw.io (diagrams.net)](https://app.diagrams.net/)**, or **[Excalidraw](https://excalidraw.com/)** exports; Hermes teal palette already matches frontend tokens if you duplicate swatches from **`Hermes.WebFrontend/wwwroot/css/swiss-tokens.css`**. |
+
+### Already committed under `Documentation/`
+
+- **Screenshots (.png)** used by this README: `HomePage`, `LoginPage`, `RestisterPage`, `FilledOutRegisterPage`, `VerificationPopup`, `MailHogVerificationCode`, `EmptyNewsSettings`, `NewsCardOverview`, `NewsCardOverviewWithFilters`, `NewsForm`, `NewsFormFilledOut`, `UserSettingsVerifiedMail`, `UserSettingsNotVerfiedMail`, `NewsMailSneekPeek`.
+- **Sample MIME message:** `Documentation/ExampleMail.eml` retains a downloadable newsletter artefact handy for inspectors.
+
+### How to add/update documentation visuals
+
+1. Capture or illustrate the UX/diagram offline.
+2. Optimize heavy PNGs (**`oxipng`**, **`pngquant`**, **`squoosh`**, or tooling baked into screenshot apps) aiming for roughly **≤500 KB per UI screenshot** unless detail demands more.
+3. Commit into `Documentation/` with kebab-case going forward (rename lagging legacy files deliberately to avoid dangling links across branches).
+4. Reference from Markdown using **root-relative** paths (`Documentation/name.png`).
+5. For diagrams that iterate quickly, paste **Mermaid** directly into Markdown until the visual stabilizes enough to rasterize/export.
+
+Cross-links inside `Hermes.Api`, `Hermes.Worker`, and `Hermes.WebFrontend` READMEs point back here (`README.md` / this section) for shared imagery so those files remain text-first while still grounding readers in UX context.

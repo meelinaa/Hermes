@@ -61,6 +61,12 @@ public sealed class NewsletterDigestService(
             if (newsEntity is null)
                 return;
 
+            if (!newsEntity.IsEnabled)
+            {
+                advanceDigestSlot = true;
+                return;
+            }
+
             NewsArticleQuery? query = BuildArticleQuery(apiKey, newsEntity);
             if (query is null)
                 return;

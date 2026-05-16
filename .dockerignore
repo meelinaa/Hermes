@@ -1,0 +1,12 @@
+** [Bb]in/
+** [Oo]bj/
+.vs/
+.git/
+.github/
+.vscode/
+Docker/
+Documentation/
+test-results/
+tools/
+*.user
+*.sln.dotSettings

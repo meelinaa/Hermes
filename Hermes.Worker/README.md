@@ -100,4 +100,4 @@ dotnet test Hermes.slnx
 | `Jobs/NotificationJobs.cs` | Hangfire-invokable wrapper around `INewsletterDigestService`. |
 | `MailHog/MailHogSchedulerTestMail.cs` | Optional test message for SMTP/MailHog verification. |
 
-For REST routes and OpenAPI, see [`Hermes.Api/README.md`](../Hermes.Api/README.md). For the Blazor client, see [`Hermes.WebFrontend/README.md`](../Hermes.WebFrontend/README.md). For the overall product and repository map, see the [root `README.md`](../README.md).
+For REST routes and OpenAPI, see [`Hermes.Api/README.md`](../Hermes.Api/README.md). For the Blazor client, see [`Hermes.WebFrontend/README.md`](../Hermes.WebFrontend/README.md). For the overall product and repository map, see the [root `README.md`](../README.md), including **[Documentation assets](../README.md#documentation-assets-screenshots--diagrams)** covering MailHog/SMTP previews and Hangfire-oriented diagrams alongside `Documentation/` PNGs.

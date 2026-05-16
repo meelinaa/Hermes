@@ -218,6 +218,43 @@ public sealed class NewsletterDigestServiceTests
     }
 
     [Fact]
+    public async Task SendAsync_Should_SkipSend_AndAdvanceSlot_WhenNewsDisabled()
+    {
+        Mock<INotificationLogStore> logs = new();
+        logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        Mock<IUserStore> users = new();
+        users.Setup(store => store.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 1, Email = "off@b.c", Name = "Off" });
+        Mock<INewsStore> newsPort = new();
+        SetupAdvanceDigestSlot(newsPort);
+        newsPort.Setup(store => store.GetNewsByIdAsync(1, 42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new News { Id = 42, UserId = 1, Keywords = ["x"], IsEnabled = false });
+
+        Mock<INewsArticleProvider> articles = new();
+        NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object);
+
+        await sut.SendAsync(1, 42, DateTime.UtcNow);
+
+        articles.Verify(
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        newsPort.Verify(
+            store => store.AdvanceNextDigestSlotAsync(
+                42,
+                1,
+                It.IsAny<TimeZoneInfo>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task SendAsync_Should_NotCallNewsApi_WhenFiltersProduceNoQuery()
     {
         News news = new()

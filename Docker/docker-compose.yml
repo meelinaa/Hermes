@@ -16,6 +16,7 @@ services:
       MYSQL_DATABASE: "${MYSQL_DATABASE}"
       MYSQL_USER: "${MYSQL_USER}"
       MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      TZ: Europe/Berlin
     ports:
       - "${MYSQL_PORT:-3308}:3306"
     volumes:
@@ -27,17 +28,18 @@ services:
       retries: 20
       start_period: 20s
     
-  # hermes-migrate:
-  #   image: docker-hermes-migrate
-  #   build:
-  #     context: ..
-  #     dockerfile: Docker/Dockerfile.Migrate
-  #   environment:
-  #     ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;
-  #   depends_on:
-  #     hermes-mysql:
-  #       condition: service_healthy
-  #   restart: "no"
+  hermes-migrate:
+    image: docker-hermes-migrate
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile.Migrate
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;AllowPublicKeyRetrieval=True;
+      - TZ=Europe/Berlin
+    depends_on:
+      hermes-mysql:
+        condition: service_healthy
+    restart: "no"
 
   hermes-api:
     build: 
@@ -47,13 +49,14 @@ services:
       - "5165:5165"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;
+      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;AllowPublicKeyRetrieval=True;
       - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - TZ=Europe/Berlin
     depends_on:
       hermes-mysql:
         condition: service_healthy
-      # hermes-migrate:
-      #   condition: service_completed_successfully
+      hermes-migrate:
+        condition: service_completed_successfully
 
   hermes-worker:
     build: 
@@ -63,32 +66,33 @@ services:
       - "5166:5166"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;
+      - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;AllowPublicKeyRetrieval=True;
       - Jwt__SigningKey=${JWT_SIGNING_KEY}
       - Email__Host=${MAIL_HOST}
       - Email__Port=${MAIL_PORT}
       - MailHog__BaseUrl=http://hermes-mailhog:8025
       - NewsDataIo__Key=${NEWS_DATA_IO_KEY}
       - Newsletter__TimeZoneId=Europe/Berlin
+      - TZ=Europe/Berlin
     depends_on:
       hermes-mysql:
         condition: service_healthy
-      # hermes-migrate:
-      #   condition: service_completed_successfully
+      hermes-migrate:
+        condition: service_completed_successfully
       hermes-mailhog:
         condition: service_started
 
-  hermes-web:
-    build:
-      context: ..
-      dockerfile: Docker/Dockerfile.Web
-    ports:
-      - "7016:7016"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ApiBaseUrl=http://localhost:5165  
-    depends_on:
-      - hermes-api
+  # hermes-web:
+  #   build:
+  #     context: ..
+  #     dockerfile: Docker/Dockerfile.Web
+  #   ports:
+  #     - "7016:7016"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Production
+  #     - ApiBaseUrl=http://localhost:5165  
+  #   depends_on:
+  #     - hermes-api
 
 volumes:
   hermes_data:

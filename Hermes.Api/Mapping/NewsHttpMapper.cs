@@ -15,9 +15,10 @@ internal static class NewsHttpMapper
             Countries = dto.Countries,
             SendOnWeekdays = dto.SendOnWeekdays ?? [],
             SendAtTimes = dto.SendAtTimes ?? [],
+            IsEnabled = dto.IsEnabled ?? true,
         };
 
-    public static News ToEntity(this UpdateNewsRequest dto, int userId) =>
+    public static News ToEntity(this UpdateNewsRequest dto, int userId, News existing) =>
         new()
         {
             Id = dto.Id,
@@ -28,6 +29,8 @@ internal static class NewsHttpMapper
             Countries = dto.Countries,
             SendOnWeekdays = dto.SendOnWeekdays ?? [],
             SendAtTimes = dto.SendAtTimes ?? [],
+            NextDigestSlotUtc = existing.NextDigestSlotUtc,
+            IsEnabled = dto.IsEnabled ?? existing.IsEnabled,
         };
 
     public static NewsResponse ToResponse(this News entity) =>
@@ -41,5 +44,6 @@ internal static class NewsHttpMapper
             Countries = entity.Countries,
             SendOnWeekdays = entity.SendOnWeekdays ?? [],
             SendAtTimes = entity.SendAtTimes ?? [],
+            IsEnabled = entity.IsEnabled,
         };
 }
