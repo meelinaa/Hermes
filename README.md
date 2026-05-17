@@ -1,3 +1,5 @@
+<img width="1920" height="436" alt="Hermes" src="https://github.com/user-attachments/assets/f29cfdb8-0b8b-4607-9979-e94c57d7fbb5" />
+
 # Hermes
 
 Hermes is a **personal news digest service**: configure **who you are** and **what news you care about** in a **Blazor** front end; **`Hermes.Api`** persists profiles; **`Hermes.Worker`** (Hangfire on **MySQL**) runs on your schedule, fetches headlines from **[NewsData.io](https://newsdata.io/)** via **`Hermes.Infrastructure`**, renders HTML via **`Hermes.Notifications`**, and delivers mail over **SMTP**.
