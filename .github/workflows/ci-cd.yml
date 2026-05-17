@@ -84,7 +84,7 @@ jobs:
             /p:ThresholdStat=total \
             /p:Threshold=65
       - name: Upload Code Coverage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: code-coverage
@@ -100,7 +100,7 @@ jobs:
           fail-on-error: true
 
       - name: Upload Test Results Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results
