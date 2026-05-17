@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hermes.UnitTests", "Hermes.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hermes.IntegrationTests", "Hermes.IntegrationTests\Hermes.IntegrationTests.csproj", "{54ED9FF3-A4AF-4703-96CC-40454AC89333}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hermes.WebFrontend.Client.Tests", "Hermes.WebFrontend\Hermes.WebFrontend.Client.Tests\Hermes.WebFrontend.Client.Tests.csproj", "{204903D9-93AC-423F-B328-1111AE91B895}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -155,6 +157,18 @@ Global
 		{54ED9FF3-A4AF-4703-96CC-40454AC89333}.Release|x64.Build.0 = Release|Any CPU
 		{54ED9FF3-A4AF-4703-96CC-40454AC89333}.Release|x86.ActiveCfg = Release|Any CPU
 		{54ED9FF3-A4AF-4703-96CC-40454AC89333}.Release|x86.Build.0 = Release|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Debug|x64.Build.0 = Debug|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Debug|x86.Build.0 = Debug|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Release|Any CPU.Build.0 = Release|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Release|x64.ActiveCfg = Release|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Release|x64.Build.0 = Release|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Release|x86.ActiveCfg = Release|Any CPU
+		{204903D9-93AC-423F-B328-1111AE91B895}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -162,5 +176,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{93277882-9A5E-4CA3-85DE-D53D1A0CCADA} = {D5FC0B78-6B40-842D-358A-E1AF84968916}
 		{758A46DF-3DD9-4DEA-A80F-39F52A251313} = {D5FC0B78-6B40-842D-358A-E1AF84968916}
+		{204903D9-93AC-423F-B328-1111AE91B895} = {D5FC0B78-6B40-842D-358A-E1AF84968916}
 	EndGlobalSection
 EndGlobal

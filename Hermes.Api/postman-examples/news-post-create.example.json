@@ -2,7 +2,6 @@
   "method": "POST",
   "url": "http://localhost:5165/api/v1/users/news",
   "body": {
-    "userId": 1,
     "keywords": ["ai", "climate"],
     "category": [1, 12],
     "languages": [15, 20],
@@ -10,5 +9,5 @@
     "sendOnWeekdays": [0, 2],
     "sendAtTimes": ["08:00:00", "18:30:00"]
   },
-  "note": "Enum arrays use numeric values; JsonStringEnumConverter also allows string member names."
+  "note": "Owning user comes from JWT (omit userId). Enum arrays use numeric values; JsonStringEnumConverter also allows string member names."
 }

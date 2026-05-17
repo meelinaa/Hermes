@@ -2,9 +2,6 @@ using Hermes.Domain.Enums.Attribute;
 
 namespace Hermes.Domain.Enums;
 
-/// <summary>
-/// Countries in English naming. Each member has an ISO 3166-1 alpha-2 code via <see cref="CountryIsoCodeAttribute"/> (lowercase for APIs).
-/// </summary>
 public enum Country
 {
     [CountryIsoCode("al")]

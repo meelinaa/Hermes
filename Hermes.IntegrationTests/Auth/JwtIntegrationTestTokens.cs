@@ -7,12 +7,8 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Hermes.IntegrationTests.Auth;
 
-/// <summary>
-/// Builds JWT access tokens that exercise bearer authentication without calling login—mirrors claim shapes from <see cref="Hermes.Application.Security.JwtTokenIssuer"/>.
-/// </summary>
 internal static class JwtIntegrationTestTokens
 {
-    /// <summary>Creates a syntactically invalid bearer secret (not three Base64Url segments).</summary>
     public const string MALFORMED_JWT_MATERIAL = "not.a.valid.jwt.structure";
 
     private static string BuildToken(
@@ -44,7 +40,6 @@ internal static class JwtIntegrationTestTokens
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    /// <summary>JWT whose <c>exp</c> lies firmly in the past—middleware must reject it even though the signature matches.</summary>
     public static string CreateExpiredAccessToken(int userId)
     {
         SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));
@@ -58,7 +53,6 @@ internal static class JwtIntegrationTestTokens
             expiresUtc: now.AddMinutes(-45));
     }
 
-    /// <summary>JWT signed with a different symmetric key—signature verification must fail.</summary>
     public static string CreateTokenWithWrongSigningKey(int userId)
     {
         SymmetricSecurityKey wrongKey = new(Encoding.UTF8.GetBytes(new string('z', 48)));
@@ -72,7 +66,6 @@ internal static class JwtIntegrationTestTokens
             expiresUtc: now.AddMinutes(60));
     }
 
-    /// <summary>JWT whose <c>aud</c> claim does not match configured <see cref="IntegrationTestAuthSettings.JWT_AUDIENCE"/>.</summary>
     public static string CreateTokenWithWrongAudience(int userId)
     {
         SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));
@@ -86,7 +79,6 @@ internal static class JwtIntegrationTestTokens
             expiresUtc: now.AddMinutes(60));
     }
 
-    /// <summary>JWT whose <c>iss</c> claim does not match configured <see cref="IntegrationTestAuthSettings.JWT_ISSUER"/>.</summary>
     public static string CreateTokenWithWrongIssuer(int userId)
     {
         SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));

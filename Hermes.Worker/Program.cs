@@ -1,26 +1,103 @@
 using Hangfire;
+
+using Hermes.Application.Options;
+
 using Hermes.Application.Scheduling;
+
 using Hermes.Worker.Hosting;
+
 using Hermes.Worker.Scheduling;
 
-var builder = Host.CreateApplicationBuilder(args);
-builder.AddHermesWorker();
+using Microsoft.Extensions.DependencyInjection;
 
-var host = builder.Build();
+using Serilog;
 
-using (var scope = host.Services.CreateScope())
+
+
+WorkerSerilogBootstrap.InitializeBootstrapLogger();
+
+
+
+try
+
 {
-    JobStorage? storage = scope.ServiceProvider.GetService<JobStorage>();
-    if (storage is not null)
-        JobStorage.Current = storage;
+
+    HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+
+
+
+    builder.UseHermesWorkerSerilog();
+
+    builder.AddHermesWorkerOpenTelemetry();
+
+
+
+    builder.AddHermesWorker();
+
+
+
+    var newsletterOpts = new NewsletterOptions();
+
+    builder.Configuration.GetSection(NewsletterOptions.SectionName).Bind(newsletterOpts);
+
+    TimeZoneInfo hangfireNewsletterTz = NewsletterSchedulingClock.ResolveTimeZone(newsletterOpts.TimeZoneId);
+
+
+
+    IHost host = builder.Build();
+
+
+
+    using (IServiceScope scope = host.Services.CreateScope())
+
+    {
+
+        JobStorage? storage = scope.ServiceProvider.GetService<JobStorage>();
+
+        if (storage is not null)
+
+            JobStorage.Current = storage;
+
+    }
+
+
+
+    WorkerServiceCollectionHelper.LogMailHogDevHints(host);
+
+
+
+    RecurringJob.AddOrUpdate<NewsletterScheduler>(
+
+        NewsletterSchedulerRecurringJob.ID,
+
+        scheduler => scheduler.RunAsync(CancellationToken.None),
+
+        Cron.Minutely(),
+
+        new RecurringJobOptions { TimeZone = hangfireNewsletterTz });
+
+
+
+    host.Run();
+
 }
 
-WorkerServiceCollectionHelper.LogMailHogDevHints(host);
+catch (Exception ex)
 
-RecurringJob.AddOrUpdate<NewsletterScheduler>(
-    NewsletterSchedulerRecurringJob.ID,
-    scheduler => scheduler.RunAsync(CancellationToken.None),
-    Cron.Minutely(),
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Local });
+{
 
-host.Run();
+    Log.Fatal(ex, "Hermes.Worker terminated unexpectedly");
+
+    throw;
+
+}
+
+finally
+
+{
+
+    Log.CloseAndFlush();
+
+}
+
+

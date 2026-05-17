@@ -1,0 +1,20 @@
+using Hermes.Domain.Enums;
+
+namespace Hermes.Application.Models.NotificationLogs;
+
+public sealed record CreateNotificationLogRequest
+{
+    public int? NewsId { get; init; }
+
+    public DateTime SentAt { get; init; }
+
+    public NotificationStatus Status { get; init; }
+
+    public DeliveryChannel Channel { get; init; }
+
+    public string? ErrorMessage { get; init; }
+
+    public int RetryCount { get; init; }
+
+    public DateTime? NextRetryAt { get; init; }
+}

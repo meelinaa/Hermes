@@ -11,7 +11,7 @@ namespace Hermes.WebFrontend.Client.Services.Auth;
 /// </summary>
 public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, NewsSubscriptionListCache newsListCache, IJSRuntime js, NavigationManager nav)
 {
-    private static readonly JsonSerializerOptions JsonWeb = JsonSerializerOptions.Web;
+    private static readonly JsonSerializerOptions _jsonWeb = JsonSerializerOptions.Web;
 
     /// <summary>Performs logout, clears local auth state, and forces navigation to the login page.</summary>
     public async Task SignOutAndReloadAsync(CancellationToken cancellationToken = default)
@@ -20,7 +20,7 @@ public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, Ne
         try
         {
             using HttpResponseMessage response = await http
-                .PostAsJsonAsync("api/v1/auth/logout", new { }, JsonWeb, cancellationToken)
+                .PostAsJsonAsync("api/v1/auth/logout", new { }, _jsonWeb, cancellationToken)
                 .ConfigureAwait(false);
             _ = response;
         }

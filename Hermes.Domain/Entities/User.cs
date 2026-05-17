@@ -1,3 +1,5 @@
+using Hermes.Domain.ValueObjects;
+
 namespace Hermes.Domain.Entities;
 
 public class User
@@ -6,14 +8,35 @@ public class User
     public string? Name { get; set; }
     public string? Email { get; set; }
     public string? PasswordHash { get; set; }
-    public bool IsEmailVerified { get; set; }   // 2FA für Email
-    public string? TwoFactorCode { get; set; }  // temporärer 2FA Code
-    public DateTime? TwoFactorExpiry { get; set; } // wann läuft der Code ab
+    public bool IsEmailVerified { get; set; }
+    public string? TwoFactorCode { get; set; }
+    public DateTime? TwoFactorExpiry { get; set; }
 
-    /// <summary>News subscription/configuration rows owned by this user (one-to-many).</summary>
     public ICollection<News> News { get; set; } = [];
 
     public ICollection<NotificationLog> NotificationLogs { get; set; } = [];
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+
+    public void Rename(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Name is required.", nameof(name));
+        Name = name.Trim();
+    }
+
+    /// <summary>Primary e-mail change clears <see cref="IsEmailVerified"/> until the new address is verified.</summary>
+    public void ChangePrimaryEmail(Email email)    {
+        string next = email.Value;
+        string? previous = Email;
+        Email = next;
+        if (!string.Equals(previous, next, StringComparison.Ordinal))
+            IsEmailVerified = false;
+    }
+
+    public void ReplacePasswordHash(string bcryptHash)
+    {
+        ArgumentNullException.ThrowIfNull(bcryptHash);
+        PasswordHash = bcryptHash;
+    }
 }

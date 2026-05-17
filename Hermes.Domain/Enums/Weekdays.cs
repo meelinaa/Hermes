@@ -1,4 +1,4 @@
-﻿namespace Hermes.Domain.Enums;
+namespace Hermes.Domain.Enums;
 
 public enum Weekdays
 {

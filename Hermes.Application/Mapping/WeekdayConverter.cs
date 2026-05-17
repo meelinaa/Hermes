@@ -2,10 +2,8 @@ using Hermes.Domain.Enums;
 
 namespace Hermes.Application.Mapping;
 
-/// <summary>Converts between framework weekday values and Hermes weekday enum values.</summary>
 public class WeekdayConverter
 {
-    /// <summary>Maps a local wall-clock date/time to the corresponding <see cref="Weekdays"/> value.</summary>
     public static Weekdays ToHermesWeekday(DateTime localWallClock) =>
       localWallClock.DayOfWeek switch
       {

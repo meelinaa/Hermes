@@ -1,8 +1,5 @@
 namespace Hermes.Domain.Enums;
 
-/// <summary>
-/// Natural languages (identifiers in English). Each member has an ISO 639-1 code via <see cref="LanguageIsoCodeAttribute"/>.
-/// </summary>
 public enum Language
 {
     [LanguageIsoCode("sq")]

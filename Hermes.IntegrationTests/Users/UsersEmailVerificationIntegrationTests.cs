@@ -10,9 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Hermes.IntegrationTests.Users;
 
-/// <summary>
-/// E-mail verification routes: <c>POST …/users/{id}/verify</c> and <c>POST …/verify/code</c> against MySQL.
-/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixture)
@@ -93,6 +90,11 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
         using HttpResponseMessage response = await client.SendAsync(post);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using (JsonDocument verified = JsonDocument.Parse(await response.Content.ReadAsStringAsync()))
+        {
+            Assert.True(verified.RootElement.GetProperty("isEmailVerified").GetBoolean());
+            Assert.Equal(userId, verified.RootElement.GetProperty("userId").GetInt32());
+        }
 
         using HttpResponseMessage profile = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access));
         profile.EnsureSuccessStatusCode();

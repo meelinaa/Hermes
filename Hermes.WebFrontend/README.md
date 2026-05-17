@@ -12,6 +12,88 @@ It also covers the **end-user experience**: **setting up and editing email diges
 
 ---
 
+## UI Screenshots
+
+All PNGs live under **[`Documentation/`](../Documentation/)**; paths below use **`../Documentation/…`** relative to **`Hermes.WebFrontend/`**.
+
+### Home (`/home`)
+
+![Hermes home after sign-in: poster-style layout, welcome copy, top navigation.](../Documentation/HomePage.png)
+
+*After login, users land on **Home** (`AppHomeLayout`): welcome text, Swiss poster backdrop, and **top navigation** toward profile and news settings.*
+
+### Login (`/login`)
+
+![Login form in auth layout with split Swiss poster chrome.](../Documentation/LoginPage.png)
+
+*The **login** route calls `POST /api/v1/auth/login`; access and refresh tokens are stored in **local storage** (`AuthLayout` + `AuthSwissPoster`, `AuthTokenStore`).*
+
+### Registration (`/register`)
+
+![Registration page before submit.](../Documentation/RestisterPage.png)
+
+*Empty **registration** form. The file committed to the repo is still named **`RestisterPage.png`** (typo). Flow: `POST /api/v1/users`, then automatic login and redirect to `/home`.*
+
+![Registration form with illustrative sample fields.](../Documentation/FilledOutRegisterPage.png)
+
+*Filled example useful for validating password rules, API errors, and the full registration UX.*
+
+### E-mail verification (UI + local SMTP capture)
+
+![Modal prompting for the six-digit verification code.](../Documentation/VerificationPopup.png)
+
+*Triggered from **`/user-settings`**; submits the code with `POST /api/v1/users/verify/code`. Resend and cooldown semantics follow the API behavior described under **Routing**.*
+
+![MailHog web UI displaying the Hermes verification message.](../Documentation/MailHogVerificationCode.png)
+
+*This is **not** a Blazor screenshot—it shows **MailHog** (local SMTP sink): the outbound **verification email** composed by `Hermes.Notifications` during local debugging without a real mailbox.*
+
+### News digest profiles (`/news-settings`, `/news-settings/new`)
+
+The overview calls the paginated **`GET …/news`** API with **`page`** and **`pageSize`**. Defaults are **`pageSize = 20`** and **`page = 1`** ([`NewsSettingsPanel.razor`](Hermes.WebFrontend.Client/Components/NewsSettingsPanel.razor)). When there are **more profiles than fit one page** (for example **21+ rows** while **Pro Seite** is **20**), **Previous / Next** pagination appears under the cards. Users can switch **items per page** to **10**, **20**, or **50** using **Pro Seite** in the **same filter toolbar** as category filter, text filter (**Textfilter**), sort (**Sortierung**), and **Suchen**.
+
+![Empty state with no digest profiles yet.](../Documentation/EmptyNewsSettings.png)
+
+_**`NewsSettingsPanel`** exposes a focused empty state with a clear call-to-action when the authenticated user still has zero `News` rows._
+
+![Digest profile cards listed without filters.](../Documentation/NewsCardOverview.png)
+
+*Paginated **`NewsSubscriptionCard`** tiles (default **20** per page); **Previous / Next** appears whenever another page exists for the current filters.*
+
+![Overview with active filters, search, or sort.](../Documentation/NewsCardOverviewWithFilters.png)
+
+*Same screen with filters—the client forwards **`NewsSubscriptionListCache`** query parameters (**page**, **pageSize**, sort, filters). Set **Pro Seite** before **Suchen** to change page size.*
+
+![New or empty digest profile card form.](../Documentation/NewsForm.png)
+
+*Creating or editing a profile: keywords, languages/countries, categories, plus **weekdays & send times** for delivery.*
+
+![Filled digest profile before save.](../Documentation/NewsFormFilledOut.png)
+
+*Realistic fixture for manual/demo validation of **`POST` / `PUT`** news mutations.*
+
+### User profile (`/user-settings`)
+
+![User settings page with verified e-mail.](../Documentation/UserSettingsVerifiedMail.png)
+
+*When **`UserScope.isEmailVerified`** is **true**, the UI shows verified email status (badge / calm baseline state).*
+
+![User profile with pending e-mail verification.](../Documentation/UserSettingsNotVerfiedMail.png)
+
+*Warning + verification actions remain until e-mail succeeds. Repo filename: **`UserSettingsNotVerfiedMail.png`** (typo *Verfied*).*
+
+### Generated newsletter preview (MailHog or browser tools)
+
+![Cropped preview of rendered HTML newsletter.](../Documentation/NewsMailSneekPeek.png)
+
+*Output assembled by **`NewsletterHtmlComposer`**, usually inspected inside **MailHog** or dev tools—header, repeating article rows, and footer. Repo filename: **`NewsMailSneekPeek.png`** (*SneekPeek*).*
+
+### Raw MIME sample (not a PNG)
+
+Open [`../Documentation/ExampleMail.eml`](../Documentation/ExampleMail.eml) without the UI shell to inspect headers, multipart structure, and the HTML part emitted by the same pipeline.
+
+---
+
 ## Projects in this folder
 
 | Project | Role |
@@ -66,7 +148,7 @@ dotnet run
 | `/login` | Login | **AuthLayout** (split form + `AuthSwissPoster`). |
 | `/register` | Register | AuthLayout; password strength checklist (same rules as profile **new password**); `POST api/v1/users` then login, tokens in local storage, navigate to `/home`. |
 | `/home` | Home | **AppHomeLayout** (top nav + main area); Swiss poster content. |
-| `/news-settings`, `/news-settings/new` | News configuration | AppHomeLayout; list/edit via `NewsSettingsPanel` / `NewsSubscriptionCard`. |
+| `/news-settings`, `/news-settings/new` | News configuration | AppHomeLayout; list/edit via **`NewsSettingsPanel`** / **`NewsSubscriptionCard`**. List is **paginated** (default **`20`** rows per page); **Previous / Next** appears when there is more than one page. Change **page size** (**10** / **20** / **50**) via **Pro Seite** in the filter bar alongside category search, text filter, sort, and **Suchen**. |
 | `/user-settings` | Profile | AppHomeLayout; name, e-mail, optional password change (`PUT api/v1/users` with `newPassword` / `currentPassword`). **E-mail verification**: badges (`UserScope.isEmailVerified`), warning when unverified, modal to enter **six-digit code** (`POST api/v1/users/verify/code`) and resend with cooldown (`GET api/v1/users/verify/{email}`). **Password**: same rule checklist as registration for **new** password; submit button can look inactive while invalid but stay clickable for guidance; **wrong current password** shows an inline error under **Old password** (API returns **400** with `type` `https://hermes.dev/problems/wrong-current-password`). **E-mail change** clears verified state server-side until the user verifies again. |
 
 Error pages: server components under `Hermes.WebFrontend/Components/Pages/` (e.g. `/Error`, status-code reexecute to not-found).
@@ -103,13 +185,13 @@ Components include `HermesBrand`, `HermesTopNavigation`, `NewsSettingsPanel`, `N
 | Service | Purpose |
 |---------|---------|
 | `UserProfileRefreshNotifier` | Singleton: after saving profile, notify other views (e.g. reload home welcome line). |
-| `NewsSubscriptionListCache` | Caches news lists to reduce redundant API calls. |
+| `NewsSubscriptionListCache` | Builds paged `GET …/news` requests (query: page, pageSize, sort, filters); no response cache. |
 
 ---
 
 ## Known limitations
 
-- **Blazor / E2E:** There is no dedicated UI test project yet (`bUnit`, Playwright, etc.).
+- **Blazor UI:** `Hermes.WebFrontend.Client.Tests` (bUnit) covers selected components; heavier flows stay in API integration tests.
 
 ---
 
@@ -117,8 +199,9 @@ Components include `HermesBrand`, `HermesTopNavigation`, `NewsSettingsPanel`, `N
 
 ```
 Hermes.WebFrontend/
-├── README.md                 ← this file
-├── Hermes.WebFrontend/       ← server host
+├── README.md                         ← this file
+├── Hermes.WebFrontend.Client.Tests/ ← bUnit (component tests)
+├── Hermes.WebFrontend/               ← server host
 │   ├── Components/           App.razor, Routes, Layout/MainLayout, Pages (Error, NotFound)
 │   ├── wwwroot/              global CSS, tokens
 │   └── Program.cs
@@ -135,7 +218,7 @@ Hermes.WebFrontend/
 
 ## Automated tests
 
-There are **no dedicated Blazor or Playwright tests** in this repo yet. Backend paths the UI relies on (**auth**, **users**, **news**, **notification logs**) are covered by **`Hermes.IntegrationTests`** together with **`Hermes.UnitTests`** (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)). Future UI work might add **bUnit** or E2E tests here.
+**`Hermes.WebFrontend.Client.Tests`** (bUnit) exercises key Blazor components (e.g. `HermesBrand`). Backend paths the UI relies on (**auth**, **users**, **news**, **notification logs**) are covered by **`Hermes.IntegrationTests`** and **`Hermes.UnitTests`** (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)).
 
 Run all solution tests from the repository root:
 

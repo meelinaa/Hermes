@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Hermes.Application.Models.Email;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Security;
 using Hermes.Domain.Entities;
 using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Notifications.Sending.HtmlLayout.Models;
@@ -11,33 +12,34 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Services;
 
-/// <summary>
-/// Persists a time-bound verification code on the user and sends the HTML verification e-mail (see <c>Verification.html</c>).
-/// </summary>
 public sealed class VerificationDigestService(
-    IHermesDataStore dataStore,
+    IUserStore users,
     IEmailSender emailSender,
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,
+    IOptions<SecurityOptions> securityOptions,
     ILogger<VerificationDigestService> logger) : IVerificationDigestService
 {
     public const int VERIFICATION_CODE_VALIDITY_MINUTES = 15;
     private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
-    /// <summary>Generates and stores a verification challenge, then sends the verification e-mail.</summary>
     public async Task SendAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
-        User? user = await dataStore.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
+        User? user = await users.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email))
             return;
 
         string? code = GenerateNumericVerificationCode();
         DateTime expiresAt = DateTime.UtcNow.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
 
-        await dataStore
-            .SetUserEmailVerificationChallengeAsync(userId, code, expiresAt, cancellationToken)
+        string persisted = securityOptions.Value.HashEmailVerificationCodes
+            ? RefreshTokenHasher.Hash(code)
+            : code;
+
+        await users
+            .SetUserEmailVerificationChallengeAsync(userId, persisted, expiresAt, cancellationToken)
             .ConfigureAwait(false);
 
         HermesSiteUrlsOptions site = siteUrlsOptions.Value;
@@ -73,14 +75,12 @@ public sealed class VerificationDigestService(
         }
     }
 
-    /// <summary>Creates a cryptographically secure six-digit numeric verification code.</summary>
     private static string GenerateNumericVerificationCode()
     {
         int randomNumber = RandomNumberGenerator.GetInt32(0, 1_000_000);
         return randomNumber.ToString("D6", CultureInfo.InvariantCulture);
     }
 
-    /// <summary>Builds the verification HTML body with user greeting, code, and footer links.</summary>
     private static async Task<string> BuildVerificationBodyAsync(
         string? userDisplayName,
         string recipientEmail,

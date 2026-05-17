@@ -10,14 +10,6 @@ using Xunit;
 
 namespace Hermes.UnitTests.Security;
 
-/// <summary>
-/// Specifications for access JWT issuance: token must validate under RFC-style checks; issuer rejects invalid IDs and keys.
-/// </summary>
-/// <remarks>
-/// <see cref="JwtSecurityTokenHandler.ValidateToken"/> applies inbound claim-type mapping by default. Tests clear
-/// <see cref="JwtSecurityTokenHandler.InboundClaimTypeMap"/> so standard claims like <c>sub</c> round-trip consistently.
-/// For raw payload claims you can also read <see cref="JwtSecurityToken.Payload"/>.
-/// </remarks>
 public sealed class JwtTokenIssuerTests
 {
     private static JwtOptions CreateValidOptions() =>
@@ -29,9 +21,7 @@ public sealed class JwtTokenIssuerTests
             AccessTokenMinutes = 120,
         };
 
-    /// <summary>
-    /// Builds validation parameters matching issuer settings and clears inbound claim mapping for predictable <c>sub</c> reads.
-    /// </summary>
+    /// <summary>Clears default inbound claim-type map so <c>sub</c> round-trips consistently under validation.</summary>
     private static TokenValidationParameters CreateValidation(JwtOptions o, JwtSecurityTokenHandler handler)
     {
         TokenValidationParameters p = new()
@@ -49,20 +39,14 @@ public sealed class JwtTokenIssuerTests
         return p;
     }
 
-    /// <summary>
-    /// Ensures issued tokens embed <c>sub</c> as the user id string, validate cryptographically, and expose expected claims after trimming optional fields.
-    /// </summary>
     [Fact]
     public void Issue_Should_Embed_SubClaim_WithUserIdString_AndAllowValidation()
     {
-        // Arrange
         JwtOptions o = CreateValidOptions();
         JwtTokenIssuer issuer = new(Options.Create(o));
 
-        // Act
         JwtAccessTokenResult result = issuer.Issue(42, "user@site.test", "  Name  ");
 
-        // Assert
         JwtSecurityTokenHandler handler = new();
         ClaimsPrincipal principal = handler.ValidateToken(result.Token, CreateValidation(o, handler), out SecurityToken validatedToken);
         JwtSecurityToken jwt = Assert.IsType<JwtSecurityToken>(validatedToken);
@@ -78,20 +62,14 @@ public sealed class JwtTokenIssuerTests
         Assert.False(string.IsNullOrEmpty(principal.FindFirstValue(JwtRegisteredClaimNames.Iat)));
     }
 
-    /// <summary>
-    /// Optional email/name claims must be omitted when missing or whitespace-only so the token stays minimal.
-    /// </summary>
     [Fact]
     public void Issue_Should_OmitOptionalClaims_WhenEmailAndNameMissingOrWhitespace()
     {
-        // Arrange
         JwtOptions o = CreateValidOptions();
         JwtTokenIssuer issuer = new(Options.Create(o));
 
-        // Act
         JwtAccessTokenResult result = issuer.Issue(1, null, "   ");
 
-        // Assert
         JwtSecurityTokenHandler handler = new();
         ClaimsPrincipal principal = handler.ValidateToken(result.Token, CreateValidation(o, handler), out _);
 
@@ -100,40 +78,28 @@ public sealed class JwtTokenIssuerTests
         Assert.Equal("1", principal.FindFirstValue(JwtRegisteredClaimNames.Sub));
     }
 
-    /// <summary>
-    /// Each issuance must produce a distinct compact token (jti/timing uniqueness), even when inputs match.
-    /// </summary>
     [Fact]
     public void Issue_Should_GenerateDistinctCompactTokens_PerIssuance()
     {
-        // Arrange
         JwtOptions o = CreateValidOptions();
         JwtTokenIssuer issuer = new(Options.Create(o));
 
-        // Act
         JwtAccessTokenResult a = issuer.Issue(1, "a@test", "A");
         JwtAccessTokenResult b = issuer.Issue(1, "a@test", "A");
 
-        // Assert
         Assert.NotEqual(a.Token, b.Token);
     }
 
-    /// <summary>
-    /// Expiry (<c>exp</c>) should align with configured access-token lifetime (within clock skew tolerance).
-    /// </summary>
     [Fact]
     public void Issue_Should_SetExpiryWithinConfiguredAccessMinutes()
     {
-        // Arrange
         JwtOptions o = CreateValidOptions();
         o.AccessTokenMinutes = 5;
         JwtTokenIssuer issuer = new(Options.Create(o));
         DateTime before = DateTime.UtcNow;
 
-        // Act
         JwtAccessTokenResult result = issuer.Issue(1, null, null);
 
-        // Assert
         JwtSecurityTokenHandler handler = new();
         JwtSecurityToken jwt = handler.ReadJwtToken(result.Token);
         DateTime exp = jwt.ValidTo;
@@ -141,18 +107,13 @@ public sealed class JwtTokenIssuerTests
         Assert.True(Math.Abs((result.ExpiresAtUtc.UtcDateTime - exp).TotalSeconds) < 2);
     }
 
-    /// <summary>
-    /// Negative contract: user ids must be positive integers before issuing a token.
-    /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public void Issue_Should_RejectNonPositiveUserIdentifier(int invalidUserId)
     {
-        // Arrange
         JwtTokenIssuer issuer = new(Options.Create(CreateValidOptions()));
 
-        // Act
         Assert.Throws<ArgumentOutOfRangeException>(() => issuer.Issue(invalidUserId, null, null));
     }
 }

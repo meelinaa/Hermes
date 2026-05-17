@@ -36,11 +36,19 @@ namespace Hermes.Infrastructure.Migrations
                     b.Property<string>("Countries")
                         .HasColumnType("longtext");
 
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Keywords")
                         .HasColumnType("longtext");
 
                     b.Property<string>("Languages")
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("NextDigestSlotUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("SendAtTimes")
                         .IsRequired()
@@ -54,6 +62,8 @@ namespace Hermes.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("NextDigestSlotUtc");
 
                     b.HasIndex("UserId");
 
@@ -70,7 +80,8 @@ namespace Hermes.Infrastructure.Migrations
 
                     b.Property<string>("Channel")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("longtext");
@@ -89,14 +100,19 @@ namespace Hermes.Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("Status", "NextRetryAt", "Id")
+                        .HasDatabaseName("IX_notification_logs_pending_retry");
+
+                    b.HasIndex("UserId", "NewsId", "Channel", "Status", "SentAt")
+                        .HasDatabaseName("IX_notification_logs_dedupe_window");
 
                     b.ToTable("notification_logs", (string)null);
                 });
@@ -129,6 +145,8 @@ namespace Hermes.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ReplacedByTokenId");
 
                     b.HasIndex("TokenHash")
                         .IsUnique();
@@ -183,22 +201,27 @@ namespace Hermes.Infrastructure.Migrations
 
             modelBuilder.Entity("Hermes.Domain.Entities.NotificationLog", b =>
                 {
-                    b.HasOne("Hermes.Domain.Entities.User", "User")
+                    b.HasOne("Hermes.Domain.Entities.User", null)
                         .WithMany("NotificationLogs")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Hermes.Domain.Entities.RefreshToken", b =>
                 {
+                    b.HasOne("Hermes.Domain.Entities.RefreshToken", "ReplacedByToken")
+                        .WithMany()
+                        .HasForeignKey("ReplacedByTokenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Hermes.Domain.Entities.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ReplacedByToken");
 
                     b.Navigation("User");
                 });

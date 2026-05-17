@@ -1,7 +1,9 @@
 using Hangfire;
 using Hermes.Application.Jobs;
 using Hermes.Application.Models.Email;
+using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
 using Hermes.Notifications.Receiving.Models;
 using Hermes.Worker.MailHog;
@@ -9,38 +11,51 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Worker.Scheduling;
 
-/// <summary>
-/// Minutely Hangfire entry point: loads all news profiles, enqueues <see cref="NotificationJobs.SendNewsDigestAsync"/>
-/// once <b>per matching news row</b> (same user, same time, two profiles → two jobs, two e-mails — not merged).
-/// </summary>
+/// <summary>Hangfire minutely tick: resolve due news (UTC slot wall clock) and enqueue one digest job per row.</summary>
 public sealed class NewsletterScheduler(
     INewsletterScheduleService newsletterScheduleService,
     ILogger<NewsletterScheduler> logger,
     IEmailSender emailSender,
     EmailSettings emailSettings,
-    IOptions<MailHogSettings> mailHogOptions)
+    IOptions<MailHogSettings> mailHogOptions,
+    IOptions<NewsletterOptions> newsletterOptions)
 {
-    /// <summary>Evaluates due newsletter items for the current minute and enqueues one Hangfire job per due row.</summary>
+    private readonly TimeZoneInfo _newsletterTimeZone =
+        NewsletterSchedulingClock.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
+
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        DateTime now = DateTime.Now;
-        DateTime slotStartLocal = new(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Local);
-        DateTime slotStartUtc = slotStartLocal.ToUniversalTime();
+        DateTime wallNow = NewsletterSchedulingClock.GetWallClockNow(_newsletterTimeZone);
+        DateTime slotStartWall = NewsletterSchedulingClock.GetWallClockMinuteStart(_newsletterTimeZone);
+        DateTime slotStartUtc = NewsletterSchedulingClock.WallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
+        DateTimeOffset wallStamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _newsletterTimeZone);
 
         logger.LogInformation(
-            "[NewsletterScheduler] === Run START === host local now={Local:o} | slot local={SlotLocal:o} | slotUtc={SlotUtc:o} | host TZ={TzId}",
-            now,
-            slotStartLocal,
-            slotStartUtc,
-            TimeZoneInfo.Local.Id);
+            "[NewsletterScheduler] === Run START === wall-now (newsletter TZ={TzId})={Wall:o} | minute start wall={SlotWall:o} | slotUtc={SlotUtc:o} | source=UtcNow→TZ",
+            _newsletterTimeZone.Id,
+            wallNow,
+            slotStartWall,
+            slotStartUtc);
 
-        IReadOnlyList<(int NewsId, int UserId)> due = await newsletterScheduleService.GetDueItemsAsync(now, cancellationToken).ConfigureAwait(false);
+        DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
+
+        IReadOnlyList<(int NewsId, int UserId)> due = await newsletterScheduleService
+            .GetDueItemsAsync(wallNow, slotStartUtc, slotEndUtc, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (due.Count > 0)
+        {
+            logger.LogInformation(
+                "[NewsletterScheduler] Found {Count} due news items. Enqueuing jobs for NewsIds: {NewsIds}",
+                due.Count,
+                string.Join(", ", due.Select(d => d.NewsId)));
+        }
 
         foreach ((int newsId, int userId) in due)
         {
             string? jobId = BackgroundJob.Enqueue<NotificationJobs>(notificationJobs =>
                 notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
-            logger.LogInformation(
+            logger.LogDebug(
                 "[NewsletterScheduler] Enqueued NotificationJobs newsId={NewsId} userId={UserId}, Hangfire job id={JobId}.",
                 newsId,
                 userId,
@@ -56,7 +71,7 @@ public sealed class NewsletterScheduler(
                 await MailHogSchedulerTestMail.SendAsync(
                         emailSender,
                         emailSettings,
-                        DateTimeOffset.Now,
+                        wallStamp,
                         logger,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -66,5 +81,5 @@ public sealed class NewsletterScheduler(
                 logger.LogWarning(ex, "[NewsletterScheduler] MailHog-Scheduler-Testmail fehlgeschlagen.");
             }
         }
-    }  
+    }
 }

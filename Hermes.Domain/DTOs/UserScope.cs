@@ -1,4 +1,4 @@
-﻿namespace Hermes.Domain.DTOs;
+namespace Hermes.Domain.DTOs;
 
 public class UserScope
 {

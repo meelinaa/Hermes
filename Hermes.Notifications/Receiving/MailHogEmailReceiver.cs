@@ -6,9 +6,6 @@ using Hermes.Notifications.Receiving.Models;
 
 namespace Hermes.Notifications.Receiving;
 
-/// <summary>
-/// Retrieves messages from MailHog using its REST API (<c>GET /api/v2/messages</c>).
-/// </summary>
 public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
 {
     private const int PAGE_SIZE = 250;
@@ -19,15 +16,9 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
     private readonly MailHogMessageMapper _messageMapper;
     private bool _disposed;
 
-    /// <summary>
-    /// Initializes a new instance of <see cref="MailHogEmailReceiver"/>.
-    /// </summary>
-    /// <param name="settings">MailHog API base URL.</param>
     public MailHogEmailReceiver(MailHogSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-
-        //MailHogApiUriHelper uriHelper = new();
 
         _httpClient = new()
         {
@@ -43,7 +34,6 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
         _messageMapper = new();
     }
 
-    /// <inheritdoc />
     public async Task<EmailResult> GetLatestAsync(CancellationToken cancellationToken = default)
     {
         HttpResponseMessage response = await _httpClient.GetAsync(
@@ -64,7 +54,6 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
         return _messageMapper.MapToEmailResult(items[0]);
     }
 
-    /// <inheritdoc />
     public async Task<IEnumerable<EmailResult>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         List<EmailResult> results = [];
@@ -103,7 +92,6 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
         return results;
     }
 
-    /// <inheritdoc />
     public async Task<IEnumerable<EmailResult>> GetBySubjectAsync(string subject, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(subject);
@@ -113,7 +101,6 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
             emailResult.Subject.Contains(subject, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    /// <inheritdoc />
     public void Dispose()
     {
         if (_disposed)

@@ -4,13 +4,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Hermes.Api.Hangfire;
 
-/// <summary>
-/// Triggers the worker’s recurring newsletter scheduler via shared Hangfire MySQL storage.
-/// </summary>
 public sealed class HangfireNewsletterSchedulerRunTrigger(JobStorage jobStorage, ILogger<HangfireNewsletterSchedulerRunTrigger> logger)
     : INewsletterSchedulerRunTrigger
 {
-    /// <summary>Requests immediate execution of the recurring newsletter scheduler after a news mutation.</summary>
     public void RequestRunAfterNewsMutation()
     {
         try

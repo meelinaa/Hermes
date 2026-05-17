@@ -8,20 +8,15 @@ using Hermes.IntegrationTests.Infrastructure;
 
 namespace Hermes.IntegrationTests.NotificationLogs;
 
-/// <summary>
-/// POST endpoint under <c>api/v1/users/{userId}/notification-logs</c>; verifies inserts plus auth/binding failures (401/403/400).
-/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 {
     private static readonly JsonSerializerOptions JsonWeb = new(JsonSerializerDefaults.Web);
 
-    private static object MinimalLogBody(int id = 0, int userId = 0) => // This method constructs a minimal notification log entry with default values for all fields except for the userId.
+    private static object MinimalLogBody() =>
         new
         {
-            id,
-            userId,
             newsId = (int?)null,
             sentAt = DateTime.UtcNow,
             status = "Pending",
@@ -53,21 +48,34 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
     }
 
     [Fact]
-    public async Task Post_with_matching_explicit_body_userId_returns_OK()
+    public async Task Post_extraneous_userId_property_in_body_is_ignored_uses_route_user()
     {
         using HttpClient client = fixture.Factory.CreateClient();
-        (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
+        (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        (int attackerId, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{userId}/notification-logs");
+        object bodyWithIgnoredUserId = new
+        {
+            userId = victimId,
+            newsId = (int?)null,
+            sentAt = DateTime.UtcNow,
+            status = "Pending",
+            channel = "Email",
+            errorMessage = (string?)null,
+            retryCount = 0,
+            nextRetryAt = (DateTime?)null,
+        };
+
+        using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{attackerId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        req.Content = JsonContent.Create(MinimalLogBody(userId: userId), options: JsonWeb); // Create the POST request with the userId explicitly set in the body, matching the route parameter, and capture the response to verify that the API accepts this redundant but consistent information without error.
+        req.Content = JsonContent.Create(bodyWithIgnoredUserId, options: JsonWeb);
 
-        using HttpResponseMessage response = await client.SendAsync(req); // Send the POST request with the explicit userId in the body and capture the response.
+        using HttpResponseMessage response = await client.SendAsync(req);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(userId, json.RootElement.GetProperty("userId").GetInt32());
+        Assert.Equal(attackerId, json.RootElement.GetProperty("userId").GetInt32());
     }
 
     [Fact]
@@ -114,23 +122,6 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         using HttpResponseMessage response = await client.SendAsync(req);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Post_with_body_userId_not_matching_route_returns_BadRequest()
-    {
-        using HttpClient client = fixture.Factory.CreateClient();
-        (int victimId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        (int attackerId, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
-
-        using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{attackerId}/notification-logs");
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        req.Content = JsonContent.Create(MinimalLogBody(userId: victimId), options: JsonWeb);
-
-        using HttpResponseMessage response = await client.SendAsync(req);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

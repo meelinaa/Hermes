@@ -5,14 +5,8 @@ using Hermes.Notifications.Receiving.Models;
 
 namespace Hermes.Notifications.Receiving.MailHog;
 
-/// <summary>
-/// Maps MailHog JSON DTOs to public <see cref="EmailResult"/> instances.
-/// </summary>
 internal sealed class MailHogMessageMapper
 {
-    /// <summary>
-    /// Maps a single MailHog message to an <see cref="EmailResult"/>.
-    /// </summary>
     public EmailResult MapToEmailResult(MailHogMessageDto dto)
     {
         string id = dto.Id ?? string.Empty;

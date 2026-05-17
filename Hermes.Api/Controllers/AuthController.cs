@@ -2,42 +2,24 @@ using FluentValidation;
 using FluentValidation.Results;
 using Hermes.Api.Http;
 using Hermes.Api.Validation;
-using Hermes.Application.Models;
 using Hermes.Application.Models.Login;
 using Hermes.Application.Security;
-using Hermes.Domain.Interfaces.Services;
+using Hermes.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace Hermes.Api.Controllers;
 
-/// <summary>
-/// Authentication endpoints: password login issues JWT + refresh; refresh exchanges a valid refresh for a new pair;
-/// logout revokes refresh row(s). Protected routes use <c>Authorization: Bearer &lt;accessToken&gt;</c>.
-/// </summary>
 [ApiController]
 [Route("api/v1/auth")]
 public class AuthController(IUserService userService) : ControllerBase
 {
-    /// <summary>Login with display name or email plus plain password (BCrypt verify).</summary>
     /// <remarks>
-    /// <b>POST</b> <c>api/v1/auth/login</c> — Body (application/json):
-    /// <para>By email:</para>
+    /// <b>POST</b> <c>api/v1/auth/login</c>. <c>nameOrEmail</c> is an e-mail or display name.
     /// <code>
-    /// {
-    ///   "nameOrEmail": "max@example.com",
-    ///   "password": "plain-password"
-    /// }
+    /// { "nameOrEmail": "max@example.com", "password": "plain-password" }
     /// </code>
-    /// <para>By display name:</para>
-    /// <code>
-    /// {
-    ///   "nameOrEmail": "Max Mustermann",
-    ///   "password": "plain-password"
-    /// }
-    /// </code>
-    /// <para>Returns access and refresh tokens; store refresh securely. Access token is short-lived; use <c>POST …/refresh</c> to renew.</para>
     /// </remarks>
     [AllowAnonymous]
     [HttpPost("login")]
@@ -57,19 +39,17 @@ public class AuthController(IUserService userService) : ControllerBase
             return this.UnauthorizedProblem(result.ErrorMessage);
 
         AuthTokensResult tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
-        return Ok(new
-        {
-            success = true,
-            userId = result.UserId,
-            accessToken = tokens.AccessToken,
-            tokenType = "Bearer",
-            expiresAt = tokens.AccessTokenExpiresAtUtc,
-            refreshToken = tokens.RefreshToken,
-            refreshTokenExpiresAt = tokens.RefreshTokenExpiresAtUtc
-        });
+        LoginResponse body = new(
+            Success: true,
+            UserId: result.UserId!.Value,
+            AccessToken: tokens.AccessToken,
+            TokenType: "Bearer",
+            ExpiresAt: tokens.AccessTokenExpiresAtUtc,
+            RefreshToken: tokens.RefreshToken,
+            RefreshTokenExpiresAt: tokens.RefreshTokenExpiresAtUtc);
+        return Ok(body);
     }
 
-    /// <summary>Exchange a valid refresh token for a new access + refresh pair (rotation).</summary>
     [AllowAnonymous]
     [HttpPost("refresh")]
     [EnableRateLimiting("AuthRefreshPolicy")]
@@ -87,21 +67,17 @@ public class AuthController(IUserService userService) : ControllerBase
         if (next is null)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
 
-        return Ok(new
-        {
-            success = true,
-            accessToken = next.AccessToken,
-            tokenType = "Bearer",
-            expiresAt = next.AccessTokenExpiresAtUtc,
-            refreshToken = next.RefreshToken,
-            refreshTokenExpiresAt = next.RefreshTokenExpiresAtUtc
-        });
+        RefreshResponse body = new(
+            Success: true,
+            AccessToken: next.AccessToken,
+            TokenType: "Bearer",
+            ExpiresAt: next.AccessTokenExpiresAtUtc,
+            RefreshToken: next.RefreshToken,
+            RefreshTokenExpiresAt: next.RefreshTokenExpiresAtUtc);
+        return Ok(body);
     }
 
-    /// <summary>
-    /// Revokes refresh token(s). With body <c>{ "refreshToken": "…" }</c> revokes that session if it belongs to the caller;
-    /// with empty body revokes all refresh tokens for the caller (logout everywhere).
-    /// </summary>
+    /// <summary>Body with <c>refreshToken</c> revokes that session; empty body revokes all refresh rows for the user.</summary>
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(
@@ -120,7 +96,7 @@ public class AuthController(IUserService userService) : ControllerBase
 
         bool ok = await authTokens.TryRevokeRefreshForUserAsync(body.RefreshToken, userId, cancellationToken).ConfigureAwait(false);
         if (!ok)
-            return this.BadRequestProblem("Invalid or expired refresh token.");
+            return this.UnauthorizedProblem("Invalid or expired refresh token.");
 
         return NoContent();
     }

@@ -1,4 +1,5 @@
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Domain.Entities;
 
@@ -19,4 +20,14 @@ public class News
     public List<Weekdays> SendOnWeekdays { get; set; } = [];
 
     public List<TimeOnly> SendAtTimes { get; set; } = [];
+
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>Materialized next digest eligibility (UTC minute boundary); query path may use JSON when unset.</summary>
+    public DateTime? NextDigestSlotUtc { get; set; }
+    public void AssignDigestSchedule(ScheduleWindow schedule)
+    {
+        ArgumentNullException.ThrowIfNull(schedule);
+        schedule.ApplyToNews(this);
+    }
 }

@@ -4,6 +4,7 @@ using Hermes.Application.Models.Email;
 using Hermes.Application.Models.News;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Scheduling;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Notifications.Sending.HtmlLayout;
@@ -14,91 +15,129 @@ using Microsoft.Extensions.Options;
 namespace Hermes.Application.Services;
 
 public sealed class NewsletterDigestService(
-    IHermesDataStore dataStore,
+    IUserStore users,
+    INewsStore news,
+    INotificationLogStore notificationLogs,
     INewsArticleProvider newsArticleProvider,
     IEmailSender emailSender,
     IOptions<NewsDataIoOptions> newsDataOptions,
+    IOptions<NewsletterOptions> newsletterOptions,
     ILogger<NewsletterDigestService> logger) : INewsletterDigestService
 {
     private const int MAX_ARTICLES_IN_NEWSLETTER = 10;
     private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
-    /// <summary>Sends one newsletter digest for a due news configuration and records the delivery result.</summary>
     public async Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
-        if(userId <= 0)
+        if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
-        if(newsId <= 0)
+        if (newsId <= 0)
             throw new ArgumentOutOfRangeException(nameof(newsId), "News ID must be positive.");
-        string? apiKey = newsDataOptions.Value.ApiKey?.Trim();
+        string? apiKey = newsDataOptions.Value.Key?.Trim();
         if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("Configure NewsDataIo:ApiKey.");
+            throw new InvalidOperationException("Configure NewsDataIo:Key.");
 
         DateTime windowStart = DateTime.SpecifyKind(digestSlotStartUtc, DateTimeKind.Utc);
         windowStart = new DateTime(windowStart.Year, windowStart.Month, windowStart.Day, windowStart.Hour, windowStart.Minute, 0, DateTimeKind.Utc);
         DateTime windowEnd = windowStart.AddMinutes(1);
 
-        bool duplicate = await dataStore
-            .ExistsSentNotificationInWindowAsync(userId, newsId, windowStart, windowEnd, cancellationToken)
-            .ConfigureAwait(false);
-        if (duplicate)
-            return;
-
-        User? user = await dataStore.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
-        if (user is null || string.IsNullOrWhiteSpace(user.Email))
-            return;
-
-        News? news = await dataStore.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
-        if (news is null)
-            return;
-
-        NewsArticleQuery? query = BuildArticleQuery(apiKey, news);
-        if (query is null)
-            return;
-
-        IReadOnlyList<NewsArticle> articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
-        string? subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", _digestCulture)}";
-        string? body = await BuildNewsletterBodyAsync(user.Name, articles, cancellationToken).ConfigureAwait(false);
-
+        bool advanceDigestSlot = false;
         try
         {
-            await emailSender.SendAsync(
-                new EmailMessage(
-                    new EmailRecipient(user.Email.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
-                    subject,
-                    body),
-                cancellationToken).ConfigureAwait(false);
+            bool duplicate = await notificationLogs
+                .ExistsSentNotificationInWindowAsync(userId, newsId, windowStart, windowEnd, cancellationToken)
+                .ConfigureAwait(false);
+            if (duplicate)
+            {
+                advanceDigestSlot = true;
+                return;
+            }
 
-            await dataStore.SetNotificationLogAsync(
-                new NotificationLog
-                {
-                    UserId = userId,
-                    NewsId = newsId,
-                    SentAt = DateTime.UtcNow,
-                    Status = NotificationStatus.Sent,
-                    Channel = DeliveryChannel.Email
-                },
-                cancellationToken).ConfigureAwait(false);
+            User? user = await users.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
+            if (user is null || string.IsNullOrWhiteSpace(user.Email))
+                return;
+
+            News? newsEntity = await news.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+            if (newsEntity is null)
+                return;
+
+            if (!newsEntity.IsEnabled)
+            {
+                advanceDigestSlot = true;
+                return;
+            }
+
+            NewsArticleQuery? query = BuildArticleQuery(apiKey, newsEntity);
+            if (query is null)
+                return;
+
+            IReadOnlyList<NewsArticle> articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
+            string? subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", _digestCulture)}";
+            string? body = await BuildNewsletterBodyAsync(user.Name, articles, cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await emailSender.SendAsync(
+                    new EmailMessage(
+                        new EmailRecipient(user.Email.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
+                        subject,
+                        body),
+                    cancellationToken).ConfigureAwait(false);
+
+                await notificationLogs.SetNotificationLogAsync(
+                    new NotificationLog
+                    {
+                        UserId = userId,
+                        NewsId = newsId,
+                        SentAt = DateTime.UtcNow,
+                        Status = NotificationStatus.Sent,
+                        Channel = DeliveryChannel.Email
+                    },
+                    cancellationToken).ConfigureAwait(false);
+                advanceDigestSlot = true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to send newsletter digest for user {UserId}, news {NewsId}.", userId, newsId);
+                await notificationLogs.SetNotificationLogAsync(
+                    new NotificationLog
+                    {
+                        UserId = userId,
+                        NewsId = newsId,
+                        SentAt = DateTime.UtcNow,
+                        Status = NotificationStatus.Failed,
+                        Channel = DeliveryChannel.Email,
+                        ErrorMessage = ex.Message
+                    },
+                    cancellationToken).ConfigureAwait(false);
+                advanceDigestSlot = true;
+                throw;
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            logger.LogError(ex, "Failed to send newsletter digest for user {UserId}, news {NewsId}.", userId, newsId);
-            await dataStore.SetNotificationLogAsync(
-                new NotificationLog
+            if (advanceDigestSlot)
+            {
+                try
                 {
-                    UserId = userId,
-                    NewsId = newsId,
-                    SentAt = DateTime.UtcNow,
-                    Status = NotificationStatus.Failed,
-                    Channel = DeliveryChannel.Email,
-                    ErrorMessage = ex.Message
-                },
-                cancellationToken).ConfigureAwait(false);
-            throw;
+                    TimeZoneInfo zone = NewsletterSchedulingClock.ResolveTimeZone(
+                        newsletterOptions.Value.TimeZoneId);
+                    await news
+                        .AdvanceNextDigestSlotAsync(newsId, userId, zone, windowEnd, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(
+                        ex,
+                        "Failed to advance NextDigestSlotUtc for news {NewsId}, user {UserId}.",
+                        newsId,
+                        userId);
+                }
+            }
         }
     }
 
-    /// <summary>Builds a provider query from persisted news filters; returns <c>null</c> when no usable filter exists.</summary>
     private static NewsArticleQuery? BuildArticleQuery(string apiKey, News news)
     {
         List<string>? countries = news.Countries is { Count: > 0 }
@@ -132,7 +171,6 @@ public sealed class NewsletterDigestService(
         };
     }
 
-    /// <summary>Builds the newsletter HTML body for the selected article set.</summary>
     private static async Task<string> BuildNewsletterBodyAsync(
         string? userDisplayName,
         IReadOnlyList<NewsArticle> articles,
@@ -177,7 +215,6 @@ public sealed class NewsletterDigestService(
         return await NewsletterHtmlComposer.BuildAsync(header, itemModels, footer, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Truncates plain text to a maximum length and appends a suffix when shortened.</summary>
     private static string TruncatePlainText(string? value, int maxLength, string suffix = "...")
     {
         if (string.IsNullOrEmpty(value))

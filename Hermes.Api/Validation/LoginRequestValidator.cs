@@ -1,11 +1,10 @@
 using FluentValidation;
-using Hermes.Application.Models;
+using Hermes.Application.Models.Login;
 
 namespace Hermes.Api.Validation;
 
 public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
-    /// <summary>Initializes validation rules for login requests.</summary>
     public LoginRequestValidator()
     {
         RuleFor(loginRequest => loginRequest.NameOrEmail).NotEmpty();

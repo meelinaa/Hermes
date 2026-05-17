@@ -14,7 +14,7 @@ public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesD
     {
         string connectionString = ResolveConnectionString();
 
-        MySqlServerVersion serverVersion = new(new Version(8, 0, 36));
+        ServerVersion serverVersion = HermesMySqlServerVersions.PinnedMysql84;
 
         DbContextOptionsBuilder<HermesDbContext> optionsBuilder = new();
         optionsBuilder.UseMySql(connectionString, serverVersion);

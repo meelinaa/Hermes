@@ -8,12 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Hermes.Application.Security;
 
-/// <summary>
-/// Builds short-lived JWT access tokens signed with HMAC-SHA256 (symmetric key from <see cref="JwtOptions"/>).
-/// </summary>
 public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
 {
-    /// <summary>Creates and signs a JWT access token for the specified user identity data.</summary>
     public JwtAccessTokenResult Issue(int userId, string? email, string? name)
     {
         if(userId <= 0)

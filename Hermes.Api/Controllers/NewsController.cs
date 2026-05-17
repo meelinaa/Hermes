@@ -1,52 +1,137 @@
 using FluentValidation;
 using FluentValidation.Results;
+using Hermes.Api.Authorization;
 using Hermes.Api.Http;
+using Hermes.Api.Mapping;
 using Hermes.Api.Validation;
+using Hermes.Application.Models.News;
+using Hermes.Application.Options;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
-using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Enums;
 using Hermes.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace Hermes.Api.Controllers;
 
-/// <summary>News under <c>api/v1/users/news/…</c>; resource ids in the path for safe GET/DELETE where applicable.</summary>
 [Authorize]
 [ApiController]
-[Route("api/v1/users/news")]
+[Route("api/v1/users")]
 public class NewsController(
     INewsService newsService,
-    INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger) : ControllerBase
+    INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger,
+    IOptions<PaginationOptions> paginationOptions) : ControllerBase
 {
-    /// <summary>Returns all news entries for the authenticated user.</summary>
-    /// <remarks><b>GET</b> <c>api/v1/users/news/{userId}/list</c> — no body.</remarks>
-    [HttpGet("{userId}/list")]
-    public async Task<ActionResult<List<News>>> GetNewsList(int userId, CancellationToken cancellationToken)
+    /// <summary>List: <c>afterId</c> cursor only with ascending <c>sort</c> (not with <c>-id</c>).</summary>
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [HttpGet("{userId:int}/news")]
+    public async Task<ActionResult<PagedNewsListResponse>> GetNewsList(
+        int userId,
+        [FromQuery] int page = 1,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] int? afterId = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? q = null,
+        [FromQuery] NewsCategory? category = null,
+        CancellationToken cancellationToken = default)
     {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
+        PaginationOptions po = paginationOptions.Value;
+        int size = pageSize ?? po.DefaultPageSize;
+        if (size < 1)
+        {
+            ModelState.AddModelError(nameof(pageSize), "Page size must be at least 1.");
+            return ValidationProblem(ModelState);
+        }
 
-        List<News> list = await newsService.GetAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
-        return Ok(list);
-    }
+        if (size > po.MaxPageSize)
+            size = po.MaxPageSize;
 
-    /// <summary>Returns a single news entry by user and news identifier.</summary>
-    /// <remarks>
-    /// <b>GET</b> <c>api/v1/users/news/userId={userId}/newsId={newsId}</c> — no body.
-    /// Uses composite path segments (literal + value) so ids are named in the URL; e.g. <c>…/userId=1/newsId=5</c>.
-    /// </remarks>
-    [HttpGet("userId={userId:int}/newsId={newsId:int}")]
-    public async Task<ActionResult<News>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
-    {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
+        if (page < 1)
+        {
+            ModelState.AddModelError(nameof(page), "Page must be at least 1.");
+            return ValidationProblem(ModelState);
+        }
+
+        if (!TryParseSort(sort, out bool sortDescending, out string? sortError))
+        {
+            ModelState.AddModelError(nameof(sort), sortError ?? "Invalid sort.");
+            return ValidationProblem(ModelState);
+        }
+
+        if (afterId is not null and < 0)
+        {
+            ModelState.AddModelError(nameof(afterId), "afterId must be non-negative.");
+            return ValidationProblem(ModelState);
+        }
+
+        string? search = null;
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            search = q.Trim();
+            if (search.Length > 200)
+                search = search[..200];
+        }
+
+        int effectivePage = afterId is not null ? 1 : page;
+
+        NewsListQuery query = new(
+            userId,
+            effectivePage,
+            size,
+            afterId,
+            sortDescending,
+            search,
+            category);
 
         try
         {
+            NewsListResult result = await newsService.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
+            return Ok(new PagedNewsListResponse(
+                result.Items.Select(static n => n.ToResponse()).ToList(),
+                result.Page,
+                result.PageSize,
+                result.TotalCount,
+                result.TotalPages,
+                result.HasNextPage,
+                result.NextAfterId));
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return ValidationProblem(ModelState);
+        }
+    }
+
+    private static bool TryParseSort(string? sort, out bool sortDescending, out string? error)
+    {
+        sortDescending = false;
+        error = null;
+        if (string.IsNullOrWhiteSpace(sort))
+            return true;
+        if (sort.Equals("id", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (sort.Equals("-id", StringComparison.OrdinalIgnoreCase))
+        {
+            sortDescending = true;
+            return true;
+        }
+
+        error = "Use 'id' (ascending) or '-id' (descending).";
+        return false;
+    }
+
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [HttpGet("{userId:int}/news/{newsId:int}")]
+    public async Task<ActionResult<NewsResponse>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
+    {
+        try
+        {
             News? news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
-            return news is null ? this.NotFoundProblem() : Ok(news);
+            return news is null ? this.NotFoundProblem() : Ok(news.ToResponse());
         }
         catch (NewsNotFoundException)
         {
@@ -54,71 +139,81 @@ public class NewsController(
         }
     }
 
-    /// <summary>Create news for <paramref name="userId"/>.</summary>
-    /// <remarks>
-    /// <b>POST</b> <c>api/v1/users/news</c> — Body (<c>userId</c> &gt; 0). Enum fields use underlying integer values (see <see cref="Hermes.Domain.Enums"/>).
-    /// </remarks>
-    [HttpPost]
-    public async Task<ActionResult<NewsScope>> SetNews([FromBody] News news, CancellationToken cancellationToken)
-    {
-        if (!this.TryGetCurrentUserId(out int currentUserId))
-            return this.UnauthorizedProblem("Missing or invalid user identity in token.");
-
-        if (news.UserId <= 0)
-            news.UserId = currentUserId;
-        else if (news.UserId != currentUserId)
-            return this.ForbiddenProblem("Body userId must match the authenticated user (or omit/zero to use your account).");
-
-        int newsId = await newsService.SetNewsAsync(news, cancellationToken).ConfigureAwait(false);
-        newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
-        NewsScope scope = new() { UserId = news.UserId, NewsId = newsId };
-        return Ok(scope);
-    }
-
-    /// <summary>Update news; <c>id</c> required.</summary>
-    [HttpPut]
-    public async Task<ActionResult> UpdateNews(
-        [FromBody] News news,
-        [FromServices] IValidator<News> validator,
+    /// <remarks><b>POST</b> <c>/api/v1/users/news</c>: body omits <c>userId</c> (from JWT).</remarks>
+    [EnableRateLimiting("SensitiveWritePolicy")]
+    [HttpPost("news")]
+    public async Task<ActionResult<CreateNewsResponse>> SetNews(
+        [FromBody] CreateNewsRequest request,
         CancellationToken cancellationToken)
     {
         if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
-        if (news.UserId <= 0)
-            news.UserId = currentUserId;
-        else if (news.UserId != currentUserId)
-            return this.ForbiddenProblem("Body userId must match the authenticated user (or omit/zero to use your account).");
+        News entity = request.ToEntity(currentUserId);
+        try
+        {
+            int newsId = await newsService.SetNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+            newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
+            return Ok(new CreateNewsResponse(currentUserId, newsId));
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return ValidationProblem(ModelState);
+        }
+    }
 
-        ValidationResult fv = await validator.ValidateAsync(news, cancellationToken).ConfigureAwait(false);
+    [EnableRateLimiting("SensitiveWritePolicy")]
+    [HttpPut("news")]
+    public async Task<ActionResult> UpdateNews(
+        [FromBody] UpdateNewsRequest request,
+        [FromServices] IValidator<UpdateNewsRequest> validator,
+        CancellationToken cancellationToken)
+    {
+        if (!this.TryGetCurrentUserId(out int currentUserId))
+            return this.UnauthorizedProblem("Missing or invalid user identity in token.");
+
+        ValidationResult fv = await validator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
-        await newsService.UpdateNewsAsync(news, cancellationToken).ConfigureAwait(false);
+        News? existing = await newsService.FindNewsByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        if (existing is null)
+            return this.NotFoundProblem();
+
+        News entity = request.ToEntity(currentUserId, existing);
+        try
+        {
+            await newsService.UpdateNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+        }
+        catch (NewsAccessDeniedException)
+        {
+            return Problem(title: "News access denied.", statusCode: StatusCodes.Status403Forbidden);
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return ValidationProblem(ModelState);
+        }
+
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         return Ok();
     }
 
-    /// <summary>Delete all news rows for this user. No body.</summary>
-    [HttpDelete("userId={userId:int}/delete/all")]
-    public async Task<ActionResult<object>> DeleteAllNews(int userId, CancellationToken cancellationToken)
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [EnableRateLimiting("SensitiveWritePolicy")]
+    [HttpDelete("{userId:int}/news/all")]
+    public async Task<ActionResult<DeleteAllNewsResponse>> DeleteAllNews(int userId, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
-
         int deleted = await newsService.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
-        return Ok(new { deleted });
+        return Ok(new DeleteAllNewsResponse(deleted));
     }
 
-    /// <remarks>
-    /// <b>DELETE</b> <c>api/v1/users/news/userId={userId}/newsId={newsId}</c> — no body (same path shape as <see cref="GetNewsById"/>).
-    /// </remarks>
-    [HttpDelete("userId={userId:int}/newsId={newsId:int}")]
+    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [EnableRateLimiting("SensitiveWritePolicy")]
+    [HttpDelete("{userId:int}/news/{newsId:int}")]
     public async Task<ActionResult> DeleteNews(int userId, int newsId, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(userId) is { } denied)
-            return denied;
-
         News? deleteNews;
         try
         {

@@ -8,38 +8,39 @@ using Hermes.Application.Scheduling;
 using Hermes.Application.Security;
 using Hermes.Application.Services;
 using Hermes.Application.Ports;
-using Hermes.Domain.Interfaces.Services;
 using Hermes.Infrastructure.Data;
+using Hermes.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+using Serilog.Enrichers.Span;
 using Serilog;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 
 namespace Hermes.Api.Hosting;
 
-/// <summary>
-/// Registers all API dependencies: database, application services, OpenAPI, CORS, health checks, and request timeouts.
-/// </summary>
 public static class ApiServiceCollectionExtensions
 {
-    /// <summary>
-    /// Adds Hermes API services to the DI container.
-    /// </summary>
-    /// <param name="services">The application service collection.</param>
-    /// <param name="configuration">Application configuration (appsettings, environment variables).</param>
-    public static void AddHermesApiServices(this IServiceCollection services, IConfiguration configuration)
+    public static void AddHermesApiServices(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         string? connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? configuration["CONNECTION_STRING"]
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
 
+        ServerVersion serverVersion = string.Equals(environment.EnvironmentName, "Testing", StringComparison.OrdinalIgnoreCase)
+            ? HermesMySqlServerVersions.PinnedMysql84
+            : ServerVersion.AutoDetect(connectionString);
+
         services.AddDbContext<HermesDbContext>(options =>
-            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
-        services.AddScoped<IHermesDataStore>(sp => sp.GetRequiredService<HermesDbContext>());
+            options.UseMySql(connectionString, serverVersion));
+        services.AddScoped<IUserStore, UserStore>();
+        services.AddScoped<INewsStore, NewsStore>();
+        services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
+        services.AddScoped<INotificationLogStore, NotificationLogStore>();
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();
@@ -47,6 +48,10 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<INewsService, NewsService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
         services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
+        services.Configure<PaginationOptions>(configuration.GetSection(PaginationOptions.SECTION_NAME));
+        services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SectionName));
+        services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
+        services.AddHttpContextAccessor();
         services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
 
@@ -61,12 +66,16 @@ public static class ApiServiceCollectionExtensions
             });
         services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
         services.AddHermesJwtAuthentication(configuration);
-        services.AddOpenApi();
+        services.AddHermesOpenApiDocument(configuration);
         Log.Information("Added controllers, JWT authentication, FluentValidation, and OpenAPI services");
 
         services.AddProblemDetails();
 
-        string[]? allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"];
+        string[] allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                                  ?? ["http://localhost:5269", "https://localhost:7016"];
+
+        EnsureProductionAllowedOrigins(allowedOrigins, environment);
+
         services.AddCors(options =>
         {
             options.AddPolicy("FrontendPolicy", policy =>
@@ -133,17 +142,66 @@ public static class ApiServiceCollectionExtensions
 
                 options.AddPolicy("AuthRefreshPolicy", httpContext =>
                     CreateAuthPartition(httpContext, permitLimit: 30, window: TimeSpan.FromMinutes(1)));
-                return;
-            }
 
-            options.AddPolicy("AuthLoginPolicy", _ => RateLimitPartition.GetNoLimiter("testing-login"));
-            options.AddPolicy("AuthRefreshPolicy", _ => RateLimitPartition.GetNoLimiter("testing-refresh"));
+                options.AddPolicy("VerifyCodePolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 10, window: TimeSpan.FromMinutes(1)));
+
+                options.AddPolicy("VerifyMailPolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 8, window: TimeSpan.FromMinutes(1)));
+
+                options.AddPolicy("SensitiveWritePolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 120, window: TimeSpan.FromMinutes(1)));
+            }
+            else
+            {
+                foreach (string policyName in new[]
+                         {
+                             "AuthLoginPolicy", "AuthRefreshPolicy", "VerifyCodePolicy", "VerifyMailPolicy", "SensitiveWritePolicy",
+                         })
+                {
+                    options.AddPolicy(policyName, _ => RateLimitPartition.GetNoLimiter("testing-" + policyName));
+                }
+            }
         });
     }
 
-    /// <summary>
-    /// Builds a fixed-window rate-limiter partition key from caller identity attributes and creates the limiter policy.
-    /// </summary>
+    private static void EnsureProductionAllowedOrigins(string[] origins, IHostEnvironment environment)
+    {
+        if (!environment.IsProduction())
+            return;
+
+        if (origins.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Cors:AllowedOrigins must contain at least one origin in Production. Wildcards are not allowed.");
+        }
+
+        foreach (string origin in origins)
+        {
+            if (string.IsNullOrWhiteSpace(origin))
+                throw new InvalidOperationException("Cors:AllowedOrigins cannot contain blank entries.");
+
+            string trimmed = origin.Trim();
+            if (trimmed is "*" || trimmed.Contains('*', StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Cors:AllowedOrigins must list explicit HTTPS (or localhost HTTP) origins in Production; wildcards are not permitted.");
+            }
+
+            if (!Uri.TryCreate(trimmed, UriKind.Absolute, out Uri? uri))
+            {
+                throw new InvalidOperationException(
+                    $"Cors:AllowedOrigins value '{trimmed}' is not a valid absolute URI.");
+            }
+
+            if (uri.Scheme != Uri.UriSchemeHttps && !(uri.Scheme == Uri.UriSchemeHttp && string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException(
+                    $"Cors:AllowedOrigins in Production expects https origins (http is only permitted for localhost). Got: '{trimmed}'.");
+            }
+        }
+    }
+
     private static RateLimitPartition<string> CreateAuthPartition(HttpContext httpContext, int permitLimit, TimeSpan window)
     {
         string? ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
@@ -164,9 +222,6 @@ public static class ApiServiceCollectionExtensions
             });
     }
 
-    /// <summary>
-    /// Creates Hangfire storage backed by MySQL using the configured connection string.
-    /// </summary>
     private static JobStorage CreateHangfireJobStorage(IConfiguration configuration)
     {
         string connectionString = configuration.GetConnectionString("DefaultConnection")
@@ -182,14 +237,12 @@ public static class ApiServiceCollectionExtensions
         });
     }
 
-    /// <summary>
-    /// Configures Serilog as the sole logging provider, reading sinks and levels from configuration (e.g. appsettings.json).
-    /// </summary>
     public static void UseHermesSerilog(this IHostBuilder hostBuilder)
     {
         hostBuilder.UseSerilog((context, _, configuration) => configuration
             .ReadFrom.Configuration(context.Configuration)
             .Enrich.FromLogContext()
+            .Enrich.WithSpan()
             .Enrich.WithProperty("Application", "Hermes.Api"));
     }
 }

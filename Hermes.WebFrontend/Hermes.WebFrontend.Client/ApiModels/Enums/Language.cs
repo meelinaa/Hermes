@@ -1,0 +1,114 @@
+﻿namespace Hermes.WebFrontend.Client.ApiModels.Enums;
+
+
+/// <summary>
+/// Natural languages (identifiers in English). Each member has an ISO 639-1 code via <see cref="LanguageIsoCodeAttribute"/>.
+/// </summary>
+public enum Language
+{
+    Albanian,
+
+    Arabic,
+
+    Armenian,
+
+    Azerbaijani,
+
+    Basque,
+
+    Belarusian,
+
+    Bengali,
+
+    Bosnian,
+
+    Bulgarian,
+
+    Catalan,
+
+    Chinese,
+
+    Croatian,
+
+    Czech,
+
+    Danish,
+
+    Dutch,
+
+    English,
+
+    Estonian,
+
+    Finnish,
+
+    French,
+
+    Galician,
+
+    German,
+
+    Greek,
+
+    Hebrew,
+
+    Hindi,
+
+    Hungarian,
+
+    Icelandic,
+
+    Indonesian,
+
+    Irish,
+
+    Italian,
+
+    Japanese,
+
+    Korean,
+
+    Latvian,
+
+    Lithuanian,
+
+    Macedonian,
+
+    Maltese,
+
+    Malay,
+
+    Norwegian,
+
+    Persian,
+
+    Polish,
+
+    Portuguese,
+
+    Romanian,
+
+    Russian,
+
+    Serbian,
+
+    Slovak,
+
+    Slovenian,
+
+    Spanish,
+
+    Swedish,
+
+    Thai,
+
+    Turkish,
+
+    Ukrainian,
+
+    Urdu,
+
+    Vietnamese,
+
+    Welsh
+}
