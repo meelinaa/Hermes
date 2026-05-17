@@ -1,8 +1,8 @@
 # Hermes.Worker
 
-**Hermes.Worker** is a **.NET Worker Service** that runs the **scheduled newsletter pipeline** for Hermes: it wakes up on a timer, finds user **news digest profiles** that are due, fetches articles from **NewsData.io**, composes **HTML email** via `Hermes.Notifications`, sends through **SMTP**, and records results in the database (`NotificationLog` and related persistence through `Hermes.Infrastructure`).
+**Hermes.Worker** is a **.NET Worker Service** for Hermes’s **scheduled newsletter pipeline**: on each Hangfire run it picks **due digest profiles**, fetches **NewsData.io** articles via **`Hermes.Infrastructure`**, composes HTML with **`Hermes.Notifications`**, sends via **SMTP**, and persists results (**`NotificationLog`**, etc.) like the API.
 
-The API (`Hermes.Api`) and the Blazor frontend manage **who** you are, **what** digest profiles you want, **profile and password updates** (current-password checks; API may return a typed `ProblemDetails` **`type`** when the current password is wrong), and **e-mail verification** orchestration; the worker is the **always-on backend process** that actually performs **time-based newsletter delivery**. It is **not** a browser service worker, because it has access to the database, API keys, and mail configuration server-side. Verification **e-mails** use the same mail composition/SMTP stack as digests where applicable; the verification **HTTP** API lives on the API host (see [`Hermes.Api/README.md`](../Hermes.Api/README.md)).
+**Hermes.Api** and the Blazor UI own **users, profiles, and verification over HTTP**; this project is the **server-side, always-on host** for **time-based mail delivery** (DB, keys, SMTP)—**not** a browser service worker. Verification **e-mails** can use the same SMTP/composition stack as digests; the verification **API** stays on **`Hermes.Api`**.
 
 ---
 

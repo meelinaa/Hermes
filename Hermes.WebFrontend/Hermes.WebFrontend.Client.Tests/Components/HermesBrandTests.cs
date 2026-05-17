@@ -1,4 +1,5 @@
 using Bunit;
+using Hermes.WebFrontend.Client.Components;
 using Xunit;
 
 namespace Hermes.WebFrontend.Client.Tests.Components;
