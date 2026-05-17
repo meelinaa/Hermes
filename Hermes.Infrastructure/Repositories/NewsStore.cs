@@ -248,6 +248,17 @@ public sealed class NewsStore(HermesDbContext db) : INewsStore
     }
 
     /// <inheritdoc />
+    public async Task<News?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        if (id <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id, "News id must be greater than zero.");
+
+        return await db.News.AsNoTracking()
+            .FirstOrDefaultAsync(newsEntity => newsEntity.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)

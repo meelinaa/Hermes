@@ -53,6 +53,13 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
         return await db.GetNewsByIdAsync(userId, id, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<News?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        if (id <= 0)
+            throw new ArgumentException("News id must be greater than zero.", nameof(id));
+        return await db.FindNewsByIdAsync(id, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<NewsListResult> GetNewsListAsync(NewsListQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);

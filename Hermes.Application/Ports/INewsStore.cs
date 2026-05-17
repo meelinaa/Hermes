@@ -29,5 +29,8 @@ public interface INewsStore
         CancellationToken cancellationToken = default);
 
     Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default);
+
+    Task<News?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default);
+
     Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
 }

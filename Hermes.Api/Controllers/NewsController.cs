@@ -177,16 +177,7 @@ public class NewsController(
         if (!fv.IsValid)
             return fv.ToValidationProblem(this);
 
-        News? existing;
-        try
-        {
-            existing = await newsService.GetNewsByIdAsync(currentUserId, request.Id, cancellationToken).ConfigureAwait(false);
-        }
-        catch (NewsNotFoundException)
-        {
-            return this.NotFoundProblem();
-        }
-
+        News? existing = await newsService.FindNewsByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
         if (existing is null)
             return this.NotFoundProblem();
 
