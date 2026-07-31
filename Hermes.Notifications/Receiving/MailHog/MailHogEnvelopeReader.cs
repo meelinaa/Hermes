@@ -4,7 +4,7 @@ namespace Hermes.Notifications.Receiving.MailHog;
 
 internal sealed class MailHogEnvelopeReader
 {
-    public IReadOnlyList<MailHogMessageDto> GetMessages(MailHogMessagesEnvelope? envelope)
+    public IReadOnlyList<MailHogMessageDto> GetMessages(MailHogMessagesEnvelopeDto? envelope)
     {
         if (envelope is null)
         {

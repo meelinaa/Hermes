@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Http;
 
-public static class ApiProblemResults
+public static class ApiProblemResultExtensions
 {
     private const string RFC_7231 = "https://tools.ietf.org/html/rfc7231";
 
@@ -40,5 +40,5 @@ public static class ApiProblemResults
             detail: detail,
             statusCode: StatusCodes.Status400BadRequest,
             title: "Aktuelles Passwort ungültig",
-            type: HermesProblemTypes.WRONG_CURRENT_PASSWORD);
+            type: HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD);
 }

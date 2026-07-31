@@ -34,7 +34,7 @@ public static class ApiServiceCollectionExtensions
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
 
         ServerVersion serverVersion = string.Equals(environment.EnvironmentName, "Testing", StringComparison.OrdinalIgnoreCase)
-            ? HermesMySqlServerVersions.PinnedMysql84
+            ? HermesMySqlServerVersionConstants.PinnedMysql84
             : ServerVersion.AutoDetect(connectionString);
 
         services.AddDbContext<HermesDbContext>(options =>

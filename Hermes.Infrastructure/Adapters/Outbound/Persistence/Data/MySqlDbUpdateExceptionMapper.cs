@@ -7,7 +7,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 /// <summary>
 /// Maps common MySQL error numbers from EF <see cref="DbUpdateException"/> into domain failures.
 /// </summary>
-internal static class MySqlDbUpdateExceptionTranslator
+internal static class MySqlDbUpdateExceptionMapper
 {
     /// <summary>
     /// When the inner failure is a known MySQL code, throws a domain exception; otherwise rethrows <paramref name="ex"/>.

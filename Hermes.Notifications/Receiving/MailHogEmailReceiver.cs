@@ -42,7 +42,7 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
 
         response.EnsureSuccessStatusCode();
 
-        MailHogMessagesEnvelope? envelope = await response.Content.ReadFromJsonAsync<MailHogMessagesEnvelope>(_jsonOptions, cancellationToken)
+        MailHogMessagesEnvelopeDto? envelope = await response.Content.ReadFromJsonAsync<MailHogMessagesEnvelopeDto>(_jsonOptions, cancellationToken)
             .ConfigureAwait(false);
 
         IReadOnlyList<MailHogMessageDto> items = _envelopeReader.GetMessages(envelope);
@@ -67,7 +67,7 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
 
             response.EnsureSuccessStatusCode();
 
-            MailHogMessagesEnvelope? envelope = await response.Content.ReadFromJsonAsync<MailHogMessagesEnvelope>(_jsonOptions, cancellationToken)
+            MailHogMessagesEnvelopeDto? envelope = await response.Content.ReadFromJsonAsync<MailHogMessagesEnvelopeDto>(_jsonOptions, cancellationToken)
                 .ConfigureAwait(false);
 
             IReadOnlyList<MailHogMessageDto> items = _envelopeReader.GetMessages(envelope);

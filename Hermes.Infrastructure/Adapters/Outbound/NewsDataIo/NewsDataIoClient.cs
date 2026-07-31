@@ -12,7 +12,7 @@ public sealed class NewsDataIoClient(HttpClient httpClient) : INewsArticleProvid
     public async Task<IReadOnlyList<NewsArticle>> GetLatestAsync(NewsArticleQueryDto query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-        ApiUrlParts urlParts = new()
+        ApiUrlPartsDto urlParts = new()
         {
             ApiKey = query.ApiKey,
             Countries = query.Countries,

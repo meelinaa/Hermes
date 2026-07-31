@@ -108,7 +108,7 @@ public static class ApiApplicationPipelineExtensions
                         HttpContext = context,
                         ProblemDetails = new ProblemDetails
                         {
-                            Type = HermesProblemTypes.WRONG_CURRENT_PASSWORD,
+                            Type = HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD,
                             Title = "Aktuelles Passwort ungültig",
                             Detail = wcp.Message,
                             Status = StatusCodes.Status400BadRequest

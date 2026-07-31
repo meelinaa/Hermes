@@ -16,12 +16,12 @@ public sealed class AuthTokenService(
 {
     private readonly JwtOptions _o = options.Value;
 
-    public async Task<AuthTokensResult> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
+    public async Task<AuthTokensResultDto> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
         if(userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
-        JwtAccessTokenResult access = jwt.Issue(userId, email, name);
+        JwtAccessTokenResultDto access = jwt.Issue(userId, email, name);
         string? plain = CreateRefreshPlain();
         RefreshToken row = new()
         {
@@ -31,14 +31,14 @@ public sealed class AuthTokenService(
             CreatedAt = DateTime.UtcNow,
         };
         await db.AddRefreshTokenAsync(row, cancellationToken).ConfigureAwait(false);
-        return new AuthTokensResult(
+        return new AuthTokensResultDto(
             access.Token,
             access.ExpiresAtUtc,
             plain,
             new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero));
     }
 
-    public async Task<AuthTokensResult?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
+    public async Task<AuthTokensResultDto?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return null;
@@ -68,8 +68,8 @@ public sealed class AuthTokenService(
         if (!rotated)
             return null;
 
-        JwtAccessTokenResult access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
-        return new AuthTokensResult(
+        JwtAccessTokenResultDto access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
+        return new AuthTokensResultDto(
             access.Token,
             access.ExpiresAtUtc,
             newPlain,

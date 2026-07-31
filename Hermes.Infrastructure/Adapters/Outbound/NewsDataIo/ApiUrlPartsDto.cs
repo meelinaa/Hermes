@@ -1,6 +1,6 @@
 namespace Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
 
-public sealed class ApiUrlParts
+public sealed class ApiUrlPartsDto
 {
     public string? ApiKey { get; set; }
     public IEnumerable<string>? Countries { get; set; }

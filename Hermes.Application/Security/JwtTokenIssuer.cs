@@ -10,7 +10,7 @@ namespace Hermes.Application.Security;
 
 public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
 {
-    public JwtAccessTokenResult Issue(int userId, string? email, string? name)
+    public JwtAccessTokenResultDto Issue(int userId, string? email, string? name)
     {
         if(userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
@@ -44,6 +44,6 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssu
             signingCredentials: creds);
 
         string? jwt = new JwtSecurityTokenHandler().WriteToken(token);
-        return new JwtAccessTokenResult(jwt, new DateTimeOffset(expires, TimeSpan.Zero));
+        return new JwtAccessTokenResultDto(jwt, new DateTimeOffset(expires, TimeSpan.Zero));
     }
 }

@@ -1,6 +1,6 @@
 namespace Hermes.Application.Security;
 
-public sealed record AuthTokensResult(
+public sealed record AuthTokensResultDto(
     string AccessToken,
     DateTimeOffset AccessTokenExpiresAtUtc,
     string RefreshToken,

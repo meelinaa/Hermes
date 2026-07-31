@@ -140,7 +140,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         }
         catch (DbUpdateException ex)
         {
-            throw MySqlDbUpdateExceptionTranslator.Transform(ex);
+            throw MySqlDbUpdateExceptionMapper.Transform(ex);
         }
     }
 }

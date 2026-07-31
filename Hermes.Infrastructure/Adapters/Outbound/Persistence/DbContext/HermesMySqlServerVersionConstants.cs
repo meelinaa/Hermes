@@ -16,7 +16,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 
 /// <remarks>Aligned with Docker <c>mysql:8.4</c> in <c>Hermes.IntegrationTests</c> and sufficient for Pomelo generation against MySQL 8.x.</remarks>
 
-public static class HermesMySqlServerVersions
+public static class HermesMySqlServerVersionConstants
 
 {
 

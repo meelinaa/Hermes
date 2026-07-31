@@ -28,7 +28,7 @@ public sealed class AuthTokenServiceTests
         Mock<IRefreshTokenRepository> db = new();
         Mock<IJwtTokenIssuer> jwt = new();
         jwt.Setup(tokenIssuer => tokenIssuer.Issue(3, "a@test.example", "Alice"))
-            .Returns(new JwtAccessTokenResult("access-jwt", DateTimeOffset.UtcNow.AddMinutes(30)));
+            .Returns(new JwtAccessTokenResultDto("access-jwt", DateTimeOffset.UtcNow.AddMinutes(30)));
 
         RefreshToken? captured = null;
         db.Setup(dataStore => dataStore.AddRefreshTokenAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
@@ -36,7 +36,7 @@ public sealed class AuthTokenServiceTests
             .Returns(Task.CompletedTask);
 
         AuthTokenService sut = CreateSut(db, jwt);
-        AuthTokensResult result = await sut.IssueTokensAsync(3, "a@test.example", "Alice");
+        AuthTokensResultDto result = await sut.IssueTokensAsync(3, "a@test.example", "Alice");
         Assert.Equal("access-jwt", result.AccessToken);
         Assert.False(string.IsNullOrEmpty(result.RefreshToken));
         Assert.NotNull(captured);
@@ -75,7 +75,7 @@ public sealed class AuthTokenServiceTests
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((RefreshToken?)null);
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenIssuer>());
-        AuthTokensResult? result = await sut.RotateAsync("orphan-plain");
+        AuthTokensResultDto? result = await sut.RotateAsync("orphan-plain");
         Assert.Null(result);
         db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -121,10 +121,10 @@ public sealed class AuthTokenServiceTests
 
         Mock<IJwtTokenIssuer> jwt = new();
         jwt.Setup(tokenIssuer => tokenIssuer.Issue(7, "u@example.org", "Uwe"))
-            .Returns(new JwtAccessTokenResult("new-access", DateTimeOffset.UtcNow.AddMinutes(20)));
+            .Returns(new JwtAccessTokenResultDto("new-access", DateTimeOffset.UtcNow.AddMinutes(20)));
 
         AuthTokenService sut = CreateSut(db, jwt);
-        AuthTokensResult? result = await sut.RotateAsync(plainOld);
+        AuthTokensResultDto? result = await sut.RotateAsync(plainOld);
         Assert.NotNull(result);
         Assert.Equal("new-access", result!.AccessToken);
         Assert.False(string.IsNullOrEmpty(result.RefreshToken));
@@ -194,7 +194,7 @@ public sealed class AuthTokenServiceTests
         Mock<IJwtTokenIssuer> jwt = new();
 
         AuthTokenService sut = CreateSut(db, jwt, logger);
-        AuthTokensResult? result = await sut.RotateAsync(plainOld);
+        AuthTokensResultDto? result = await sut.RotateAsync(plainOld);
         Assert.Null(result);
         db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
         db.Verify(dataStore => dataStore.RevokeTokenFamilyAsync(oldRow, It.IsAny<CancellationToken>()), Times.Once);

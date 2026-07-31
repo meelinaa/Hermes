@@ -36,7 +36,7 @@ public class AuthController(IUserService userService) : ControllerBase
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
 
-        AuthTokensResult tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
+        AuthTokensResultDto tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
         LoginResponseDto body = new(
             Success: true,
             UserId: result.UserId!.Value,
@@ -64,7 +64,7 @@ public class AuthController(IUserService userService) : ControllerBase
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        AuthTokensResult? next = await authTokens.RotateAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
+        AuthTokensResultDto? next = await authTokens.RotateAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
         if (next is null)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
 

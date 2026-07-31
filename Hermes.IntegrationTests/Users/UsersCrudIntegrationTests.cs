@@ -149,7 +149,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using JsonDocument doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         JsonElement root = doc.RootElement;
-        Assert.Equal(HermesProblemTypes.WRONG_CURRENT_PASSWORD, root.GetProperty("type").GetString());
+        Assert.Equal(HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD, root.GetProperty("type").GetString());
         Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
     }
 

@@ -45,7 +45,7 @@ public sealed class JwtTokenIssuerTests
         JwtOptions o = CreateValidOptions();
         JwtTokenIssuer issuer = new(Options.Create(o));
 
-        JwtAccessTokenResult result = issuer.Issue(42, "user@site.test", "  Name  ");
+        JwtAccessTokenResultDto result = issuer.Issue(42, "user@site.test", "  Name  ");
 
         JwtSecurityTokenHandler handler = new();
         ClaimsPrincipal principal = handler.ValidateToken(result.Token, CreateValidation(o, handler), out SecurityToken validatedToken);
@@ -68,7 +68,7 @@ public sealed class JwtTokenIssuerTests
         JwtOptions o = CreateValidOptions();
         JwtTokenIssuer issuer = new(Options.Create(o));
 
-        JwtAccessTokenResult result = issuer.Issue(1, null, "   ");
+        JwtAccessTokenResultDto result = issuer.Issue(1, null, "   ");
 
         JwtSecurityTokenHandler handler = new();
         ClaimsPrincipal principal = handler.ValidateToken(result.Token, CreateValidation(o, handler), out _);
@@ -84,8 +84,8 @@ public sealed class JwtTokenIssuerTests
         JwtOptions o = CreateValidOptions();
         JwtTokenIssuer issuer = new(Options.Create(o));
 
-        JwtAccessTokenResult a = issuer.Issue(1, "a@test", "A");
-        JwtAccessTokenResult b = issuer.Issue(1, "a@test", "A");
+        JwtAccessTokenResultDto a = issuer.Issue(1, "a@test", "A");
+        JwtAccessTokenResultDto b = issuer.Issue(1, "a@test", "A");
 
         Assert.NotEqual(a.Token, b.Token);
     }
@@ -98,7 +98,7 @@ public sealed class JwtTokenIssuerTests
         JwtTokenIssuer issuer = new(Options.Create(o));
         DateTime before = DateTime.UtcNow;
 
-        JwtAccessTokenResult result = issuer.Issue(1, null, null);
+        JwtAccessTokenResultDto result = issuer.Issue(1, null, null);
 
         JwtSecurityTokenHandler handler = new();
         JwtSecurityToken jwt = handler.ReadJwtToken(result.Token);

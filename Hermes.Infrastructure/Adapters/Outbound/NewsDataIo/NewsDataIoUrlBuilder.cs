@@ -8,7 +8,7 @@ public static class NewsDataIoUrlBuilder
     private const string BASE_URL = "https://newsdata.io/api/1/latest?";
 
     /// <summary>Builds a full NewsData.io request URL for the provided API parts.</summary>
-    public static string Build(ApiUrlParts parts)
+    public static string Build(ApiUrlPartsDto parts)
     {
         ArgumentNullException.ThrowIfNull(parts);
         if (string.IsNullOrWhiteSpace(parts.ApiKey))
