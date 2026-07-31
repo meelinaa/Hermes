@@ -8,9 +8,9 @@ namespace Hermes.Notifications.Sending.HtmlLayout;
 public sealed class NewsletterHtmlComposer
 {
     public static async Task<string> BuildAsync(
-        NewsletterHeaderContent header,
-        IEnumerable<NewsletterItemContent> items,
-        NewsletterFooterContent footer,
+        NewsletterHeaderContentDto header,
+        IEnumerable<NewsletterItemContentDto> items,
+        NewsletterFooterContentDto footer,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(header);
@@ -19,9 +19,9 @@ public sealed class NewsletterHtmlComposer
 
         Assembly assembly = typeof(NewsletterHtmlComposer).Assembly;
 
-        string? headerTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "NewsletterHeader.html", cancellationToken).ConfigureAwait(false);
-        string? itemTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "NewsletterItem.html", cancellationToken).ConfigureAwait(false);
-        string? footerTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "NewsletterFooter.html", cancellationToken).ConfigureAwait(false);
+        string? headerTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "NewsletterHeader.html", cancellationToken).ConfigureAwait(false);
+        string? itemTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "NewsletterItem.html", cancellationToken).ConfigureAwait(false);
+        string? footerTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "NewsletterFooter.html", cancellationToken).ConfigureAwait(false);
 
         string? headerHtml = headerTpl
             .Replace("{{HEADER}}", WebUtility.HtmlEncode(header.Header), StringComparison.Ordinal)
@@ -30,7 +30,7 @@ public sealed class NewsletterHtmlComposer
             .Replace("{{INTRO}}", WebUtility.HtmlEncode(header.Intro), StringComparison.Ordinal);
 
         StringBuilder itemsBuilder = new();
-        foreach (NewsletterItemContent item in items)
+        foreach (NewsletterItemContentDto item in items)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

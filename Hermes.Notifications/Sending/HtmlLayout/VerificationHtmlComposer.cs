@@ -7,14 +7,14 @@ namespace Hermes.Notifications.Sending.HtmlLayout;
 public class VerificationHtmlComposer
 {
     public static async Task<string> BuildAsync(
-        VerificationContent verificationContent,
+        VerificationContentDto verificationContent,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(verificationContent);
 
         Assembly assembly = typeof(VerificationHtmlComposer).Assembly;
 
-        string? verificationTpl = await FileReaderHelper.ReadEmbeddedTemplateAsync(assembly, "Verification.html", cancellationToken).ConfigureAwait(false);
+        string? verificationTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "Verification.html", cancellationToken).ConfigureAwait(false);
 
         static string Enc(string? s) => WebUtility.HtmlEncode(s ?? string.Empty);
 

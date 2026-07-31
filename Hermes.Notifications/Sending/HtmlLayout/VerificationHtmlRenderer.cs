@@ -35,7 +35,7 @@ public sealed class VerificationHtmlRenderer : IVerificationRenderer
 
         string infoFooter = $"Diese E-Mail wurde an {request.RecipientEmail} gesendet";
 
-        VerificationContent content = new(
+        VerificationContentDto content = new(
             Header: "Hermes",
             Header2: "Konto-Verifizierung",
             DateDisplay: dateDisplay,

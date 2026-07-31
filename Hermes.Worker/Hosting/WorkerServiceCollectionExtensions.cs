@@ -38,7 +38,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
         builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
-        builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailOptions(builder.Configuration));
+        builder.Services.AddSingleton(builder.Configuration.BindEmailOptions());
         builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
         builder.Services.Configure<MailHogOptions>(builder.Configuration.GetSection("MailHog"));
         builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
@@ -63,5 +63,42 @@ public static class WorkerServiceCollectionExtensions
             })));
 
         builder.Services.AddHangfireServer();
+    }
+
+    internal static EmailOptions BindEmailOptions(this IConfiguration configuration)
+    {
+        IConfigurationSection section = configuration.GetSection("Email");
+        string host = section["Host"]
+            ?? throw new InvalidOperationException("Configure Email:Host (SMTP server).");
+        string from = section["DefaultFromAddress"]
+            ?? throw new InvalidOperationException("Configure Email:DefaultFromAddress.");
+        string replyTo = section["DefaultReplyToAddress"] ?? from;
+        return new EmailOptions(
+            host,
+            section.GetValue("Port", 25),
+            section.GetValue("EnableSsl", false),
+            string.IsNullOrWhiteSpace(section["Username"]) ? null : section["Username"],
+            string.IsNullOrWhiteSpace(section["Password"]) ? null : section["Password"],
+            from,
+            section["DefaultFromName"] ?? "Hermes",
+            replyTo,
+            section["DefaultReplyToName"] ?? section["DefaultFromName"] ?? "Hermes",
+            section["XMailer"] ?? "Hermes.Worker");
+    }
+
+    public static void LogMailHogDevHints(this IHost host)
+    {
+        ILogger logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Hermes.Worker");
+        EmailOptions smtp = host.Services.GetRequiredService<EmailOptions>();
+        logger.LogInformation(
+            "SMTP: {Host}:{Port} (SSL={Ssl}), From={From} — für lokales MailHog typisch Port 1025.",
+            smtp.Host,
+            smtp.Port,
+            smtp.EnableSsl,
+            smtp.DefaultFromAddress);
+
+        MailHogOptions? mailHog = host.Services.GetService<Microsoft.Extensions.Options.IOptions<MailHogOptions>>()?.Value;
+        if (mailHog is not null && !string.IsNullOrWhiteSpace(mailHog.BaseUrl))
+            logger.LogInformation("MailHog-Web-UI: {BaseUrl}", mailHog.BaseUrl.TrimEnd('/'));
     }
 }

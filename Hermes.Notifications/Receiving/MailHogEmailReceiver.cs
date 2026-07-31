@@ -22,7 +22,7 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
 
         _httpClient = new()
         {
-            BaseAddress = MailHogApiUriHelper.CreateBaseUri(settings),
+            BaseAddress = MailHogApiUriFactory.CreateBaseUri(settings),
         };
 
         _jsonOptions = new()

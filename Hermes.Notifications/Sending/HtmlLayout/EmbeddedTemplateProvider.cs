@@ -3,7 +3,7 @@ using System.Text;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;
 
-public static class FileReaderHelper
+public static class EmbeddedTemplateProvider
 {
     public static async Task<string> ReadEmbeddedTemplateAsync(
         Assembly assembly,

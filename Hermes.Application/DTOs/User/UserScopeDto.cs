@@ -3,7 +3,7 @@ namespace Hermes.Application.DTOs.User;
 /// <summary>
 /// Internal DTO representing user summary scope.
 /// </summary>
-public class UserScope
+public class UserScopeDto
 {
     /// <summary>
     /// Gets or sets the name of the user.

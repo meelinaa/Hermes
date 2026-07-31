@@ -7,19 +7,19 @@ namespace Hermes.Application.Ports.Inbound;
 
 public interface IUserService
 {
-    Task<UserScope> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default);
+    Task<UserScopeDto> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default);
 
     Task<LoginResultDto> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default);
 
     Task UpdateUserAsync(User user, string? currentPasswordPlain = null, CancellationToken cancellationToken = default);
 
-    Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default);
+    Task DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default);
 
-    Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default);
+    Task<UserScopeDto?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default);
 
-    Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default);
+    Task<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default);
 
-    Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
 
     Task SendVerificationMailAsync(string email, CancellationToken cancellationToken);
 

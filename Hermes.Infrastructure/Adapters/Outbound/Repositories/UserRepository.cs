@@ -35,7 +35,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<UserScopeDto?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty.", nameof(name));
@@ -48,7 +48,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be empty.", nameof(email));
@@ -62,7 +62,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
@@ -143,7 +143,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default)
+    public async Task DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         if (user.UserId <= 0)
@@ -198,7 +198,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static UserScope MapToUserScope(User user) => new()
+    private static UserScopeDto MapToUserScope(User user) => new()
     {
         UserId = user.Id,
         Name = user.Name ?? string.Empty,
@@ -206,7 +206,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         IsEmailVerified = user.IsEmailVerified
     };
 
-    private static User MapToUserEntity(UserScope scope) => new()
+    private static User MapToUserEntity(UserScopeDto scope) => new()
     {
         Id = scope.UserId,
         Name = scope.Name,

@@ -38,15 +38,15 @@ public sealed class NewsletterHtmlRenderer : INewsletterRenderer
             ? $"{greeting}! Hier sind die wichtigsten Nachrichten."
             : $"{greeting}, {request.UserDisplayName}! Hier sind die wichtigsten Nachrichten.";
 
-        NewsletterHeaderContent header = new(
+        NewsletterHeaderContentDto header = new(
             Header: "HERMES",
             Header2: "Dein täglicher News-Überblick",
             DateDisplay: dateDisplay,
             Intro: intro);
 
-        List<NewsletterItemContent> items = request.Articles
+        List<NewsletterItemContentDto> items = request.Articles
             .Take(MAX_ARTICLES)
-            .Select(a => new NewsletterItemContent(
+            .Select(a => new NewsletterItemContentDto(
                 Category: a.Category,
                 Title: a.Title,
                 Content: a.Content,
@@ -54,7 +54,7 @@ public sealed class NewsletterHtmlRenderer : INewsletterRenderer
                 ImageUrl: a.ImageUrl))
             .ToList();
 
-        NewsletterFooterContent footer = new(
+        NewsletterFooterContentDto footer = new(
             InfoFooter: "Du erhältst diese E-Mail, weil du den Hermes Newsletter abonniert hast.",
             DeaboUrl: "#",
             SettingsUrl: "#");

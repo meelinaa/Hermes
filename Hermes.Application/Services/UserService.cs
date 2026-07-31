@@ -21,7 +21,7 @@ public sealed class UserService(
     IVerificationMailJobTrigger verificationMailJobTrigger,
     IOptions<SecurityOptions> securityOptions) : IUserService
 {
-    public async Task<UserScope> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<UserScopeDto> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -42,7 +42,7 @@ public sealed class UserService(
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id <= 0)
             throw new InvalidOperationException("Failed to create user.");
-        UserScope userScope = new()
+        UserScopeDto userScope = new()
         {
             Name = user.Name,
             Email = user.Email,
@@ -127,27 +127,27 @@ public sealed class UserService(
         await db.UpdateUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task DeleteUserAsync(UserScope user, CancellationToken cancellationToken = default)
+    public async Task DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         await db.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<UserScope?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<UserScopeDto?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be null or whitespace.", nameof(name));
         return await db.GetUserByNameAsync(name, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<UserScope?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             throw new ArgumentException("Id must be greater than zero.", nameof(id));
         return await db.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<UserScope?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));

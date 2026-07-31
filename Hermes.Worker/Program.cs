@@ -62,7 +62,7 @@ try
 
 
 
-    WorkerServiceCollectionHelper.LogMailHogDevHints(host);
+    host.LogMailHogDevHints();
 
 
 

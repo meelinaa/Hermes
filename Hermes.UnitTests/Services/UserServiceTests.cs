@@ -41,7 +41,7 @@ public sealed class UserServiceTests
             Email = "  Hello@Test.COM ",
             Password = "plain-secret",
         };
-        UserScope scope = await sut.RegisterUserAsync(user);
+        UserScopeDto scope = await sut.RegisterUserAsync(user);
         Assert.Equal("hello@test.com", scope.Email);
         db.Verify(dataStore => dataStore.SetUserAsync(
             It.Is<User>(registeredUser => BCrypt.Net.BCrypt.Verify("plain-secret", registeredUser.PasswordHash)),
@@ -239,13 +239,13 @@ public sealed class UserServiceTests
     [Fact]
     public async Task GetUserByNameAsync_Should_ReturnScope_FromStore()
     {
-        UserScope expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" };
+        UserScopeDto expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
 
-        UserScope? r = await sut.GetUserByNameAsync("sam");
+        UserScopeDto? r = await sut.GetUserByNameAsync("sam");
 
         Assert.Same(expected, r);
     }
@@ -260,12 +260,12 @@ public sealed class UserServiceTests
     [Fact]
     public async Task GetUserByIdAsync_Should_ReturnScope_FromStore()
     {
-        UserScope expected = new() { UserId = 3, Email = "e@e.e", Name = "E" };
+        UserScopeDto expected = new() { UserId = 3, Email = "e@e.e", Name = "E" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
-        UserScope? r = await sut.GetUserByIdAsync(3);
+        UserScopeDto? r = await sut.GetUserByIdAsync(3);
 
         Assert.Same(expected, r);
     }
@@ -273,12 +273,12 @@ public sealed class UserServiceTests
     [Fact]
     public async Task GetUserByEmailAsync_Should_ReturnScope_FromStore_WhenNormalized()
     {
-        UserScope expected = new() { UserId = 9, Email = "a@b.c", Name = "A" };
+        UserScopeDto expected = new() { UserId = 9, Email = "a@b.c", Name = "A" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByEmailAsync("a@b.c", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
-        UserScope? r = await sut.GetUserByEmailAsync("a@b.c");
+        UserScopeDto? r = await sut.GetUserByEmailAsync("a@b.c");
 
         Assert.Same(expected, r);
     }
@@ -478,7 +478,7 @@ public sealed class UserServiceTests
     public async Task DeleteUserAsync_Should_DelegateToStore_WhenScopeValid()
     {
         Mock<IUserRepository> db = new();
-        UserScope scope = new() { UserId = 1, Email = "a@b", Name = "A" };
+        UserScopeDto scope = new() { UserId = 1, Email = "a@b", Name = "A" };
         db.Setup(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);

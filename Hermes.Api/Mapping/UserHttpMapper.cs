@@ -4,7 +4,7 @@ namespace Hermes.Api.Mapping;
 
 internal static class UserHttpMapper
 {
-    public static UserResponseDto ToUserResponse(this UserScope scope) =>
+    public static UserResponseDto ToUserResponse(this UserScopeDto scope) =>
         new()
         {
             UserId = scope.UserId,

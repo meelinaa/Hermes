@@ -34,7 +34,7 @@ public class UsersController(IUserService userService) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<UserResponseDto>> SetNewUser([FromBody] RegisterUserRequestDto request, CancellationToken cancellationToken)
     {
-        UserScope userScope = await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
+        UserScopeDto userScope = await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
         return Ok(userScope.ToUserResponse());
     }
 
@@ -63,7 +63,7 @@ public class UsersController(IUserService userService) : ControllerBase
 
         await userService.UpdateUserAsync(user, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
 
-        UserScope? updated = await userService.GetUserByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? updated = await userService.GetUserByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
         return updated is null ? this.NotFoundProblem() : Ok(updated.ToUserResponse());
     }
 
@@ -78,7 +78,7 @@ public class UsersController(IUserService userService) : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteUser(int id, CancellationToken cancellationToken)
     {
-        UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (user is null)
             return this.NotFoundProblem();
 
@@ -96,7 +96,7 @@ public class UsersController(IUserService userService) : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
     {
-        UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         return user is null ? this.NotFoundProblem() : Ok(user.ToUserResponse());
     }
 
@@ -112,7 +112,7 @@ public class UsersController(IUserService userService) : ControllerBase
         if (string.IsNullOrWhiteSpace(email))
             return this.BadRequestProblem("Path segment 'email' is required.");
 
-        UserScope? user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
         if (user is null)
             return this.NotFoundProblem();
 
@@ -133,7 +133,7 @@ public class UsersController(IUserService userService) : ControllerBase
     [HttpPost("{id:int}/verify")]
     public async Task<ActionResult<SendVerificationMailResponseDto>> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
-        UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email))
             return this.NotFoundProblem();
 
@@ -161,7 +161,7 @@ public class UsersController(IUserService userService) : ControllerBase
 
         await userService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
 
-        UserScope? refreshed = await userService.GetUserByIdAsync(request.UserId, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? refreshed = await userService.GetUserByIdAsync(request.UserId, cancellationToken).ConfigureAwait(false);
         return refreshed is null ? this.NotFoundProblem() : Ok(refreshed.ToUserResponse());
     }
 

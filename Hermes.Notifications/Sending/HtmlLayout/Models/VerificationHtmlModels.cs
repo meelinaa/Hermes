@@ -1,6 +1,6 @@
 namespace Hermes.Notifications.Sending.HtmlLayout.Models;
 
-public sealed record VerificationContent(
+public sealed record VerificationContentDto(
     string Header,
     string Header2,
     string DateDisplay,
