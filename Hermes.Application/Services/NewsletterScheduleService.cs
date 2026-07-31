@@ -1,5 +1,7 @@
 using Hermes.Application.Mapping;
 using Hermes.Application.Ports;
+using Hermes.Application.Ports.Inbound;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Enums;
 
 namespace Hermes.Application.Services;

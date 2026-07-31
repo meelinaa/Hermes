@@ -1,6 +1,6 @@
 using Hermes.Application.DTOs.Email;
 
-namespace Hermes.Application.Ports;
+namespace Hermes.Application.Ports.Outbound;
 
 public interface IEmailSender
 {

@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Hermes.Domain.Entities;
-using Hermes.Infrastructure.Data;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.IntegrationTests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

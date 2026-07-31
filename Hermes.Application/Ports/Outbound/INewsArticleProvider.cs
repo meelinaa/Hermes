@@ -1,6 +1,8 @@
 using Hermes.Application.DTOs.NewsArticle;
 
-namespace Hermes.Application.Ports;
+namespace Hermes.Application.Ports.Outbound;
+
+using Hermes.Application.Ports;
 
 public interface INewsArticleProvider
 {

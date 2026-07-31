@@ -4,6 +4,8 @@ using Hermes.Application.DTOs.Email;
 using Hermes.Application.DTOs.NewsArticle;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Ports.Inbound;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Scheduling;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;

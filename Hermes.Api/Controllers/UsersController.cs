@@ -3,6 +3,7 @@ using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Application.DTOs.User;
 using Hermes.Domain.Entities;
+using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

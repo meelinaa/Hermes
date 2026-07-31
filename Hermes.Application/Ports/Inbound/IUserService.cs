@@ -3,7 +3,7 @@ using Hermes.Application.DTOs.Login;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Ports.Inbound;
 
 public interface IUserService
 {

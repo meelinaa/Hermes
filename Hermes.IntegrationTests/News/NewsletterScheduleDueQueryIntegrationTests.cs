@@ -1,4 +1,5 @@
 using Hermes.Application.Ports;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.IntegrationTests.Infrastructure;

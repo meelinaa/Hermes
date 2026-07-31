@@ -4,6 +4,7 @@ using System.Text;
 using Hermes.Application.DTOs.Login;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Security;
 using Hermes.Application.Scheduling;
 using Microsoft.Extensions.Options;
@@ -11,6 +12,7 @@ using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;
 using Hermes.Application.DTOs.User;
+using Hermes.Application.Ports.Inbound;
 
 namespace Hermes.Application.Services;
 

@@ -1,6 +1,6 @@
 using Hermes.Domain.Entities;
 
-namespace Hermes.Application.Ports;
+namespace Hermes.Application.Ports.Outbound;
 
 public interface INotificationLogStore
 {

@@ -5,6 +5,7 @@ using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Api.Validation;
 using Hermes.Application.DTOs.NotificationLogs;
+using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;

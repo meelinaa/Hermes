@@ -1,3 +1,4 @@
+using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services;
 using Microsoft.Extensions.Logging;
 

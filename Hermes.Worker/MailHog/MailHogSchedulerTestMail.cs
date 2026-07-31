@@ -1,5 +1,6 @@
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.Ports;
+using Hermes.Application.Ports.Outbound;
 
 namespace Hermes.Worker.MailHog;
 

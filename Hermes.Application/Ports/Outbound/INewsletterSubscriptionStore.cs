@@ -2,7 +2,7 @@ using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 
-namespace Hermes.Application.Ports;
+namespace Hermes.Application.Ports.Outbound;
 
 /// <summary>
 /// Defines the data access port for managing newsletter subscriptions.

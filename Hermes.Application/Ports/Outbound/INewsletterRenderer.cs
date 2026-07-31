@@ -1,4 +1,4 @@
-namespace Hermes.Application.Ports;
+namespace Hermes.Application.Ports.Outbound;
 
 /// <summary>
 /// Renders newsletter digest content into a deliverable HTML body.

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

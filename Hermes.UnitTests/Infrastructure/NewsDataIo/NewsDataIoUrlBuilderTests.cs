@@ -1,4 +1,4 @@
-using Hermes.Infrastructure.NewsDataIo;
+using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
 using Xunit;
 
 namespace Hermes.UnitTests.Infrastructure.NewsDataIo;

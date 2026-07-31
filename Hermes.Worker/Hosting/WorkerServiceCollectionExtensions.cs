@@ -3,15 +3,17 @@ using Hangfire.MySql;
 using Hermes.Application.Jobs;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
+using Hermes.Application.Ports.Outbound;
+using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services;
-using Hermes.Infrastructure.Data;
-using Hermes.Infrastructure.Repositories;
-using Hermes.Infrastructure.Email;
-using Hermes.Infrastructure.NewsDataIo;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
+using Hermes.Infrastructure.Adapters.Outbound.Repositories;
+using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
 using Hermes.Notifications.Receiving.Models;
 using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Worker.Scheduling;
 using Microsoft.EntityFrameworkCore;
+using Hermes.Notifications.Sending;
 
 namespace Hermes.Worker.Hosting;
 

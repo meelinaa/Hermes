@@ -1,5 +1,6 @@
 using System.Globalization;
 using Hermes.Application.Ports;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Notifications.Sending.HtmlLayout.Models;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;

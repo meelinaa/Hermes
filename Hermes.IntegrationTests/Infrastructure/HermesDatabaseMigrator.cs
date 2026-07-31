@@ -1,4 +1,4 @@
-using Hermes.Infrastructure.Data;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.IntegrationTests.Infrastructure;

@@ -1,7 +1,7 @@
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Ports.Inbound;
 
 /// <summary>
 /// Service interface for managing newsletter subscriptions in the application layer.

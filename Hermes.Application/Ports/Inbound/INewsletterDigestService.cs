@@ -1,4 +1,4 @@
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Ports.Inbound;
 
 public interface INewsletterDigestService
 {

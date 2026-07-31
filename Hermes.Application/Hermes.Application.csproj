@@ -17,4 +17,9 @@
     <ProjectReference Include="..\Hermes.Domain\Hermes.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Ports\Inbound\" />
+    <Folder Include="Ports\Outbound\" />
+  </ItemGroup>
+
 </Project>
