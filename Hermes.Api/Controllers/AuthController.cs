@@ -28,16 +28,16 @@ public class AuthController(IUserService userService) : ControllerBase
     [HttpPost("login")]
     [EnableRateLimiting("AuthLoginPolicy")]
     public async Task<IActionResult> Login(
-        [FromBody] LoginRequest request,
+        [FromBody] LoginRequestDto request,
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        LoginResult result = await userService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
+        LoginResultDto result = await userService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
 
         AuthTokensResult tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
-        LoginResponse body = new(
+        LoginResponseDto body = new(
             Success: true,
             UserId: result.UserId!.Value,
             AccessToken: tokens.AccessToken,
@@ -60,7 +60,7 @@ public class AuthController(IUserService userService) : ControllerBase
     [HttpPost("refresh")]
     [EnableRateLimiting("AuthRefreshPolicy")]
     public async Task<IActionResult> Refresh(
-        [FromBody] RefreshRequest request,
+        [FromBody] RefreshRequestDto request,
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
@@ -68,7 +68,7 @@ public class AuthController(IUserService userService) : ControllerBase
         if (next is null)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
 
-        RefreshResponse body = new(
+        RefreshResponseDto body = new(
             Success: true,
             AccessToken: next.AccessToken,
             TokenType: "Bearer",
@@ -88,7 +88,7 @@ public class AuthController(IUserService userService) : ControllerBase
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(
-        [FromBody] LogoutRequest? body,
+        [FromBody] LogoutRequestDto? body,
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {

@@ -1,4 +1,5 @@
 using Hermes.Application.DTOs.Email;
+using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
 
@@ -8,7 +9,7 @@ public static class MailHogSchedulerTestMail
 {
     public static async Task SendAsync(
         IEmailSender emailSender,
-        EmailSettings smtp,
+        EmailOptions smtp,
         DateTimeOffset schedulerRunAt,
         ILogger logger,
         CancellationToken cancellationToken = default)

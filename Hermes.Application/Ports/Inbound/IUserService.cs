@@ -7,9 +7,9 @@ namespace Hermes.Application.Ports.Inbound;
 
 public interface IUserService
 {
-    Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default);
+    Task<UserScope> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default);
 
-    Task<LoginResult> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default);
+    Task<LoginResultDto> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default);
 
     Task UpdateUserAsync(User user, string? currentPasswordPlain = null, CancellationToken cancellationToken = default);
 

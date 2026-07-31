@@ -3,7 +3,7 @@ using Hermes.Application.DTOs.Login;
 
 namespace Hermes.Api.Validation;
 
-public sealed class RefreshRequestValidator : AbstractValidator<RefreshRequest>
+public sealed class RefreshRequestValidator : AbstractValidator<RefreshRequestDto>
 {
     public RefreshRequestValidator()
     {

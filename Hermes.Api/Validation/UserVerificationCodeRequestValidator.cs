@@ -4,9 +4,9 @@ using Hermes.Application.DTOs.User;
 namespace Hermes.Api.Validation;
 
 /// <summary>
-/// Validator for the UserVerificationCodeRequest DTO to ensure email verification codes are valid.
+/// Validator for the UserVerificationCodeRequestDto DTO to ensure email verification codes are valid.
 /// </summary>
-public sealed class UserVerificationCodeRequestValidator : AbstractValidator<UserVerificationCodeRequest>
+public sealed class UserVerificationCodeRequestValidator : AbstractValidator<UserVerificationCodeRequestDto>
 {
     /// <summary>
     /// Initializes validation rules for verification code payload requirements.

@@ -4,9 +4,9 @@ using Hermes.Application.DTOs.User;
 namespace Hermes.Api.Validation;
 
 /// <summary>
-/// Validator for the UserProfileUpdateRequest DTO to ensure update parameters are valid.
+/// Validator for the UserProfileUpdateRequestDto DTO to ensure update parameters are valid.
 /// </summary>
-public sealed class UserProfileUpdateRequestValidator : AbstractValidator<UserProfileUpdateRequest>
+public sealed class UserProfileUpdateRequestValidator : AbstractValidator<UserProfileUpdateRequestDto>
 {
     /// <summary>
     /// Initializes validation rules for profile update requirements including conditional checks for password updates.

@@ -36,7 +36,7 @@ public interface INewsletterSubscriptionService
     /// <summary>
     /// Retrieves a paged list of newsletter subscriptions matching the query criteria.
     /// </summary>
-    Task<NewsletterSubscriptionListResult> GetNewsListAsync(NewsletterSubscriptionListQuery query, CancellationToken cancellationToken = default);
+    Task<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes all newsletter subscriptions belonging to a user.

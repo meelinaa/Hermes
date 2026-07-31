@@ -21,9 +21,9 @@ namespace Hermes.Application.Services;
 /// so the Application layer stays free of HTML/template concerns.
 /// </summary>
 public sealed class NewsletterDigestService(
-    IUserStore users,
-    INewsletterSubscriptionStore newsletterSubscriptions,
-    INotificationLogStore notificationLogs,
+    IUserRepository users,
+    INewsletterSubscriptionRepository newsletterSubscriptions,
+    INotificationLogRepository notificationLogs,
     INewsArticleProvider newsArticleProvider,
     IEmailSender emailSender,
     INewsletterRenderer newsletterRenderer,
@@ -79,7 +79,7 @@ public sealed class NewsletterDigestService(
                 return;
             }
 
-            NewsArticleQuery? query = BuildArticleQuery(apiKey, subscription);
+            NewsArticleQueryDto? query = BuildArticleQuery(apiKey, subscription);
             if (query is null)
                 return;
 
@@ -168,7 +168,7 @@ public sealed class NewsletterDigestService(
     /// Builds the external article query from the newsletter subscription filters.
     /// Returns null when no meaningful filter criteria are present.
     /// </summary>
-    private static NewsArticleQuery? BuildArticleQuery(string apiKey, NewsletterSubscription subscription)
+    private static NewsArticleQueryDto? BuildArticleQuery(string apiKey, NewsletterSubscription subscription)
     {
         List<string>? countries = subscription.Countries is { Count: > 0 }
             ? subscription.Countries.Select(CountryIsoCodeMapper.ToIso3166Alpha2).ToList()
@@ -191,7 +191,7 @@ public sealed class NewsletterDigestService(
         if (countries is null && languages is null && categories is null && string.IsNullOrWhiteSpace(keywordsQuery))
             return null;
 
-        return new NewsArticleQuery
+        return new NewsArticleQueryDto
         {
             ApiKey = apiKey,
             Countries = countries,

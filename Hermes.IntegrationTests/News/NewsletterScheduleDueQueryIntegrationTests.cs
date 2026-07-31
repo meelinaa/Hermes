@@ -21,8 +21,8 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
     public async Task GetDueNewsScheduleForSlotAsync_returns_only_rows_matching_weekday_and_time()
     {
         using IServiceScope scope = fixture.Factory.Services.CreateScope();
-        IUserStore users = scope.ServiceProvider.GetRequiredService<IUserStore>();
-        INewsletterSubscriptionStore newsStore = scope.ServiceProvider.GetRequiredService<INewsletterSubscriptionStore>();
+        IUserRepository users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        INewsletterSubscriptionRepository newsStore = scope.ServiceProvider.GetRequiredService<INewsletterSubscriptionRepository>();
 
         User user = new()
         {
@@ -62,7 +62,7 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
         };
         await newsStore.SetNewsAsync(wrongTime, CancellationToken.None);
 
-        // Direct INewsletterSubscriptionStore inserts leave NextDigestSlotUtc null, so matching uses the JSON_SEARCH path only;
+        // Direct INewsletterSubscriptionRepository inserts leave NextDigestSlotUtc null, so matching uses the JSON_SEARCH path only;
         // slot UTC bounds still apply to materialized rows and must be supplied.
         DateTime slotStartUtc = new(2026, 5, 4, 7, 0, 0, DateTimeKind.Utc);
         DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
@@ -87,8 +87,8 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
     public async Task GetDueNewsScheduleForSlotAsync_excludes_rows_with_IsEnabled_false()
     {
         using IServiceScope scope = fixture.Factory.Services.CreateScope();
-        IUserStore users = scope.ServiceProvider.GetRequiredService<IUserStore>();
-        INewsletterSubscriptionStore newsStore = scope.ServiceProvider.GetRequiredService<INewsletterSubscriptionStore>();
+        IUserRepository users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        INewsletterSubscriptionRepository newsStore = scope.ServiceProvider.GetRequiredService<INewsletterSubscriptionRepository>();
 
         User user = new()
         {

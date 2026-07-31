@@ -429,7 +429,7 @@
                     IsEnabled = isEnabled,
                 };
 
-                response = await Http.PostAsJsonAsync("api/v1/users/newsletter-subscriptions", createPayload, HermesNewsJson.Options).ConfigureAwait(false);
+                response = await Http.PostAsJsonAsync("api/v1/users/newsletter-subscriptions", createPayload, HermesNewsJsonSerializer.Options).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
                     newsFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);
@@ -440,7 +440,7 @@
                     await OnReturnToList.InvokeAsync(true).ConfigureAwait(false);
                 else
                 {
-                    CreateNewsletterSubscriptionResponseDto? created = await response.Content.ReadFromJsonAsync<CreateNewsletterSubscriptionResponseDto>(HermesNewsJson.Options).ConfigureAwait(false);
+                    CreateNewsletterSubscriptionResponseDto? created = await response.Content.ReadFromJsonAsync<CreateNewsletterSubscriptionResponseDto>(HermesNewsJsonSerializer.Options).ConfigureAwait(false);
                     newsFeedback = created != null
                         ? $"Gespeichert (Newsletter-Abonnement #{created.SubscriptionId})."
                         : "Gespeichert.";
@@ -460,7 +460,7 @@
                     IsEnabled = isEnabled,
                 };
 
-                response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", updatePayload, HermesNewsJson.Options).ConfigureAwait(false);
+                response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", updatePayload, HermesNewsJsonSerializer.Options).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
                     newsFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);

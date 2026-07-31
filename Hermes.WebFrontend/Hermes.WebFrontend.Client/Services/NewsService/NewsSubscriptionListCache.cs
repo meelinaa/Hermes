@@ -38,7 +38,7 @@ public sealed class NewsSubscriptionListCache
             }
 
             NewsListPageDto? dto = await response.Content
-                .ReadFromJsonAsync<NewsListPageDto>(HermesNewsJson.Options, cancellationToken)
+                .ReadFromJsonAsync<NewsListPageDto>(HermesNewsJsonSerializer.Options, cancellationToken)
                 .ConfigureAwait(false);
             return (dto, null);
         }

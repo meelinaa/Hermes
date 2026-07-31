@@ -13,7 +13,7 @@ namespace Hermes.Application.Services;
 /// <summary>
 /// Service implementation for managing newsletter subscriptions.
 /// </summary>
-public sealed class NewsletterSubscriptionService(INewsletterSubscriptionStore db, IOptions<NewsletterOptions> newsletterOptions) : INewsletterSubscriptionService
+public sealed class NewsletterSubscriptionService(INewsletterSubscriptionRepository db, IOptions<NewsletterOptions> newsletterOptions) : INewsletterSubscriptionService
 {
     /// <summary>
     /// Creates or sets a newsletter subscription, validating the schedule and advancing its next run time.
@@ -86,7 +86,7 @@ public sealed class NewsletterSubscriptionService(INewsletterSubscriptionStore d
     /// <summary>
     /// Retrieves a paged list of newsletter subscriptions matching the query parameters.
     /// </summary>
-    public async Task<NewsletterSubscriptionListResult> GetNewsListAsync(NewsletterSubscriptionListQuery query, CancellationToken cancellationToken = default)
+    public async Task<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         if (query.UserId <= 0)

@@ -42,12 +42,12 @@ internal static class JwtIntegrationTestTokens
 
     public static string CreateExpiredAccessToken(int userId)
     {
-        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthOptions.JWT_SIGNING_KEY));
         DateTime now = DateTime.UtcNow;
         return BuildToken(
             userId,
-            IntegrationTestAuthSettings.JWT_ISSUER,
-            IntegrationTestAuthSettings.JWT_AUDIENCE,
+            IntegrationTestAuthOptions.JWT_ISSUER,
+            IntegrationTestAuthOptions.JWT_AUDIENCE,
             key,
             notBeforeUtc: now.AddHours(-2),
             expiresUtc: now.AddMinutes(-45));
@@ -59,8 +59,8 @@ internal static class JwtIntegrationTestTokens
         DateTime now = DateTime.UtcNow;
         return BuildToken(
             userId,
-            IntegrationTestAuthSettings.JWT_ISSUER,
-            IntegrationTestAuthSettings.JWT_AUDIENCE,
+            IntegrationTestAuthOptions.JWT_ISSUER,
+            IntegrationTestAuthOptions.JWT_AUDIENCE,
             wrongKey,
             notBeforeUtc: now.AddMinutes(-5),
             expiresUtc: now.AddMinutes(60));
@@ -68,11 +68,11 @@ internal static class JwtIntegrationTestTokens
 
     public static string CreateTokenWithWrongAudience(int userId)
     {
-        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthOptions.JWT_SIGNING_KEY));
         DateTime now = DateTime.UtcNow;
         return BuildToken(
             userId,
-            IntegrationTestAuthSettings.JWT_ISSUER,
+            IntegrationTestAuthOptions.JWT_ISSUER,
             audience: "wrong-audience.integration.tests",
             key,
             notBeforeUtc: now.AddMinutes(-5),
@@ -81,12 +81,12 @@ internal static class JwtIntegrationTestTokens
 
     public static string CreateTokenWithWrongIssuer(int userId)
     {
-        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthSettings.JWT_SIGNING_KEY));
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(IntegrationTestAuthOptions.JWT_SIGNING_KEY));
         DateTime now = DateTime.UtcNow;
         return BuildToken(
             userId,
             issuer: "wrong-issuer.integration.tests",
-            IntegrationTestAuthSettings.JWT_AUDIENCE,
+            IntegrationTestAuthOptions.JWT_AUDIENCE,
             key,
             notBeforeUtc: now.AddMinutes(-5),
             expiresUtc: now.AddMinutes(60));

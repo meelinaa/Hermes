@@ -5,7 +5,7 @@ namespace Hermes.Api.Mapping;
 
 internal static class NotificationLogHttpMapper
 {
-    public static NotificationLog ToEntity(this CreateNotificationLogRequest dto, int userId) =>
+    public static NotificationLog ToEntity(this CreateNotificationLogRequestDto dto, int userId) =>
         new()
         {
             UserId = userId,
@@ -18,7 +18,7 @@ internal static class NotificationLogHttpMapper
             NextRetryAt = dto.NextRetryAt,
         };
 
-    public static NotificationLogResponse ToResponse(this NotificationLog entity) =>
+    public static NotificationLogResponseDto ToResponse(this NotificationLog entity) =>
         new()
         {
             Id = entity.Id,

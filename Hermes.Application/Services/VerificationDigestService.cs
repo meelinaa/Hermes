@@ -19,7 +19,7 @@ namespace Hermes.Application.Services;
 /// so the Application layer stays free of HTML/template concerns.
 /// </summary>
 public sealed class VerificationDigestService(
-    IUserStore users,
+    IUserRepository users,
     IEmailSender emailSender,
     IVerificationRenderer verificationRenderer,
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,

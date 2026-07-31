@@ -3,7 +3,7 @@ using Hermes.Application.DTOs.Login;
 
 namespace Hermes.Api.Validation;
 
-public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
+public sealed class LoginRequestValidator : AbstractValidator<LoginRequestDto>
 {
     public LoginRequestValidator()
     {

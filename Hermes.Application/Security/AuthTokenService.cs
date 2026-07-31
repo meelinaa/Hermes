@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace Hermes.Application.Security;
 
 public sealed class AuthTokenService(
-    IRefreshTokenStore db,
+    IRefreshTokenRepository db,
     IJwtTokenIssuer jwt,
     IOptions<JwtOptions> options,
     ILogger<AuthTokenService> logger) : IAuthTokenService

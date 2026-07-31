@@ -104,7 +104,7 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
             if (!response.IsSuccessStatusCode)
                 return false;
 
-            AuthLoginResponse? body = await response.Content.ReadFromJsonAsync<AuthLoginResponse>(_jsonWeb, cancellationToken).ConfigureAwait(false);
+            LoginResponseDto? body = await response.Content.ReadFromJsonAsync<LoginResponseDto>(_jsonWeb, cancellationToken).ConfigureAwait(false);
             if (body is null || string.IsNullOrEmpty(body.AccessToken) || string.IsNullOrEmpty(body.RefreshToken))
                 return false;
 

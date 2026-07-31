@@ -39,10 +39,10 @@ public static class ApiServiceCollectionExtensions
 
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, serverVersion));
-        services.AddScoped<IUserStore, UserStore>();
-        services.AddScoped<INewsletterSubscriptionStore, NewsletterSubscriptionStore>();
-        services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
-        services.AddScoped<INotificationLogStore, NotificationLogStore>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();
@@ -54,11 +54,11 @@ public static class ApiServiceCollectionExtensions
         services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SectionName));
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
         services.AddHttpContextAccessor();
-        services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
+        services.AddSingleton<IVerificationMailJobTrigger, VerificationMailJobTrigger>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");
 
         services.AddSingleton(_ => CreateHangfireJobStorage(configuration));
-        services.AddSingleton<INewsletterSchedulerRunTrigger, HangfireNewsletterSchedulerRunTrigger>();
+        services.AddSingleton<INewsletterSchedulerJobTrigger, NewsletterSchedulerJobTrigger>();
         Log.Information("Registered Hangfire JobStorage (MySQL) for newsletter scheduler triggers (same DB as Hermes.Worker).");
 
         services.AddControllers(options =>

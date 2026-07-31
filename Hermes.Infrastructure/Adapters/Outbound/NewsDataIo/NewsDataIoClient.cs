@@ -9,7 +9,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
 public sealed class NewsDataIoClient(HttpClient httpClient) : INewsArticleProvider
 {
     /// <summary>Fetches latest articles for the supplied query and maps them into application news article models.</summary>
-    public async Task<IReadOnlyList<NewsArticle>> GetLatestAsync(NewsArticleQuery query, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<NewsArticle>> GetLatestAsync(NewsArticleQueryDto query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         ApiUrlParts urlParts = new()

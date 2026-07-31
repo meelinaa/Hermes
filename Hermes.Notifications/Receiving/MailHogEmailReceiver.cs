@@ -16,7 +16,7 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
     private readonly MailHogMessageMapper _messageMapper;
     private bool _disposed;
 
-    public MailHogEmailReceiver(MailHogSettings settings)
+    public MailHogEmailReceiver(MailHogOptions settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 

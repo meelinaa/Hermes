@@ -3,7 +3,7 @@ using Hermes.Application.DTOs.NotificationLogs;
 
 namespace Hermes.Api.Validation;
 
-public sealed class CreateNotificationLogRequestValidator : AbstractValidator<CreateNotificationLogRequest>
+public sealed class CreateNotificationLogRequestValidator : AbstractValidator<CreateNotificationLogRequestDto>
 {
     public CreateNotificationLogRequestValidator()
     {

@@ -1,4 +1,5 @@
 using Hermes.Application.DTOs.Email;
+using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
 using System.Net;
@@ -8,9 +9,9 @@ using System.Text;
 namespace Hermes.Notifications.Sending;
 
 /// <summary>
-/// Sends e-mail via <see cref="SmtpClient"/> using <see cref="EmailSettings"/>.
+/// Sends e-mail via <see cref="SmtpClient"/> using <see cref="EmailOptions"/>.
 /// </summary>
-public sealed class SmtpEmailSender(EmailSettings settings) : IEmailSender
+public sealed class SmtpEmailSender(EmailOptions settings) : IEmailSender
 {
     /// <summary>Sends an e-mail message via SMTP using configured sender defaults.</summary>
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)

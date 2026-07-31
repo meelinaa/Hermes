@@ -23,7 +23,7 @@ namespace Hermes.Api.Controllers;
 [Route("api/v1/users")]
 public class NewsletterSubscriptionController(
     INewsletterSubscriptionService newsService,
-    INewsletterSchedulerRunTrigger newsletterSchedulerRunTrigger,
+    INewsletterSchedulerJobTrigger newsletterSchedulerRunTrigger,
     IOptions<PaginationOptions> paginationOptions) : ControllerBase
 {
     /// <summary>
@@ -40,7 +40,7 @@ public class NewsletterSubscriptionController(
     /// <returns>A paged list of newsletter subscription profiles.</returns>
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/newsletter-subscriptions")]
-    public async Task<ActionResult<PagedNewsletterSubscriptionListResponse>> GetNewsList(
+    public async Task<ActionResult<PagedNewsletterSubscriptionListResponseDto>> GetNewsList(
         int userId,
         [FromQuery] int page = 1,
         [FromQuery] int? pageSize = null,
@@ -89,7 +89,7 @@ public class NewsletterSubscriptionController(
 
         int effectivePage = afterId is not null ? 1 : page;
 
-        NewsletterSubscriptionListQuery query = new(
+        NewsletterSubscriptionListQueryDto query = new(
             userId,
             effectivePage,
             size,
@@ -98,8 +98,8 @@ public class NewsletterSubscriptionController(
             search,
             category);
 
-        NewsletterSubscriptionListResult result = await newsService.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
-        return Ok(new PagedNewsletterSubscriptionListResponse(
+        NewsletterSubscriptionListResultDto result = await newsService.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
+        return Ok(new PagedNewsletterSubscriptionListResponseDto(
             result.Items.Select(static n => n.ToResponse()).ToList(),
             result.Page,
             result.PageSize,
@@ -139,7 +139,7 @@ public class NewsletterSubscriptionController(
     /// <returns>The newsletter subscription details.</returns>
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/newsletter-subscriptions/{newsId:int}")]
-    public async Task<ActionResult<NewsletterSubscriptionResponse>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
+    public async Task<ActionResult<NewsletterSubscriptionResponseDto>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
     {
         NewsletterSubscription? news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
         return news is null ? this.NotFoundProblem() : Ok(news.ToResponse());
@@ -153,8 +153,8 @@ public class NewsletterSubscriptionController(
     /// <returns>A response containing the created subscription identifier.</returns>
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPost("newsletter-subscriptions")]
-    public async Task<ActionResult<CreateNewsletterSubscriptionResponse>> SetNews(
-        [FromBody] CreateNewsletterSubscriptionRequest request,
+    public async Task<ActionResult<CreateNewsletterSubscriptionResponseDto>> SetNews(
+        [FromBody] CreateNewsletterSubscriptionRequestDto request,
         CancellationToken cancellationToken)
     {
         if (!this.TryGetCurrentUserId(out int currentUserId))
@@ -163,7 +163,7 @@ public class NewsletterSubscriptionController(
         NewsletterSubscription entity = request.ToEntity(currentUserId);
         int newsId = await newsService.SetNewsAsync(entity, cancellationToken).ConfigureAwait(false);
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
-        return Ok(new CreateNewsletterSubscriptionResponse(currentUserId, newsId));
+        return Ok(new CreateNewsletterSubscriptionResponseDto(currentUserId, newsId));
     }
 
     /// <summary>
@@ -175,7 +175,7 @@ public class NewsletterSubscriptionController(
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPut("newsletter-subscriptions")]
     public async Task<ActionResult> UpdateNews(
-        [FromBody] UpdateNewsletterSubscriptionRequest request,
+        [FromBody] UpdateNewsletterSubscriptionRequestDto request,
         CancellationToken cancellationToken)
     {
         if (!this.TryGetCurrentUserId(out int currentUserId))
@@ -201,10 +201,10 @@ public class NewsletterSubscriptionController(
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/newsletter-subscriptions/all")]
-    public async Task<ActionResult<DeleteAllNewsletterSubscriptionResponse>> DeleteAllNews(int userId, CancellationToken cancellationToken)
+    public async Task<ActionResult<DeleteAllNewsletterSubscriptionResponseDto>> DeleteAllNews(int userId, CancellationToken cancellationToken)
     {
         int deleted = await newsService.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
-        return Ok(new DeleteAllNewsletterSubscriptionResponse(deleted));
+        return Ok(new DeleteAllNewsletterSubscriptionResponseDto(deleted));
     }
 
     /// <summary>

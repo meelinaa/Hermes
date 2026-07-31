@@ -345,7 +345,7 @@
                 IsEnabled = targetEnabled,
             };
 
-            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", payload, HermesNewsJson.Options).ConfigureAwait(false);
+            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", payload, HermesNewsJsonSerializer.Options).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 NewsListCache.Invalidate();

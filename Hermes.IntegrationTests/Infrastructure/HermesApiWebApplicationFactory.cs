@@ -17,9 +17,9 @@ public sealed class HermesApiWebApplicationFactory(string connectionString) : We
         builder.UseSetting("ConnectionStrings:DefaultConnection", _connectionString);
         builder.UseSetting("ConnectionStrings:Hangfire", _connectionString);
 
-        builder.UseSetting("Jwt:Issuer", IntegrationTestAuthSettings.JWT_ISSUER);
-        builder.UseSetting("Jwt:Audience", IntegrationTestAuthSettings.JWT_AUDIENCE);
-        builder.UseSetting("Jwt:SigningKey", IntegrationTestAuthSettings.JWT_SIGNING_KEY);
+        builder.UseSetting("Jwt:Issuer", IntegrationTestAuthOptions.JWT_ISSUER);
+        builder.UseSetting("Jwt:Audience", IntegrationTestAuthOptions.JWT_AUDIENCE);
+        builder.UseSetting("Jwt:SigningKey", IntegrationTestAuthOptions.JWT_SIGNING_KEY);
         builder.UseSetting("Jwt:AccessTokenMinutes", "60");
         builder.UseSetting("Jwt:RefreshTokenDays", "14");
         builder.UseSetting("RateLimiting:Enabled", "false");

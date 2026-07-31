@@ -18,7 +18,7 @@ namespace Hermes.UnitTests.Services;
 public sealed class UserServiceTests
 {
     private static UserService CreateUserService(
-        IUserStore db,
+        IUserRepository db,
         IVerificationMailJobTrigger? trigger = null,
         bool hashEmailVerificationCodes = true) =>
         new(
@@ -29,13 +29,13 @@ public sealed class UserServiceTests
     [Fact]
     public async Task RegisterUserAsync_Should_NormalizeEmail_AndStoreOnlyBcryptHashOfPassword()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((u, _) => u.Id = 100)
             .Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);
-        RegisterUserRequest user = new()
+        RegisterUserRequestDto user = new()
         {
             Name = "Tester",
             Email = "  Hello@Test.COM ",
@@ -52,13 +52,13 @@ public sealed class UserServiceTests
     [Fact]
     public async Task RegisterUserAsync_Should_RejectWhitespaceOnlyDisplayName()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((u, _) => u.Id = 5)
             .Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);
-        RegisterUserRequest user = new() { Name = "   ", Email = "ok@test.dev", Password = "pw" };
+        RegisterUserRequestDto user = new() { Name = "   ", Email = "ok@test.dev", Password = "pw" };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
         db.Verify(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -67,11 +67,11 @@ public sealed class UserServiceTests
     [Fact]
     public async Task RegisterUserAsync_Should_Fail_WhenDatabaseLeavesIdAtZero()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);
-        RegisterUserRequest user = new() { Name = "A", Email = "a@b.c", Password = "x" };
+        RegisterUserRequestDto user = new() { Name = "A", Email = "a@b.c", Password = "x" };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
     }
@@ -79,9 +79,9 @@ public sealed class UserServiceTests
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenIdentifierBlank()
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
-        LoginResult loginResult = await sut.LoginAsync("   ", "pw");
+        LoginResultDto loginResult = await sut.LoginAsync("   ", "pw");
 
         Assert.False(loginResult.Success);
         Assert.Contains("required", loginResult.ErrorMessage ?? "", StringComparison.OrdinalIgnoreCase);
@@ -91,9 +91,9 @@ public sealed class UserServiceTests
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenPasswordBlank()
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
-        LoginResult loginResult = await sut.LoginAsync("user", "");
+        LoginResultDto loginResult = await sut.LoginAsync("user", "");
 
         Assert.False(loginResult.Success);
         Assert.False(string.IsNullOrEmpty(loginResult.ErrorMessage));
@@ -103,13 +103,13 @@ public sealed class UserServiceTests
     public async Task LoginAsync_Should_LookupByEmail_WhenIdentifierContainsAtSign()
     {
         string hash = BCrypt.Net.BCrypt.HashPassword("good");
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync("me@test.dev", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 3, Email = "me@test.dev", PasswordHash = hash, Name = "Me" });
 
         UserService sut = CreateUserService(db.Object);
 
-        LoginResult loginResult = await sut.LoginAsync(" me@test.dev ", "good");
+        LoginResultDto loginResult = await sut.LoginAsync(" me@test.dev ", "good");
 
         Assert.True(loginResult.Success);
         Assert.Equal(3, loginResult.UserId);
@@ -120,13 +120,13 @@ public sealed class UserServiceTests
     public async Task LoginAsync_Should_LookupByName_WhenIdentifierHasNoAtSign()
     {
         string hash = BCrypt.Net.BCrypt.HashPassword("pw");
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("alice", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 2, Email = "a@b.c", PasswordHash = hash, Name = "alice" });
 
         UserService sut = CreateUserService(db.Object);
 
-        LoginResult loginResult = await sut.LoginAsync("alice", "pw");
+        LoginResultDto loginResult = await sut.LoginAsync("alice", "pw");
 
         Assert.True(loginResult.Success);
         db.Verify(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -137,13 +137,13 @@ public sealed class UserServiceTests
     public async Task LoginAsync_Should_NotRevealWhetherAccountExists_OnFailure()
     {
         string hash = BCrypt.Net.BCrypt.HashPassword("right");
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("bob", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, PasswordHash = hash, Name = "bob", Email = "b@c.d" });
 
         UserService sut = CreateUserService(db.Object);
 
-        LoginResult loginResult = await sut.LoginAsync("bob", "wrong");
+        LoginResultDto loginResult = await sut.LoginAsync("bob", "wrong");
 
         Assert.False(loginResult.Success);
         Assert.Equal("Invalid login or password.", loginResult.ErrorMessage);
@@ -153,7 +153,7 @@ public sealed class UserServiceTests
     public async Task UpdateUserAsync_Should_HashNewPassword_WhenCurrentPasswordVerified()
     {
         string existingHash = BCrypt.Net.BCrypt.HashPassword("oldpw");
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(5, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 5, Email = "x@y.z", Name = "X", PasswordHash = existingHash });
         db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -170,7 +170,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task UpdateUserAsync_Should_RequireCurrentPassword_WhenChangingPassword()
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
         User patch = new() { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = "new" };
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -180,7 +180,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task UpdateUserAsync_Should_RejectWrongCurrentPassword()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(9, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 9, Email = "e@f.g", Name = "E", PasswordHash = BCrypt.Net.BCrypt.HashPassword("real") });
 
@@ -194,7 +194,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task UpdateUserAsync_Should_ThrowUserNotFound_WhenChangingPassword_AndUserMissing()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(404, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
@@ -208,7 +208,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task UpdateUserAsync_Should_ThrowInvalidOperation_WhenStoredPasswordHashEmpty()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = null });
 
@@ -223,7 +223,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task UpdateUserAsync_Should_UpdateWithoutPassword_WhenNewPasswordOmitted()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         UserService sut = CreateUserService(db.Object);
@@ -240,7 +240,7 @@ public sealed class UserServiceTests
     public async Task GetUserByNameAsync_Should_ReturnScope_FromStore()
     {
         UserScope expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" };
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
@@ -253,7 +253,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task GetUserByNameAsync_Should_RejectBlankName()
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByNameAsync("  "));
     }
 
@@ -261,7 +261,7 @@ public sealed class UserServiceTests
     public async Task GetUserByIdAsync_Should_ReturnScope_FromStore()
     {
         UserScope expected = new() { UserId = 3, Email = "e@e.e", Name = "E" };
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
@@ -274,7 +274,7 @@ public sealed class UserServiceTests
     public async Task GetUserByEmailAsync_Should_ReturnScope_FromStore_WhenNormalized()
     {
         UserScope expected = new() { UserId = 9, Email = "a@b.c", Name = "A" };
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByEmailAsync("a@b.c", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
         UserService sut = CreateUserService(db.Object);
@@ -286,7 +286,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task SendVerificationMailAsync_Should_EnqueueJob_WhenUserExists()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync("u@test.dev", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 42, Email = "u@test.dev" });
 
@@ -303,7 +303,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task SendVerificationMailAsync_Should_ThrowUserNotFound_WhenEmailUnknown()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
@@ -315,7 +315,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task SendVerificationMailAsync_Should_RejectBlankEmail()
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
         await Assert.ThrowsAsync<ArgumentException>(() => sut.SendVerificationMailAsync("  ", CancellationToken.None));
     }
 
@@ -324,7 +324,7 @@ public sealed class UserServiceTests
     [InlineData(1_000_000)]
     public async Task CheckVerificationCodeAsync_Should_RejectInvalidCode(int invalidCode)
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.CheckVerificationCodeAsync(1, invalidCode));
     }
 
@@ -333,14 +333,14 @@ public sealed class UserServiceTests
     [InlineData(-3)]
     public async Task CheckVerificationCodeAsync_Should_RejectInvalidUserId(int invalidUserId)
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.CheckVerificationCodeAsync(invalidUserId, 123456));
     }
 
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_ThrowUserNotFound_WhenUserMissing()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(5, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
@@ -352,7 +352,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenNoChallengeStored()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, TwoFactorCode = null, TwoFactorExpiry = null });
 
@@ -364,7 +364,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenExpired()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User
             {
@@ -381,7 +381,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenCodeWrong()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User
             {
@@ -398,7 +398,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_CompleteVerification_WhenCodeAndExpiryValid()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(8, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User
             {
@@ -419,7 +419,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_AcceptLegacyPlaintext_WhenHashingEnabled_ButStoredChallengeIsPlainSixDigits()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User
             {
@@ -439,7 +439,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_UsePlaintextPersisted_WhenHashingDisabled()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(3, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User
             {
@@ -461,7 +461,7 @@ public sealed class UserServiceTests
     [InlineData(-1)]
     public async Task GetUserByIdAsync_Should_RejectNonPositiveId(int invalidId)
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByIdAsync(invalidId));
     }
@@ -469,7 +469,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task GetUserByEmailAsync_Should_RejectBlankEmail()
     {
-        UserService sut = CreateUserService(Mock.Of<IUserStore>());
+        UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByEmailAsync("  "));
     }
@@ -477,7 +477,7 @@ public sealed class UserServiceTests
     [Fact]
     public async Task DeleteUserAsync_Should_DelegateToStore_WhenScopeValid()
     {
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         UserScope scope = new() { UserId = 1, Email = "a@b", Name = "A" };
         db.Setup(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 

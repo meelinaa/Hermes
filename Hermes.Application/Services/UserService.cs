@@ -17,11 +17,11 @@ using Hermes.Application.Ports.Inbound;
 namespace Hermes.Application.Services;
 
 public sealed class UserService(
-    IUserStore db,
+    IUserRepository db,
     IVerificationMailJobTrigger verificationMailJobTrigger,
     IOptions<SecurityOptions> securityOptions) : IUserService
 {
-    public async Task<UserScope> RegisterUserAsync(RegisterUserRequest request, CancellationToken cancellationToken = default)
+    public async Task<UserScope> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -52,12 +52,12 @@ public sealed class UserService(
         return userScope;
     }
 
-    public async Task<LoginResult> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
+    public async Task<LoginResultDto> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(nameOrEmail))
-            return new LoginResult(false, "Name or email is required.", null);
+            return new LoginResultDto(false, "Name or email is required.", null);
         if (string.IsNullOrEmpty(password))
-            return new LoginResult(false, "Password is required.", null);
+            return new LoginResultDto(false, "Password is required.", null);
 
         string? key = nameOrEmail.Trim();
         User? user = key.Contains('@', StringComparison.Ordinal)
@@ -65,7 +65,7 @@ public sealed class UserService(
             : await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
         if (user is null || string.IsNullOrEmpty(user.PasswordHash))
-            return new LoginResult(false, "Invalid login or password.", null);
+            return new LoginResultDto(false, "Invalid login or password.", null);
 
         bool valid;
         try
@@ -78,9 +78,9 @@ public sealed class UserService(
         }
 
         if (!valid)
-            return new LoginResult(false, "Invalid login or password.", null);
+            return new LoginResultDto(false, "Invalid login or password.", null);
 
-        return new LoginResult(true, null, user.Id, user.Email, user.Name);
+        return new LoginResultDto(true, null, user.Id, user.Email, user.Name);
     }
 
     public async Task UpdateUserAsync(User user, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)

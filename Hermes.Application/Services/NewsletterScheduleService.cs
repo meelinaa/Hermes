@@ -9,7 +9,7 @@ namespace Hermes.Application.Services;
 /// <summary>
 /// Service implementation for determining which newsletter schedules are due for processing.
 /// </summary>
-public sealed class NewsletterScheduleService(INewsletterSubscriptionStore dataStore) : INewsletterScheduleService
+public sealed class NewsletterScheduleService(INewsletterSubscriptionRepository newsletterSubscriptionRepository) : INewsletterScheduleService
 {
     /// <summary>
     /// Evaluates current local time and UTC windows to identify due newsletter subscriptions.
@@ -22,7 +22,7 @@ public sealed class NewsletterScheduleService(INewsletterSubscriptionStore dataS
     {
         TimeOnly nowTime = TimeOnly.FromDateTime(nowLocal);
         Weekdays todayWeekday = WeekdayConverter.ToHermesWeekday(nowLocal);
-        return await dataStore
+        return await newsletterSubscriptionRepository
             .GetDueNewsScheduleForSlotAsync(
                 todayWeekday,
                 nowTime.Hour,

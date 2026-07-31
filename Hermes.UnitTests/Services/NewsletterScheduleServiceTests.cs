@@ -29,7 +29,7 @@ public sealed class NewsletterScheduleServiceTests
     [Fact]
     public async Task GetDueItemsAsync_Should_ReturnEmpty_WhenStoreHasNoDueRowsForSlot()
     {
-        Mock<INewsletterSubscriptionStore> store = new();
+        Mock<INewsletterSubscriptionRepository> store = new();
         store.Setup(dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 Weekdays.Monday,
                 9,
@@ -52,7 +52,7 @@ public sealed class NewsletterScheduleServiceTests
     [Fact]
     public async Task GetDueItemsAsync_Should_ReturnPairs_FromStore()
     {
-        Mock<INewsletterSubscriptionStore> store = new();
+        Mock<INewsletterSubscriptionRepository> store = new();
         store.Setup(dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 Weekdays.Monday,
                 9,
@@ -78,7 +78,7 @@ public sealed class NewsletterScheduleServiceTests
     public async Task GetDueItemsAsync_Should_MapLocalClock_ToSlotParameters()
     {
         DateTime slot = new(2026, 1, 6, 14, 5, 0, DateTimeKind.Local);
-        Mock<INewsletterSubscriptionStore> store = new();
+        Mock<INewsletterSubscriptionRepository> store = new();
         store.Setup(dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 Weekdays.Tuesday,
                 14,
@@ -105,7 +105,7 @@ public sealed class NewsletterScheduleServiceTests
     [Fact]
     public async Task GetDueItemsAsync_Should_ForwardCancellation_ToDueSlotQuery()
     {
-        Mock<INewsletterSubscriptionStore> store = new();
+        Mock<INewsletterSubscriptionRepository> store = new();
         store.Setup(dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 It.IsAny<Weekdays>(),
                 It.IsAny<int>(),

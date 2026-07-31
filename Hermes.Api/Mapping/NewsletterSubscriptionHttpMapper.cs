@@ -9,9 +9,9 @@ namespace Hermes.Api.Mapping;
 internal static class NewsletterSubscriptionHttpMapper
 {
     /// <summary>
-    /// Converts a <see cref="CreateNewsletterSubscriptionRequest"/> DTO to a domain entity.
+    /// Converts a <see cref="CreateNewsletterSubscriptionRequestDto"/> DTO to a domain entity.
     /// </summary>
-    public static NewsletterSubscription ToEntity(this CreateNewsletterSubscriptionRequest dto, int userId) =>
+    public static NewsletterSubscription ToEntity(this CreateNewsletterSubscriptionRequestDto dto, int userId) =>
         new()
         {
             UserId = userId,
@@ -25,9 +25,9 @@ internal static class NewsletterSubscriptionHttpMapper
         };
 
     /// <summary>
-    /// Converts an <see cref="UpdateNewsletterSubscriptionRequest"/> DTO to a domain entity.
+    /// Converts an <see cref="UpdateNewsletterSubscriptionRequestDto"/> DTO to a domain entity.
     /// </summary>
-    public static NewsletterSubscription ToEntity(this UpdateNewsletterSubscriptionRequest dto, int userId, NewsletterSubscription existing) =>
+    public static NewsletterSubscription ToEntity(this UpdateNewsletterSubscriptionRequestDto dto, int userId, NewsletterSubscription existing) =>
         new()
         {
             Id = dto.Id,
@@ -45,7 +45,7 @@ internal static class NewsletterSubscriptionHttpMapper
     /// <summary>
     /// Converts a <see cref="NewsletterSubscription"/> domain entity to a response DTO.
     /// </summary>
-    public static NewsletterSubscriptionResponse ToResponse(this NewsletterSubscription entity) =>
+    public static NewsletterSubscriptionResponseDto ToResponse(this NewsletterSubscription entity) =>
         new()
         {
             Id = entity.Id,

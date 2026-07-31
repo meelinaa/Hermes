@@ -100,7 +100,7 @@
                 return;
             }
 
-            AuthLoginResponse? body = await response.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonSerializerOptions.Web).ConfigureAwait(false);
+            LoginResponseDto? body = await response.Content.ReadFromJsonAsync<LoginResponseDto>(JsonSerializerOptions.Web).ConfigureAwait(false);
             if (body is null || string.IsNullOrEmpty(body.AccessToken) || string.IsNullOrEmpty(body.RefreshToken))
             {
                 loginError = "Unerwartete Antwort vom Server.";

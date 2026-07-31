@@ -25,7 +25,7 @@ public sealed class NewsletterSubscriptionServiceTests
     [Fact]
     public async Task SetNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionStore>(), DefaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetNewsAsync(null!));
     }
@@ -38,7 +38,7 @@ public sealed class NewsletterSubscriptionServiceTests
     [InlineData(-4)]
     public async Task SetNewsAsync_Should_RejectNonPositiveOwningUserId(int invalidUserId)
     {
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionStore>(), DefaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), DefaultNewsletterOpts);
         NewsletterSubscription news = new() { Id = 0, UserId = invalidUserId };
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SetNewsAsync(news));
@@ -48,11 +48,11 @@ public sealed class NewsletterSubscriptionServiceTests
     /// Verifies that SetNewsAsync correctly returns the persisted subscription ID and advances its scheduling slot.
     /// </summary>
     [Fact]
-    public async Task SetNewsAsync_Should_ReturnPersistedId_AfterStoreAssignsKey()
+    public async Task SetNewsAsync_Should_ReturnPersistedId_AfterRepositoryAssignsKey()
     {
         NewsletterSubscription news = new() { Id = 0, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
-        Mock<INewsletterSubscriptionStore> db = new();
-        db.Setup(dataStore => dataStore.SetNewsAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()))
+        Mock<INewsletterSubscriptionRepository> db = new();
+        db.Setup(repository => repository.SetNewsAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()))
             .Callback<NewsletterSubscription, CancellationToken>((n, _) => n.Id = 55)
             .Returns(Task.CompletedTask);
         db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
@@ -85,7 +85,7 @@ public sealed class NewsletterSubscriptionServiceTests
     [InlineData(-2, 5)]
     public async Task GetNewsByIdAsync_Should_RejectNonPositiveIdentifiers(int userId, int newsId)
     {
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionStore>(), DefaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsByIdAsync(userId, newsId));
     }
@@ -96,7 +96,7 @@ public sealed class NewsletterSubscriptionServiceTests
     [Fact]
     public async Task DeleteNewsAsync_Should_RemoveFromStore_WithoutAdvancingDigestSlot()
     {
-        Mock<INewsletterSubscriptionStore> db = new();
+        Mock<INewsletterSubscriptionRepository> db = new();
         NewsletterSubscription news = new()
         {
             Id = 9,
@@ -127,7 +127,7 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task UpdateNewsAsync_Should_AdvanceDigestSlot_AfterPersist()
     {
         NewsletterSubscription news = new() { Id = 1, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
-        Mock<INewsletterSubscriptionStore> db = new();
+        Mock<INewsletterSubscriptionRepository> db = new();
         db.Setup(dataStore => dataStore.UpdateNewsAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
@@ -157,8 +157,8 @@ public sealed class NewsletterSubscriptionServiceTests
     [InlineData(-99)]
     public async Task GetNewsListAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionStore>(), DefaultNewsletterOpts);
-        NewsletterSubscriptionListQuery query = new(invalidUserId, 1, 10, AfterId: null, SortDescending: false, Search: null, Category: null);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), DefaultNewsletterOpts);
+        NewsletterSubscriptionListQueryDto query = new(invalidUserId, 1, 10, AfterId: null, SortDescending: false, Search: null, Category: null);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsListAsync(query));
     }
@@ -171,7 +171,7 @@ public sealed class NewsletterSubscriptionServiceTests
     [InlineData(-7)]
     public async Task DeleteAllNewsByUserAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionStore>(), DefaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.DeleteAllNewsByUserAsync(invalidUserId));
     }
@@ -182,7 +182,7 @@ public sealed class NewsletterSubscriptionServiceTests
     [Fact]
     public async Task UpdateNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionStore>(), DefaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.UpdateNewsAsync(null!));
     }
@@ -193,7 +193,7 @@ public sealed class NewsletterSubscriptionServiceTests
     [Fact]
     public async Task DeleteNewsAsync_Should_Throw_WhenNewsNull()
     {
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionStore>(), DefaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), DefaultNewsletterOpts);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.DeleteNewsAsync(null!));
     }

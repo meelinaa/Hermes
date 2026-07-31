@@ -22,7 +22,7 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Set up a mock helper to simulate successful NextDigestSlotUtc advancement.
     /// </summary>
-    private static void SetupAdvanceDigestSlot(Mock<INewsletterSubscriptionStore> newsStore)
+    private static void SetupAdvanceDigestSlot(Mock<INewsletterSubscriptionRepository> newsStore)
     {
         newsStore.Setup(s => s.AdvanceNextDigestSlotAsync(
                 It.IsAny<int>(),
@@ -36,9 +36,9 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Helper method to create a default newsletter subscription store mock.
     /// </summary>
-    private static INewsletterSubscriptionStore CreateDefaultNewsStore()
+    private static INewsletterSubscriptionRepository CreateDefaultNewsStore()
     {
-        Mock<INewsletterSubscriptionStore> mock = new();
+        Mock<INewsletterSubscriptionRepository> mock = new();
         mock.Setup(s => s.AdvanceNextDigestSlotAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -53,9 +53,9 @@ public sealed class NewsletterDigestServiceTests
     /// Helper method to initialize a system under test (SUT) with optional mocks.
     /// </summary>
     private static NewsletterDigestService CreateSut(
-        IUserStore? users = null,
-        INewsletterSubscriptionStore? news = null,
-        INotificationLogStore? notificationLogs = null,
+        IUserRepository? users = null,
+        INewsletterSubscriptionRepository? news = null,
+        INotificationLogRepository? notificationLogs = null,
         INewsArticleProvider? newsProvider = null,
         IEmailSender? emailSender = null,
         INewsletterRenderer? newsletterRenderer = null,
@@ -73,9 +73,9 @@ public sealed class NewsletterDigestServiceTests
         }
 
         return new NewsletterDigestService(
-            users ?? Mock.Of<IUserStore>(),
+            users ?? Mock.Of<IUserRepository>(),
             news ?? CreateDefaultNewsStore(),
-            notificationLogs ?? Mock.Of<INotificationLogStore>(),
+            notificationLogs ?? Mock.Of<INotificationLogRepository>(),
             newsProvider ?? Mock.Of<INewsArticleProvider>(),
             emailSender ?? Mock.Of<IEmailSender>(),
             newsletterRenderer,
@@ -121,7 +121,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_NotLoadUserOrNews_WhenDuplicateAlreadySentInWindow()
     {
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -130,8 +130,8 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        Mock<IUserStore> users = new();
-        Mock<INewsletterSubscriptionStore> newsPort = new();
+        Mock<IUserRepository> users = new();
+        Mock<INewsletterSubscriptionRepository> newsPort = new();
         SetupAdvanceDigestSlot(newsPort);
 
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object);
@@ -154,7 +154,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_CheckDuplicateWindow_WithNormalizedUtcMinuteSlice()
     {
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -179,7 +179,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenUserMissing()
     {
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -188,7 +188,7 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        Mock<IUserStore> users = new();
+        Mock<IUserRepository> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
@@ -198,7 +198,7 @@ public sealed class NewsletterDigestServiceTests
         await sut.SendAsync(7, 99, DateTime.UtcNow);
 
         articles.Verify(
-            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -208,7 +208,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenUserHasNoDeliverableEmail()
     {
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -216,7 +216,7 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        Mock<IUserStore> users = new();
+        Mock<IUserRepository> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "   ", Name = "X" });
 
@@ -226,7 +226,7 @@ public sealed class NewsletterDigestServiceTests
         await sut.SendAsync(1, 2, DateTime.UtcNow);
 
         articles.Verify(
-            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -236,7 +236,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenNewsProfileMissing()
     {
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -244,10 +244,10 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        Mock<IUserStore> users = new();
+        Mock<IUserRepository> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "a@b.c", Name = "Anna" });
-        Mock<INewsletterSubscriptionStore> newsPort = new();
+        Mock<INewsletterSubscriptionRepository> newsPort = new();
         SetupAdvanceDigestSlot(newsPort);
         newsPort.Setup(store => store.GetNewsByIdAsync(1, 88, It.IsAny<CancellationToken>()))
             .ReturnsAsync((NewsletterSubscription?)null);
@@ -258,7 +258,7 @@ public sealed class NewsletterDigestServiceTests
         await sut.SendAsync(1, 88, DateTime.UtcNow);
 
         articles.Verify(
-            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -268,7 +268,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_SkipSend_AndAdvanceSlot_WhenNewsDisabled()
     {
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -276,10 +276,10 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        Mock<IUserStore> users = new();
+        Mock<IUserRepository> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "off@b.c", Name = "Off" });
-        Mock<INewsletterSubscriptionStore> newsPort = new();
+        Mock<INewsletterSubscriptionRepository> newsPort = new();
         SetupAdvanceDigestSlot(newsPort);
         newsPort.Setup(store => store.GetNewsByIdAsync(1, 42, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NewsletterSubscription { Id = 42, UserId = 1, Keywords = ["x"], IsEnabled = false });
@@ -290,7 +290,7 @@ public sealed class NewsletterDigestServiceTests
         await sut.SendAsync(1, 42, DateTime.UtcNow);
 
         articles.Verify(
-            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
         newsPort.Verify(
             store => store.AdvanceNextDigestSlotAsync(
@@ -317,7 +317,7 @@ public sealed class NewsletterDigestServiceTests
             Languages = [],
             Category = [],
         };
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -325,10 +325,10 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        Mock<IUserStore> users = new();
+        Mock<IUserRepository> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "user@test.example", Name = "U" });
-        Mock<INewsletterSubscriptionStore> newsPort = new();
+        Mock<INewsletterSubscriptionRepository> newsPort = new();
         SetupAdvanceDigestSlot(newsPort);
         newsPort.Setup(store => store.GetNewsByIdAsync(1, 3, It.IsAny<CancellationToken>()))
             .ReturnsAsync(news);
@@ -337,7 +337,7 @@ public sealed class NewsletterDigestServiceTests
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object);
         await sut.SendAsync(1, 3, DateTime.UtcNow);
         articles.Verify(
-            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()),
+            articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -347,7 +347,7 @@ public sealed class NewsletterDigestServiceTests
     [Fact]
     public async Task SendAsync_Should_SendMail_WriteSentLog_WhenPipelineSucceeds()
     {
-        NewsArticleQuery? capturedQuery = null;
+        NewsArticleQueryDto? capturedQuery = null;
         NotificationLog? capturedLog = null;
 
         NewsletterSubscription news = new()
@@ -357,7 +357,7 @@ public sealed class NewsletterDigestServiceTests
             Keywords = ["Berlin"],
         };
 
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -366,17 +366,17 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        Mock<IUserStore> users = new();
+        Mock<IUserRepository> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 2, Email = "digest@test.example", Name = "Dieter" });
-        Mock<INewsletterSubscriptionStore> newsPort = new();
+        Mock<INewsletterSubscriptionRepository> newsPort = new();
         SetupAdvanceDigestSlot(newsPort);
         newsPort.Setup(store => store.GetNewsByIdAsync(2, 12, It.IsAny<CancellationToken>()))
             .ReturnsAsync(news);
 
         Mock<INewsArticleProvider> articles = new();
-        articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()))
-            .Callback<NewsArticleQuery, CancellationToken>((q, _) => capturedQuery = q)
+        articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()))
+            .Callback<NewsArticleQueryDto, CancellationToken>((q, _) => capturedQuery = q)
             .ReturnsAsync([]);
 
         Mock<IEmailSender> email = new();
@@ -416,7 +416,7 @@ public sealed class NewsletterDigestServiceTests
     {
         NewsletterSubscription news = new() { Id = 1, UserId = 1, Keywords = ["test"] };
 
-        Mock<INotificationLogStore> logs = new();
+        Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -425,16 +425,16 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        Mock<IUserStore> users = new();
+        Mock<IUserRepository> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 1, Email = "fail@test.example", Name = "F" });
-        Mock<INewsletterSubscriptionStore> newsPort = new();
+        Mock<INewsletterSubscriptionRepository> newsPort = new();
         SetupAdvanceDigestSlot(newsPort);
         newsPort.Setup(store => store.GetNewsByIdAsync(1, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(news);
 
         Mock<INewsArticleProvider> articles = new();
-        articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQuery>(), It.IsAny<CancellationToken>()))
+        articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         Mock<IEmailSender> email = new();

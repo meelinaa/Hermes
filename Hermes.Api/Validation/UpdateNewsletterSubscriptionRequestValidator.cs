@@ -4,9 +4,9 @@ using Hermes.Application.DTOs.NewsletterSubscription;
 namespace Hermes.Api.Validation;
 
 /// <summary>
-/// Validator for the UpdateNewsletterSubscriptionRequest DTO to ensure update parameters are valid.
+/// Validator for the UpdateNewsletterSubscriptionRequestDto DTO to ensure update parameters are valid.
 /// </summary>
-public sealed class UpdateNewsletterSubscriptionRequestValidator : AbstractValidator<UpdateNewsletterSubscriptionRequest>
+public sealed class UpdateNewsletterSubscriptionRequestValidator : AbstractValidator<UpdateNewsletterSubscriptionRequestDto>
 {
     /// <summary>
     /// Initializes validation rules for newsletter subscription updates.

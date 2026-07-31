@@ -34,13 +34,13 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-        builder.Services.AddScoped<IUserStore, UserStore>();
-        builder.Services.AddScoped<INewsletterSubscriptionStore, NewsletterSubscriptionStore>();
-        builder.Services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
-        builder.Services.AddScoped<INotificationLogStore, NotificationLogStore>();
-        builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailSettings(builder.Configuration));
+        builder.Services.AddScoped<IUserRepository, UserRepository>();
+        builder.Services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
+        builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
+        builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailOptions(builder.Configuration));
         builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
-        builder.Services.Configure<MailHogSettings>(builder.Configuration.GetSection("MailHog"));
+        builder.Services.Configure<MailHogOptions>(builder.Configuration.GetSection("MailHog"));
         builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
         builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         builder.Services.Configure<NewsletterOptions>(builder.Configuration.GetSection(NewsletterOptions.SectionName));
@@ -52,7 +52,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();
         builder.Services.AddScoped<NotificationJobs>();
-        builder.Services.AddScoped<NewsletterScheduler>();
+        builder.Services.AddScoped<NewsletterSchedulerWorker>();
 
         builder.Services.AddHangfire(configuration => configuration
             .UseSimpleAssemblyNameTypeSerializer()

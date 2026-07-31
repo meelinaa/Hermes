@@ -32,7 +32,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <returns>A response containing the registered user details.</returns>
     [AllowAnonymous]
     [HttpPost]
-    public async Task<ActionResult<UserResponse>> SetNewUser([FromBody] RegisterUserRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> SetNewUser([FromBody] RegisterUserRequestDto request, CancellationToken cancellationToken)
     {
         UserScope userScope = await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
         return Ok(userScope.ToUserResponse());
@@ -48,7 +48,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <returns>The updated user profile response.</returns>
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPut]
-    public async Task<ActionResult<UserResponse>> UpdateUser([FromBody] UserProfileUpdateRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> UpdateUser([FromBody] UserProfileUpdateRequestDto request, CancellationToken cancellationToken)
     {
         if (this.WhenCannotAccessUser(request.Id) is { } denied)
             return denied;
@@ -94,7 +94,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <returns>The user details.</returns>
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_ID)]
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<UserResponse>> GetUserById(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
     {
         UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         return user is null ? this.NotFoundProblem() : Ok(user.ToUserResponse());
@@ -107,7 +107,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The user details.</returns>
     [HttpGet("by-email/{email}")]
-    public async Task<ActionResult<UserResponse>> GetUserByEmail(string email, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> GetUserByEmail(string email, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email))
             return this.BadRequestProblem("Path segment 'email' is required.");
@@ -131,7 +131,7 @@ public class UsersController(IUserService userService) : ControllerBase
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("VerifyMailPolicy")]
     [HttpPost("{id:int}/verify")]
-    public async Task<ActionResult<SendVerificationMailResponse>> SendVerificationMail(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<SendVerificationMailResponseDto>> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
         UserScope? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email))
@@ -142,7 +142,7 @@ public class UsersController(IUserService userService) : ControllerBase
 
         await userService.SendVerificationMailAsync(user.Email, cancellationToken).ConfigureAwait(false);
         RegisterVerificationMailSend(id);
-        return Ok(new SendVerificationMailResponse(id, user.Email));
+        return Ok(new SendVerificationMailResponseDto(id, user.Email));
     }
 
     /// <summary>
@@ -154,7 +154,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <returns>The updated user details if verification was successful.</returns>
     [EnableRateLimiting("VerifyCodePolicy")]
     [HttpPost("verify/code")]
-    public async Task<ActionResult<UserResponse>> CheckVerificationCode([FromBody] UserVerificationCodeRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> CheckVerificationCode([FromBody] UserVerificationCodeRequestDto request, CancellationToken cancellationToken)
     {
         if (this.WhenCannotAccessUser(request.UserId) is { } denied)
             return denied;

@@ -4,7 +4,7 @@ namespace Hermes.Notifications.Receiving.MailHog;
 
 internal sealed class MailHogApiUriHelper
 {
-    public static Uri CreateBaseUri(MailHogSettings settings)
+    public static Uri CreateBaseUri(MailHogOptions settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 

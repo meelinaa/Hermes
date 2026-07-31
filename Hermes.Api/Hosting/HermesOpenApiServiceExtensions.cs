@@ -156,7 +156,7 @@ public static class HermesOpenApiServiceExtensions
     private static Task ApplySchemaExamplesAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken _)
     {
         Type? type = context.JsonTypeInfo?.Type;
-        if (type == typeof(LoginRequest))
+        if (type == typeof(LoginRequestDto))
         {
             schema.Example = new JsonObject
             {
@@ -166,13 +166,13 @@ public static class HermesOpenApiServiceExtensions
             return Task.CompletedTask;
         }
 
-        if (type == typeof(RefreshRequest))
+        if (type == typeof(RefreshRequestDto))
         {
             schema.Example = new JsonObject { ["refreshToken"] = "(opaque refresh token from login)" };
             return Task.CompletedTask;
         }
 
-        if (type == typeof(LogoutRequest))
+        if (type == typeof(LogoutRequestDto))
         {
             schema.Example = new JsonObject { ["refreshToken"] = "(optional; omit to revoke all sessions)" };
             return Task.CompletedTask;

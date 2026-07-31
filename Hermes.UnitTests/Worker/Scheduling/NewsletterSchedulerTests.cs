@@ -15,7 +15,7 @@ namespace Hermes.UnitTests.Worker.Scheduling;
 
 public sealed class NewsletterSchedulerTests
 {
-    private static EmailSettings CreateEmailSettings() =>
+    private static EmailOptions CreateEmailOptions() =>
         new(
             Host: "localhost",
             Port: 1025,
@@ -41,12 +41,12 @@ public sealed class NewsletterSchedulerTests
 
         Mock<IEmailSender> emailSender = new();
 
-        NewsletterScheduler sut = new(
+        NewsletterSchedulerWorker sut = new(
             schedule.Object,
-            NullLogger<NewsletterScheduler>.Instance,
+            NullLogger<NewsletterSchedulerWorker>.Instance,
             emailSender.Object,
-            CreateEmailSettings(),
-            Options.Create(new MailHogSettings { SendSchedulerTestMailEachMinute = false }),
+            CreateEmailOptions(),
+            Options.Create(new MailHogOptions { SendSchedulerTestMailEachMinute = false }),
             Options.Create(new NewsletterOptions()));
         await sut.RunAsync();
         schedule.Verify(
@@ -74,12 +74,12 @@ public sealed class NewsletterSchedulerTests
             .Callback<DateTime, DateTime, DateTime, CancellationToken>((_, _, _, ct) => captured = ct)
             .ReturnsAsync([]);
 
-        NewsletterScheduler sut = new(
+        NewsletterSchedulerWorker sut = new(
             schedule.Object,
-            NullLogger<NewsletterScheduler>.Instance,
+            NullLogger<NewsletterSchedulerWorker>.Instance,
             Mock.Of<IEmailSender>(),
-            CreateEmailSettings(),
-            Options.Create(new MailHogSettings()),
+            CreateEmailOptions(),
+            Options.Create(new MailHogOptions()),
             Options.Create(new NewsletterOptions()));
 
         using CancellationTokenSource cts = new();

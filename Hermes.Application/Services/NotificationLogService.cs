@@ -5,7 +5,7 @@ using Hermes.Application.Ports.Outbound;
 
 namespace Hermes.Application.Services;
 
-public sealed class NotificationLogService(INotificationLogStore db) : INotificationLogService
+public sealed class NotificationLogService(INotificationLogRepository db) : INotificationLogService
 {
     public async Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
     {

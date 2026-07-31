@@ -66,7 +66,7 @@ try
 
 
 
-    RecurringJob.AddOrUpdate<NewsletterScheduler>(
+    RecurringJob.AddOrUpdate<NewsletterSchedulerWorker>(
 
         NewsletterSchedulerRecurringJob.ID,
 

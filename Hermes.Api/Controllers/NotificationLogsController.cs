@@ -36,10 +36,10 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPost]
-    public async Task<ActionResult<NotificationLogResponse>> Post(
+    public async Task<ActionResult<NotificationLogResponseDto>> Post(
         int userId,
-        [FromBody] CreateNotificationLogRequest request,
-        [FromServices] IValidator<CreateNotificationLogRequest> validator,
+        [FromBody] CreateNotificationLogRequestDto request,
+        [FromServices] IValidator<CreateNotificationLogRequestDto> validator,
         CancellationToken cancellationToken)
     {
         ValidationResult fv = await validator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
