@@ -47,7 +47,7 @@
                     <label class="news-ms-row">
                         <input type="checkbox" checked="@selectedCategories.Contains(c)"
                                @onchange="e => ToggleCategory(c, (bool)e.Value!)" />
-                        <span>@NewsEnumGermanDisplay.CategoryDe(c)</span>
+                        <span>@NewsEnumGermanDisplayConstants.CategoryDe(c)</span>
                     </label>
                 }
             </div>
@@ -68,7 +68,7 @@
                     <label class="news-ms-row">
                         <input type="checkbox" checked="@selectedLanguages.Contains(lang)"
                                @onchange="e => ToggleLanguage(lang, (bool)e.Value!)" />
-                        <span>@NewsEnumGermanDisplay.LanguageDe(lang)</span>
+                        <span>@NewsEnumGermanDisplayConstants.LanguageDe(lang)</span>
                     </label>
                 }
             </div>
@@ -89,7 +89,7 @@
                     <label class="news-ms-row">
                         <input type="checkbox" checked="@selectedCountries.Contains(country)"
                                @onchange="e => ToggleCountry(country, (bool)e.Value!)" />
-                        <span>@NewsEnumGermanDisplay.CountryDe(country)</span>
+                        <span>@NewsEnumGermanDisplayConstants.CountryDe(country)</span>
                     </label>
                 }
             </div>
@@ -190,27 +190,27 @@
     private string countrySearch = string.Empty;
 
     private IEnumerable<NewsCategory> VisibleCategories =>
-        AllNewsCategories.Where(c => MatchesSearch(categorySearch, c.ToString(), NewsEnumGermanDisplay.CategoryDe(c)));
+        AllNewsCategories.Where(c => MatchesSearch(categorySearch, c.ToString(), NewsEnumGermanDisplayConstants.CategoryDe(c)));
 
     private IEnumerable<Language> VisibleLanguages =>
-        AllLanguages.Where(l => MatchesSearch(languageSearch, l.ToString(), NewsEnumGermanDisplay.LanguageDe(l)));
+        AllLanguages.Where(l => MatchesSearch(languageSearch, l.ToString(), NewsEnumGermanDisplayConstants.LanguageDe(l)));
 
     private IEnumerable<Country> VisibleCountries =>
-        AllCountries.Where(c => MatchesSearch(countrySearch, c.ToString(), NewsEnumGermanDisplay.CountryDe(c)));
+        AllCountries.Where(c => MatchesSearch(countrySearch, c.ToString(), NewsEnumGermanDisplayConstants.CountryDe(c)));
 
     private string CategorySummaryText => SelectionSummary(
         selectedCategories,
-        NewsEnumGermanDisplay.CategoryDe,
+        NewsEnumGermanDisplayConstants.CategoryDe,
         "Noch keine Kategorie gewählt");
 
     private string LanguageSummaryText => SelectionSummary(
         selectedLanguages,
-        NewsEnumGermanDisplay.LanguageDe,
+        NewsEnumGermanDisplayConstants.LanguageDe,
         "Noch keine Sprache gewählt");
 
     private string CountrySummaryText => SelectionSummary(
         selectedCountries,
-        NewsEnumGermanDisplay.CountryDe,
+        NewsEnumGermanDisplayConstants.CountryDe,
         "Noch kein Land gewählt");
 
     private static bool MatchesSearch(string query, string enumName, string labelDe)

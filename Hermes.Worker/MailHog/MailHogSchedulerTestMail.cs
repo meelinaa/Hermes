@@ -14,14 +14,14 @@ public static class MailHogSchedulerTestMail
         ILogger logger,
         CancellationToken cancellationToken = default)
     {
-        EmailRecipient to = new(smtp.DefaultFromAddress, smtp.DefaultFromName);
+        EmailRecipientDto to = new(smtp.DefaultFromAddress, smtp.DefaultFromName);
         string body =
             $"<p>Hermes Worker – Scheduler-Lauf (MailHog-Test)</p>" +
             $"<p>Wandzeit (Konfig Newsletter-TZ): {schedulerRunAt.DateTime:O}<br/>UTC: {schedulerRunAt.UtcDateTime:O}</p>" +
             "<p>Wenn du das in MailHog siehst, ist SMTP ok.</p>";
 
         await emailSender.SendAsync(
-                new EmailMessage(
+                new EmailMessageDto(
                     to,
                     $"[Hermes/MailHog] Scheduler-Test {schedulerRunAt.DateTime:HH:mm:ss}",
                     body),

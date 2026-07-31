@@ -67,7 +67,7 @@ public sealed class NewsletterDigestServiceTests
         {
             Mock<INewsletterRenderer> rendererMock = new();
             rendererMock
-                .Setup(r => r.RenderNewsletterAsync(It.IsAny<NewsletterRenderRequest>(), It.IsAny<CancellationToken>()))
+                .Setup(r => r.RenderNewsletterAsync(It.IsAny<NewsletterRenderRequestDto>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("<html>test-newsletter</html>");
             newsletterRenderer = rendererMock.Object;
         }
@@ -380,7 +380,7 @@ public sealed class NewsletterDigestServiceTests
             .ReturnsAsync([]);
 
         Mock<IEmailSender> email = new();
-        email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         logs.Setup(s => s.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
@@ -401,7 +401,7 @@ public sealed class NewsletterDigestServiceTests
 
         email.Verify(
             emailSender => emailSender.SendAsync(
-                It.Is<EmailMessage>(emailMessage =>
+                It.Is<EmailMessageDto>(emailMessage =>
                     emailMessage.To.Address == "digest@test.example"
                     && emailMessage.Subject.Contains("#12", StringComparison.Ordinal)),
                 It.IsAny<CancellationToken>()),
@@ -438,7 +438,7 @@ public sealed class NewsletterDigestServiceTests
             .ReturnsAsync([]);
 
         Mock<IEmailSender> email = new();
-        email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SMTP unavailable"));
 
         NotificationLog? capturedFailed = null;

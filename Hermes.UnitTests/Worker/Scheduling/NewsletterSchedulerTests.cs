@@ -57,7 +57,7 @@ public sealed class NewsletterSchedulerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
         emailSender.Verify(
-            sender => sender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
+            sender => sender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 

@@ -2,7 +2,7 @@ using Hermes.Domain.Enums;
 
 namespace Hermes.Application.Mapping;
 
-public class WeekdayConverter
+public class WeekdayMapper
 {
     public static Weekdays ToHermesWeekday(DateTime localWallClock) =>
       localWallClock.DayOfWeek switch

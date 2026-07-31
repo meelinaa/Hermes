@@ -75,8 +75,8 @@ public sealed class VerificationDigestService(
         {
             await emailSender
                 .SendAsync(
-                    new EmailMessage(
-                        new EmailRecipient(user.Email.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
+                    new EmailMessageDto(
+                        new EmailRecipientDto(user.Email.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
                         subject,
                         body),
                     cancellationToken)

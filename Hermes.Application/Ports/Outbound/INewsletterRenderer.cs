@@ -12,7 +12,7 @@ public interface INewsletterRenderer
     /// based on the supplied user context and article list.
     /// </summary>
     Task<string> RenderNewsletterAsync(
-        NewsletterRenderRequest request,
+        NewsletterRenderRequestDto request,
         CancellationToken cancellationToken = default);
 }
 
@@ -20,12 +20,12 @@ public interface INewsletterRenderer
 /// Data needed by the renderer to produce a complete newsletter HTML body.
 /// Defined in Application so the interface stays infrastructure-agnostic.
 /// </summary>
-public sealed record NewsletterRenderRequest(
+public sealed record NewsletterRenderRequestDto(
     string? UserDisplayName,
-    IReadOnlyList<NewsletterArticleItem> Articles);
+    IReadOnlyList<NewsletterArticleItemDto> Articles);
 
 /// <summary>Single article to be rendered inside a newsletter digest.</summary>
-public sealed record NewsletterArticleItem(
+public sealed record NewsletterArticleItemDto(
     string Category,
     string Title,
     string Content,

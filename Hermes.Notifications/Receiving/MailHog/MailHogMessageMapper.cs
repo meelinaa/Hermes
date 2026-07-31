@@ -7,7 +7,7 @@ namespace Hermes.Notifications.Receiving.MailHog;
 
 internal sealed class MailHogMessageMapper
 {
-    public EmailResult MapToEmailResult(MailHogMessageDto dto)
+    public EmailResultDto MapToEmailResult(MailHogMessageDto dto)
     {
         string id = dto.Id ?? string.Empty;
         string from = FormatPath(dto.From);
@@ -15,7 +15,7 @@ internal sealed class MailHogMessageMapper
         string subject = GetHeaderValue(dto.Content?.HeadersDictionary, "Subject");
         string body = dto.Content?.Body ?? string.Empty;
         DateTimeOffset receivedAt = ParseCreated(dto.Created);
-        return new EmailResult(id, from, to, subject, body, receivedAt);
+        return new EmailResultDto(id, from, to, subject, body, receivedAt);
     }
 
     private static DateTimeOffset ParseCreated(string? created)

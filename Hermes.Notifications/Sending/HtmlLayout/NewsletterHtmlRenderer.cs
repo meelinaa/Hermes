@@ -20,7 +20,7 @@ public sealed class NewsletterHtmlRenderer : INewsletterRenderer
     /// by delegating to <see cref="NewsletterHtmlComposer"/>.
     /// </summary>
     public async Task<string> RenderNewsletterAsync(
-        NewsletterRenderRequest request,
+        NewsletterRenderRequestDto request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);

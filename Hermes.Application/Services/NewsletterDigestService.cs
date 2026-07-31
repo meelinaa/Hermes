@@ -86,9 +86,9 @@ public sealed class NewsletterDigestService(
             IReadOnlyList<NewsArticle> articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
             string? subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", _digestCulture)}";
 
-            List<NewsletterArticleItem> articleItems = articles
+            List<NewsletterArticleItemDto> articleItems = articles
                 .Take(MAX_ARTICLES_IN_NEWSLETTER)
-                .Select(a => new NewsletterArticleItem(
+                .Select(a => new NewsletterArticleItemDto(
                     Category: a.Category?.FirstOrDefault() ?? "News",
                     Title: a.Title ?? string.Empty,
                     Content: TruncatePlainText(a.Description, 150),
@@ -96,7 +96,7 @@ public sealed class NewsletterDigestService(
                     ImageUrl: a.ImageUrl ?? string.Empty))
                 .ToList();
 
-            NewsletterRenderRequest renderRequest = new(user.Name, articleItems);
+            NewsletterRenderRequestDto renderRequest = new(user.Name, articleItems);
             string body = await newsletterRenderer
                 .RenderNewsletterAsync(renderRequest, cancellationToken)
                 .ConfigureAwait(false);
@@ -104,8 +104,8 @@ public sealed class NewsletterDigestService(
             try
             {
                 await emailSender.SendAsync(
-                    new EmailMessage(
-                        new EmailRecipient(user.Email.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
+                    new EmailMessageDto(
+                        new EmailRecipientDto(user.Email.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
                         subject,
                         body),
                     cancellationToken).ConfigureAwait(false);

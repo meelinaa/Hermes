@@ -29,7 +29,7 @@ public static class NewsletterNextRunCalculator
         {
             DateTime civilMidnight = refLocal.Date.AddDays(dayOffset);
             DateTime localNoon = civilMidnight.AddHours(12);
-            Weekdays wd = WeekdayConverter.ToHermesWeekday(localNoon);
+            Weekdays wd = WeekdayMapper.ToHermesWeekday(localNoon);
             if (!weekdays.Contains(wd))
                 continue;
 

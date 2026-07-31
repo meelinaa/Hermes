@@ -5,7 +5,7 @@ namespace Hermes.WebFrontend.Client.Enums;
 /// <summary>
 /// German UI labels for domain enums (search + summary use the same strings).
 /// </summary>
-public static class NewsEnumGermanDisplay
+public static class NewsEnumGermanDisplayConstants
 {
     /// <summary>Returns a German display label for a news category enum value.</summary>
     public static string CategoryDe(NewsCategory c) => c switch

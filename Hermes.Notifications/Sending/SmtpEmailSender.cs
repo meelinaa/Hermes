@@ -14,7 +14,7 @@ namespace Hermes.Notifications.Sending;
 public sealed class SmtpEmailSender(EmailOptions settings) : IEmailSender
 {
     /// <summary>Sends an e-mail message via SMTP using configured sender defaults.</summary>
-    public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
+    public async Task SendAsync(EmailMessageDto message, CancellationToken cancellationToken = default)
     {
         using SmtpClient smtp = CreateSmtpClient();
         using MailMessage mail = CreateMailMessage(message);
@@ -36,7 +36,7 @@ public sealed class SmtpEmailSender(EmailOptions settings) : IEmailSender
     }
 
     /// <summary>Builds a mail message with headers, reply-to, and optional attachments.</summary>
-    private MailMessage CreateMailMessage(EmailMessage message)
+    private MailMessage CreateMailMessage(EmailMessageDto message)
     {
         MailAddress from = new(settings.DefaultFromAddress, settings.DefaultFromName);
         MailAddress to = new(message.To.Address, message.To.DisplayName ?? string.Empty);
@@ -57,7 +57,7 @@ public sealed class SmtpEmailSender(EmailOptions settings) : IEmailSender
 
         if (message.Attachments is not null)
         {
-            foreach (EmailAttachment attachment in message.Attachments)
+            foreach (EmailAttachmentDto attachment in message.Attachments)
                 mail.Attachments.Add(new Attachment(attachment.Content, attachment.FileName, attachment.ContentType));
         }
 

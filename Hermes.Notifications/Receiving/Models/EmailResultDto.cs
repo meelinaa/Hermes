@@ -1,6 +1,6 @@
 namespace Hermes.Notifications.Receiving.Models;
 
-public sealed record EmailResult(
+public sealed record EmailResultDto(
     string Id,
     string From,
     string To,

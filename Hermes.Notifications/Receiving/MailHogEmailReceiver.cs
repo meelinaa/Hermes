@@ -34,7 +34,7 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
         _messageMapper = new();
     }
 
-    public async Task<EmailResult> GetLatestAsync(CancellationToken cancellationToken = default)
+    public async Task<EmailResultDto> GetLatestAsync(CancellationToken cancellationToken = default)
     {
         HttpResponseMessage response = await _httpClient.GetAsync(
             "api/v2/messages?start=0&limit=1",
@@ -54,9 +54,9 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
         return _messageMapper.MapToEmailResult(items[0]);
     }
 
-    public async Task<IEnumerable<EmailResult>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<EmailResultDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        List<EmailResult> results = [];
+        List<EmailResultDto> results = [];
         int start = 0;
 
         while (true)
@@ -92,11 +92,11 @@ public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
         return results;
     }
 
-    public async Task<IEnumerable<EmailResult>> GetBySubjectAsync(string subject, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<EmailResultDto>> GetBySubjectAsync(string subject, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(subject);
 
-        IEnumerable<EmailResult> all = await GetAllAsync(cancellationToken).ConfigureAwait(false);
+        IEnumerable<EmailResultDto> all = await GetAllAsync(cancellationToken).ConfigureAwait(false);
         return all.Where(emailResult =>
             emailResult.Subject.Contains(subject, StringComparison.OrdinalIgnoreCase)).ToList();
     }

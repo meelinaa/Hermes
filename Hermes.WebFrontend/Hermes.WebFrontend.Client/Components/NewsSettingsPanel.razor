@@ -41,7 +41,7 @@
                     <option value="">Alle</option>
                     @foreach (NewsCategory c in Enum.GetValues<NewsCategory>())
                     {
-                        <option value="@((int)c)">@NewsEnumGermanDisplay.CategoryDe(c)</option>
+                        <option value="@((int)c)">@NewsEnumGermanDisplayConstants.CategoryDe(c)</option>
                     }
                 </select>
             </label>
@@ -395,17 +395,17 @@
 
     private static string FormatCategories(NewsSubscriptionDto n) =>
         n.Category is { Count: > 0 }
-            ? string.Join(", ", n.Category.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplay.CategoryDe(c)))
+            ? string.Join(", ", n.Category.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplayConstants.CategoryDe(c)))
             : "—";
 
     private static string FormatLanguages(NewsSubscriptionDto n) =>
         n.Languages is { Count: > 0 }
-            ? string.Join(", ", n.Languages.OrderBy(l => l.ToString()).Select(l => NewsEnumGermanDisplay.LanguageDe(l)))
+            ? string.Join(", ", n.Languages.OrderBy(l => l.ToString()).Select(l => NewsEnumGermanDisplayConstants.LanguageDe(l)))
             : "—";
 
     private static string FormatCountries(NewsSubscriptionDto n) =>
         n.Countries is { Count: > 0 }
-            ? string.Join(", ", n.Countries.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplay.CountryDe(c)))
+            ? string.Join(", ", n.Countries.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplayConstants.CountryDe(c)))
             : "—";
 
     private static string FormatWeekdays(NewsSubscriptionDto n) =>

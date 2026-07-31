@@ -72,7 +72,7 @@ public sealed class VerificationDigestServiceTests
         await sut.SendAsync(3);
 
         mail.Verify(
-            emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
+            emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
         db.Verify(
             dataStore => dataStore.SetUserEmailVerificationChallengeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
@@ -92,7 +92,7 @@ public sealed class VerificationDigestServiceTests
         await sut.SendAsync(3);
 
         mail.Verify(
-            emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
+            emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -108,9 +108,9 @@ public sealed class VerificationDigestServiceTests
             .Returns(Task.CompletedTask);
 
         Mock<IEmailSender> mail = new();
-        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask)
-            .Callback<EmailMessage, CancellationToken>((msg, _) =>
+            .Callback<EmailMessageDto, CancellationToken>((msg, _) =>
             {
                 Assert.Equal("Hermes — Konto-Verifizierung", msg.Subject);
                 Assert.Contains("pat@test.dev", msg.Body, StringComparison.OrdinalIgnoreCase);
@@ -127,7 +127,7 @@ public sealed class VerificationDigestServiceTests
             Times.Once);
         mail.Verify(
             emailSender => emailSender.SendAsync(
-                It.Is<EmailMessage>(m => Regex.IsMatch(m.Body, @"\b\d{6}\b")),
+                It.Is<EmailMessageDto>(m => Regex.IsMatch(m.Body, @"\b\d{6}\b")),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -144,7 +144,7 @@ public sealed class VerificationDigestServiceTests
             .Returns(Task.CompletedTask);
 
         Mock<IEmailSender> mail = new();
-        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         VerificationDigestService sut = CreateSut(db.Object, mail.Object, hashEmailVerificationCodes: false);
@@ -166,7 +166,7 @@ public sealed class VerificationDigestServiceTests
             .Returns(Task.CompletedTask);
 
         Mock<IEmailSender> mail = new();
-        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SMTP down"));
 
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);

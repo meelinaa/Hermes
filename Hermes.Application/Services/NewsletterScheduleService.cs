@@ -21,7 +21,7 @@ public sealed class NewsletterScheduleService(INewsletterSubscriptionRepository 
         CancellationToken cancellationToken = default)
     {
         TimeOnly nowTime = TimeOnly.FromDateTime(nowLocal);
-        Weekdays todayWeekday = WeekdayConverter.ToHermesWeekday(nowLocal);
+        Weekdays todayWeekday = WeekdayMapper.ToHermesWeekday(nowLocal);
         return await newsletterSubscriptionRepository
             .GetDueNewsScheduleForSlotAsync(
                 todayWeekday,
