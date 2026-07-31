@@ -1,4 +1,4 @@
-using Hermes.Application.Models.NewsletterSubscription;
+using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Services;

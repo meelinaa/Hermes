@@ -1,4 +1,4 @@
-using Hermes.Application.Models.NewsletterSubscription;
+using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 

@@ -4,7 +4,7 @@ using Hermes.Api.Authorization;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Api.Validation;
-using Hermes.Application.Models.NotificationLogs;
+using Hermes.Application.DTOs.NotificationLogs;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;

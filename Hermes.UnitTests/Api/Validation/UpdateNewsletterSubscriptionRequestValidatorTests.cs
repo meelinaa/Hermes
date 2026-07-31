@@ -1,6 +1,6 @@
 using FluentValidation.TestHelper;
 using Hermes.Api.Validation;
-using Hermes.Application.Models.NewsletterSubscription;
+using Hermes.Application.DTOs.NewsletterSubscription;
 using Xunit;
 
 namespace Hermes.UnitTests.Api.Validation;

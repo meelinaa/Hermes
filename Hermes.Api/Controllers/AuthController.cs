@@ -1,5 +1,5 @@
 using Hermes.Api.Http;
-using Hermes.Application.Models.Login;
+using Hermes.Application.DTOs.Login;
 using Hermes.Application.Security;
 using Hermes.Application.Services;
 using Microsoft.AspNetCore.Authorization;

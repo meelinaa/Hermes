@@ -1,4 +1,4 @@
-using Hermes.Application.Models.Email;
+using Hermes.Application.DTOs.Email;
 
 namespace Hermes.Application.Ports;
 

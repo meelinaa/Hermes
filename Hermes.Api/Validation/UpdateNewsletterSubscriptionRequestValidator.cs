@@ -1,5 +1,5 @@
 using FluentValidation;
-using Hermes.Application.Models.NewsletterSubscription;
+using Hermes.Application.DTOs.NewsletterSubscription;
 
 namespace Hermes.Api.Validation;
 

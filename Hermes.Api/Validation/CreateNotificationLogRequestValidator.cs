@@ -1,5 +1,5 @@
 using FluentValidation;
-using Hermes.Application.Models.NotificationLogs;
+using Hermes.Application.DTOs.NotificationLogs;
 
 namespace Hermes.Api.Validation;
 

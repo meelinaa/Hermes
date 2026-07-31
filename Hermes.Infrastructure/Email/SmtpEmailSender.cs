@@ -1,4 +1,4 @@
-using Hermes.Application.Models.Email;
+using Hermes.Application.DTOs.Email;
 using Hermes.Application.Ports;
 using System.Net;
 using System.Net.Mail;

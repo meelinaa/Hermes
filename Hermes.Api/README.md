@@ -74,7 +74,7 @@ The sections below show typical payloads. **Authoritative property lists** are t
 
 ### Auth
 
-**Login**: request type `[LoginRequest](../Hermes.Application/Models/Login/LoginRequest.cs)` (namespace `Hermes.Application.Models.Login`).
+**Login**: request type `[LoginRequest](../Hermes.Application/DTOs/Login/LoginRequest.cs)` (namespace `Hermes.Application.DTOs.Login`).
 
 ```json
 {
@@ -97,7 +97,7 @@ The sections below show typical payloads. **Authoritative property lists** are t
 }
 ```
 
-**Refresh**: request `[RefreshRequest](../Hermes.Application/Models/RefreshRequest.cs)`.
+**Refresh**: request `[RefreshRequest](../Hermes.Application/DTOs/RefreshRequest.cs)`.
 
 ```json
 {
@@ -118,7 +118,7 @@ The sections below show typical payloads. **Authoritative property lists** are t
 }
 ```
 
-**Logout**: optional body `[LogoutRequest](../Hermes.Application/Models/LogoutRequest.cs)`. Requires `Authorization: Bearer`.
+**Logout**: optional body `[LogoutRequest](../Hermes.Application/DTOs/LogoutRequest.cs)`. Requires `Authorization: Bearer`.
 
 ```json
 {}
@@ -140,7 +140,7 @@ Success: **204 No Content**.
 
 ### Users
 
-**Register** body is `[RegisterUserRequest](../Hermes.Domain/DTOs/RegisterUserRequest.cs)` (`name`, `email`, `password`; extra JSON properties are ignored). **Profile update** uses `[UserProfileUpdateRequest](../Hermes.Application/Models/User/UserProfileUpdateRequest.cs)` (`newPassword` / `currentPassword`, not the full `User` JSON). Success responses use `[UserResponse](../Hermes.Application/Models/User/UserResponse.cs)` for register, profile GET, profile PUT, and successful verification-code submission. Queued verification mail: `[SendVerificationMailResponse](../Hermes.Application/Models/User/SendVerificationMailResponse.cs)`.
+**Register** body is `[RegisterUserRequest](../Hermes.Hermes.Application/DTOs/User/RegisterUserRequest.cs)` (`name`, `email`, `password`; extra JSON properties are ignored). **Profile update** uses `[UserProfileUpdateRequest](../Hermes.Application/DTOs/User/UserProfileUpdateRequest.cs)` (`newPassword` / `currentPassword`, not the full `User` JSON). Success responses use `[UserResponse](../Hermes.Application/DTOs/User/UserResponse.cs)` for register, profile GET, profile PUT, and successful verification-code submission. Queued verification mail: `[SendVerificationMailResponse](../Hermes.Application/DTOs/User/SendVerificationMailResponse.cs)`.
 
 **Register** (`POST /api/v1/users`): example (`password` is hashed server-side with BCrypt):
 
@@ -152,7 +152,7 @@ Success: **204 No Content**.
 }
 ```
 
-**Update** (`PUT /api/v1/users`): body type `[UserProfileUpdateRequest](../Hermes.Application/Models/User/UserProfileUpdateRequest.cs)`. Success body is **`UserResponse`** (current profile after save). Omit `newPassword` (or send empty) to keep the existing password. When `newPassword` is set, `**currentPassword`** is required; the API verifies it with **BCrypt** against the stored hash before persisting the new hash.
+**Update** (`PUT /api/v1/users`): body type `[UserProfileUpdateRequest](../Hermes.Application/DTOs/User/UserProfileUpdateRequest.cs)`. Success body is **`UserResponse`** (current profile after save). Omit `newPassword` (or send empty) to keep the existing password. When `newPassword` is set, `**currentPassword`** is required; the API verifies it with **BCrypt** against the stored hash before persisting the new hash.
 
 ```json
 {
@@ -193,7 +193,7 @@ If the **e-mail address changes**, persistence resets `**isEmailVerified`** to `
 
 `POST /api/v1/users/1/verify` → **200** with **`SendVerificationMailResponse`** `{ "userId": 1, "email": "max@example.com" }` (implementation queues the message with a time-limited code). The caller must be authorized to access the user id.
 
-Confirm code: body `[UserVerificationCodeRequest](../Hermes.Application/Models/User/UserVerificationCodeRequest.cs)`:
+Confirm code: body `[UserVerificationCodeRequest](../Hermes.Application/DTOs/User/UserVerificationCodeRequest.cs)`:
 
 ```json
 {
@@ -227,7 +227,7 @@ The API uses `System.Text.Json` with **string enums** (`JsonStringEnumConverter`
 }
 ```
 
-**Create**: success body [`CreateNewsResponse`](../Hermes.Application/Models/News/CreateNewsResponse.cs):
+**Create**: success body [`CreateNewsResponse`](../Hermes.Application/DTOs/News/CreateNewsResponse.cs):
 
 ```json
 {
@@ -238,7 +238,7 @@ The API uses `System.Text.Json` with **string enums** (`JsonStringEnumConverter`
 
 **Update** (`PUT /api/v1/users/news`): same editable fields as create plus required `id`; owner remains the JWT user (no `userId` in JSON).
 
-**List / get**: response items are [`NewsResponse`](../Hermes.Application/Models/News/NewsResponse.cs) (API projection of persisted `[News](../Hermes.Domain/Entities/News.cs)` rows).
+**List / get**: response items are [`NewsResponse`](../Hermes.Application/DTOs/News/NewsResponse.cs) (API projection of persisted `[News](../Hermes.Domain/Entities/News.cs)` rows).
 
 *Path notes:* news collection is **`GET /api/v1/users/{userId}/news`** with optional query **`page`**, **`pageSize`** (capped by `Pagination:MaxPageSize`), **`afterId`** (cursor; ascending id only; incompatible with **`sort=-id`**), **`sort`** (`id` or `-id`), **`q`** (keyword substring, max 200 chars), **`category`** (`NewsCategory`). Response: **`items`** plus **`totalCount`**, **`totalPages`** (offset mode), **`hasNextPage`**, **`nextAfterId`** (cursor). A single row is **`GET|DELETE /api/v1/users/{userId}/news/{newsId}`**; bulk delete is **`DELETE /api/v1/users/{userId}/news/all`**. Create/update remain **`POST|PUT /api/v1/users/news`** (owner from JWT).
 
@@ -262,7 +262,7 @@ Entity: `[NotificationLog](../Hermes.Domain/Entities/NotificationLog.cs)`. Statu
 }
 ```
 
-Success body: [`NotificationLogResponse`](../Hermes.Application/Models/NotificationLogs/NotificationLogResponse.cs).
+Success body: [`NotificationLogResponse`](../Hermes.Application/DTOs/NotificationLogs/NotificationLogResponse.cs).
 
 *More inline notes:* `[Controllers/NotificationLogsController.cs](Controllers/NotificationLogsController.cs)`.
 

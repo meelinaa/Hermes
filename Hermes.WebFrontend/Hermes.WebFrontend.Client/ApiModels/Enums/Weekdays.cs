@@ -1,4 +1,4 @@
-﻿namespace Hermes.WebFrontend.Client.ApiModels.Enums;
+namespace Hermes.WebFrontend.Client.ApiModels.Enums;
 
 
 public enum Weekdays

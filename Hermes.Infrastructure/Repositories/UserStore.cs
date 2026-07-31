@@ -4,7 +4,7 @@ using Hermes.Domain.Exceptions;
 using EmailAddress = Hermes.Domain.ValueObjects.Email;
 using Hermes.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Hermes.Application.DTOs;
+using Hermes.Application.DTOs.User;
 
 namespace Hermes.Infrastructure.Repositories;
 

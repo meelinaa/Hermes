@@ -1,4 +1,4 @@
-using Hermes.Application.Models.NotificationLogs;
+using Hermes.Application.DTOs.NotificationLogs;
 using Hermes.Domain.Entities;
 
 namespace Hermes.Api.Mapping;

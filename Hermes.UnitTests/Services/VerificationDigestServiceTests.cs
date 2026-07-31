@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Hermes.Application.Models.Email;
+using Hermes.Application.DTOs.Email;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Security;

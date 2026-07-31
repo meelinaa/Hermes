@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Hermes.Application.Models.Login;
+using Hermes.Application.DTOs.Login;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Security;
@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;
-using Hermes.Application.DTOs;
+using Hermes.Application.DTOs.User;
 
 namespace Hermes.Application.Services;
 

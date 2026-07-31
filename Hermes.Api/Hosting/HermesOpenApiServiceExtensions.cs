@@ -1,4 +1,4 @@
-using Hermes.Application.Models.Login;
+using Hermes.Application.DTOs.Login;
 using Hermes.Application.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

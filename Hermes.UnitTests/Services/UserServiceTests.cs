@@ -1,5 +1,5 @@
-using Hermes.Application.DTOs;
-using Hermes.Application.Models.Login;
+using Hermes.Application.DTOs.User;
+using Hermes.Application.DTOs.Login;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;

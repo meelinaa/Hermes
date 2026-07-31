@@ -1,7 +1,7 @@
 using Hermes.Api.Authorization;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
-using Hermes.Application.Models.NewsletterSubscription;
+using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Application.Options;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
