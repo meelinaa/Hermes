@@ -1,7 +1,4 @@
-using FluentValidation;
-using FluentValidation.Results;
 using Hermes.Api.Http;
-using Hermes.Api.Validation;
 using Hermes.Application.Models.Login;
 using Hermes.Application.Security;
 using Hermes.Application.Services;
@@ -11,29 +8,29 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace Hermes.Api.Controllers;
 
+/// <summary>
+/// Handles authentication endpoints such as login, refresh tokens, and logout.
+/// </summary>
 [ApiController]
 [Route("api/v1/auth")]
 public class AuthController(IUserService userService) : ControllerBase
 {
-    /// <remarks>
-    /// <b>POST</b> <c>api/v1/auth/login</c>. <c>nameOrEmail</c> is an e-mail or display name.
-    /// <code>
-    /// { "nameOrEmail": "max@example.com", "password": "plain-password" }
-    /// </code>
-    /// </remarks>
+    /// <summary>
+    /// Processes a user login request, validating the credentials and returning access/refresh tokens.
+    /// Validation is handled automatically by the global filters.
+    /// </summary>
+    /// <param name="request">The login payload containing credentials.</param>
+    /// <param name="authTokens">The token service used to issue JWTs.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An action result containing tokens or an unauthorized problem.</returns>
     [AllowAnonymous]
     [HttpPost("login")]
     [EnableRateLimiting("AuthLoginPolicy")]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequest request,
-        [FromServices] IValidator<LoginRequest> loginValidator,
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        ValidationResult fv = await loginValidator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!fv.IsValid)
-            return fv.ToValidationProblem(this);
-
         LoginResult result = await userService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
@@ -50,19 +47,22 @@ public class AuthController(IUserService userService) : ControllerBase
         return Ok(body);
     }
 
+    /// <summary>
+    /// Rotates the refresh token to extend the user session and issues a new access token.
+    /// Validation is handled automatically by the global filters.
+    /// </summary>
+    /// <param name="request">The refresh payload containing the current refresh token.</param>
+    /// <param name="authTokens">The token service used to rotate the tokens.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An action result containing rotated tokens or an unauthorized problem.</returns>
     [AllowAnonymous]
     [HttpPost("refresh")]
     [EnableRateLimiting("AuthRefreshPolicy")]
     public async Task<IActionResult> Refresh(
         [FromBody] RefreshRequest request,
-        [FromServices] IValidator<RefreshRequest> refreshValidator,
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        ValidationResult fv = await refreshValidator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!fv.IsValid)
-            return fv.ToValidationProblem(this);
-
         AuthTokensResult? next = await authTokens.RotateAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
         if (next is null)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
@@ -77,7 +77,13 @@ public class AuthController(IUserService userService) : ControllerBase
         return Ok(body);
     }
 
-    /// <summary>Body with <c>refreshToken</c> revokes that session; empty body revokes all refresh rows for the user.</summary>
+    /// <summary>
+    /// Logs out the user by revoking the supplied refresh token (or all tokens if empty).
+    /// </summary>
+    /// <param name="body">The optional logout request containing the refresh token to revoke.</param>
+    /// <param name="authTokens">The token service used to revoke session state.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A no content result or unauthorized if verification fails.</returns>
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(

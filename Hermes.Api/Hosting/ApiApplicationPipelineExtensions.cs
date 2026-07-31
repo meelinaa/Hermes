@@ -117,6 +117,17 @@ public static class ApiApplicationPipelineExtensions
                     return;
                 }
 
+                if (error is ArgumentException argumentException)
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
+                    {
+                        HttpContext = context,
+                        ProblemDetails = CreateMinimalProblem(argumentException.Message, StatusCodes.Status400BadRequest)
+                    });
+                    return;
+                }
+
                 if (error is VerificationCodeMismatchException vcm)
                 {
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;

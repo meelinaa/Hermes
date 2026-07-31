@@ -59,7 +59,10 @@ public static class ApiServiceCollectionExtensions
         services.AddSingleton<INewsletterSchedulerRunTrigger, HangfireNewsletterSchedulerRunTrigger>();
         Log.Information("Registered Hangfire JobStorage (MySQL) for newsletter scheduler triggers (same DB as Hermes.Worker).");
 
-        services.AddControllers()
+        services.AddControllers(options =>
+            {
+                options.Filters.Add<AutoValidationFilter>();
+            })
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
