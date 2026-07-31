@@ -1,10 +1,10 @@
+using Hermes.Application.DTOs;
 using Hermes.Application.Models.Login;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Security;
 using Hermes.Application.Services;
-using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Microsoft.Extensions.Options;

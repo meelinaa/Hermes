@@ -7,10 +7,10 @@ using Hermes.Application.Ports;
 using Hermes.Application.Security;
 using Hermes.Application.Scheduling;
 using Microsoft.Extensions.Options;
-using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;
+using Hermes.Application.DTOs;
 
 namespace Hermes.Application.Services;
 

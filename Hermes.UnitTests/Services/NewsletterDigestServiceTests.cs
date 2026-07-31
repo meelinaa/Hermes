@@ -44,16 +44,27 @@ public sealed class NewsletterDigestServiceTests
         INotificationLogStore? notificationLogs = null,
         INewsArticleProvider? newsProvider = null,
         IEmailSender? emailSender = null,
+        INewsletterRenderer? newsletterRenderer = null,
         IOptions<NewsDataIoOptions>? newsOptions = null,
         IOptions<NewsletterOptions>? newsletterOptions = null,
         ILogger<NewsletterDigestService>? logger = null)
     {
+        if (newsletterRenderer is null)
+        {
+            Mock<INewsletterRenderer> rendererMock = new();
+            rendererMock
+                .Setup(r => r.RenderNewsletterAsync(It.IsAny<NewsletterRenderRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync("<html>test-newsletter</html>");
+            newsletterRenderer = rendererMock.Object;
+        }
+
         return new NewsletterDigestService(
             users ?? Mock.Of<IUserStore>(),
             news ?? CreateDefaultNewsStore(),
             notificationLogs ?? Mock.Of<INotificationLogStore>(),
             newsProvider ?? Mock.Of<INewsArticleProvider>(),
             emailSender ?? Mock.Of<IEmailSender>(),
+            newsletterRenderer,
             newsOptions ?? Options.Create(new NewsDataIoOptions { Key = "integration-test-api-key" }),
             newsletterOptions ?? Options.Create(new NewsletterOptions()),
             logger ?? Mock.Of<ILogger<NewsletterDigestService>>());

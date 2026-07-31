@@ -1,5 +1,5 @@
+using Hermes.Application.DTOs;
 using Hermes.Application.Models.User;
-using Hermes.Domain.DTOs;
 
 namespace Hermes.Api.Mapping;
 

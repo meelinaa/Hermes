@@ -9,6 +9,7 @@ using Hermes.Infrastructure.Repositories;
 using Hermes.Infrastructure.Email;
 using Hermes.Infrastructure.NewsDataIo;
 using Hermes.Notifications.Receiving.Models;
+using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Worker.Scheduling;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,6 +44,8 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.Configure<NewsletterOptions>(builder.Configuration.GetSection(NewsletterOptions.SectionName));
         builder.Services.Configure<SecurityOptions>(builder.Configuration.GetSection(SecurityOptions.SECTION_NAME));
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
+        builder.Services.AddSingleton<INewsletterRenderer, NewsletterHtmlRenderer>();
+        builder.Services.AddSingleton<IVerificationRenderer, VerificationHtmlRenderer>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
         builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();

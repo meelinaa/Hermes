@@ -14,4 +14,9 @@
     <EmbeddedResource Include="Sending\HtmlLayout\Verification.html" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Hermes.Application\Hermes.Application.csproj" />
+  </ItemGroup>
+
 </Project>
+

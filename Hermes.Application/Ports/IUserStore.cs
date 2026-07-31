@@ -1,4 +1,4 @@
-using Hermes.Domain.DTOs;
+using Hermes.Application.DTOs;
 using Hermes.Domain.Entities;
 
 namespace Hermes.Application.Ports;

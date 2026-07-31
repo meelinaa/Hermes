@@ -1,10 +1,10 @@
 using Hermes.Application.Ports;
-using Hermes.Domain.DTOs;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using EmailAddress = Hermes.Domain.ValueObjects.Email;
 using Hermes.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Hermes.Application.DTOs;
 
 namespace Hermes.Infrastructure.Repositories;
 

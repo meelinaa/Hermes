@@ -7,19 +7,24 @@ using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
-using Hermes.Notifications.Sending.HtmlLayout;
-using Hermes.Notifications.Sending.HtmlLayout.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Services;
 
+/// <summary>
+/// Orchestrates the newsletter digest pipeline: duplicate check, article fetch,
+/// HTML rendering (via <see cref="INewsletterRenderer"/>), e-mail delivery,
+/// and notification logging. Rendering is delegated to an injected renderer
+/// so the Application layer stays free of HTML/template concerns.
+/// </summary>
 public sealed class NewsletterDigestService(
     IUserStore users,
     INewsStore news,
     INotificationLogStore notificationLogs,
     INewsArticleProvider newsArticleProvider,
     IEmailSender emailSender,
+    INewsletterRenderer newsletterRenderer,
     IOptions<NewsDataIoOptions> newsDataOptions,
     IOptions<NewsletterOptions> newsletterOptions,
     ILogger<NewsletterDigestService> logger) : INewsletterDigestService
@@ -27,6 +32,11 @@ public sealed class NewsletterDigestService(
     private const int MAX_ARTICLES_IN_NEWSLETTER = 10;
     private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
+    /// <summary>
+    /// Sends a newsletter digest for the given user and news subscription.
+    /// Deduplicates within a one-minute UTC window, advances the next digest
+    /// slot on success or permanent failure, and logs the outcome.
+    /// </summary>
     public async Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -73,7 +83,21 @@ public sealed class NewsletterDigestService(
 
             IReadOnlyList<NewsArticle> articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
             string? subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", _digestCulture)}";
-            string? body = await BuildNewsletterBodyAsync(user.Name, articles, cancellationToken).ConfigureAwait(false);
+
+            List<NewsletterArticleItem> articleItems = articles
+                .Take(MAX_ARTICLES_IN_NEWSLETTER)
+                .Select(a => new NewsletterArticleItem(
+                    Category: a.Category?.FirstOrDefault() ?? "News",
+                    Title: a.Title ?? string.Empty,
+                    Content: TruncatePlainText(a.Description, 150),
+                    Url: a.Link ?? "#",
+                    ImageUrl: a.ImageUrl ?? string.Empty))
+                .ToList();
+
+            NewsletterRenderRequest renderRequest = new(user.Name, articleItems);
+            string body = await newsletterRenderer
+                .RenderNewsletterAsync(renderRequest, cancellationToken)
+                .ConfigureAwait(false);
 
             try
             {
@@ -138,6 +162,10 @@ public sealed class NewsletterDigestService(
         }
     }
 
+    /// <summary>
+    /// Builds the external article query from the news subscription filters.
+    /// Returns null when no meaningful filter criteria are present.
+    /// </summary>
     private static NewsArticleQuery? BuildArticleQuery(string apiKey, News news)
     {
         List<string>? countries = news.Countries is { Count: > 0 }
@@ -171,50 +199,10 @@ public sealed class NewsletterDigestService(
         };
     }
 
-    private static async Task<string> BuildNewsletterBodyAsync(
-        string? userDisplayName,
-        IReadOnlyList<NewsArticle> articles,
-        CancellationToken cancellationToken)
-    {
-        const int MAX_TEXT_LENGTH = 150;
-        NewsletterHtmlComposer composer = new();
-        string? dateDisplay = DateTime.UtcNow.ToString("dddd, dd. MMMM yyyy", _digestCulture);
-
-        string? greetings = DateTime.UtcNow.Hour switch
-        {
-            < 12 => "Guten Morgen",
-            < 18 => "Guten Tag",
-            _ => "Guten Abend"
-        };
-
-        string? intro = string.IsNullOrWhiteSpace(userDisplayName)
-            ? $"{greetings}! Hier sind die wichtigsten Nachrichten."
-            : $"{greetings}, {userDisplayName}! Hier sind die wichtigsten Nachrichten.";
-
-        NewsletterHeaderContent header = new(
-            Header: "HERMES",
-            Header2: "Dein täglicher News-Überblick",
-            DateDisplay: dateDisplay,
-            Intro: intro);
-
-        List<NewsletterItemContent> itemModels = articles
-            .Take(MAX_ARTICLES_IN_NEWSLETTER)
-            .Select(article => new NewsletterItemContent(
-                Category: article.Category?.FirstOrDefault() ?? "News",
-                Title: article.Title ?? string.Empty,
-                Content: TruncatePlainText(article.Description, MAX_TEXT_LENGTH),
-                Url: article.Link ?? "#",
-                ImageUrl: article.ImageUrl ?? string.Empty))
-            .ToList();
-
-        NewsletterFooterContent footer = new(
-            InfoFooter: "Du erhältst diese E-Mail, weil du den Hermes Newsletter abonniert hast.",
-            DeaboUrl: "#",
-            SettingsUrl: "#");
-
-        return await NewsletterHtmlComposer.BuildAsync(header, itemModels, footer, cancellationToken).ConfigureAwait(false);
-    }
-
+    /// <summary>
+    /// Truncates plain text to the specified maximum length, appending
+    /// a suffix when the original value exceeds the limit.
+    /// </summary>
     private static string TruncatePlainText(string? value, int maxLength, string suffix = "...")
     {
         if (string.IsNullOrEmpty(value))

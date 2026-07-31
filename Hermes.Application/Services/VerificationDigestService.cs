@@ -5,23 +5,32 @@ using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Security;
 using Hermes.Domain.Entities;
-using Hermes.Notifications.Sending.HtmlLayout;
-using Hermes.Notifications.Sending.HtmlLayout.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Services;
 
+/// <summary>
+/// Generates a six-digit verification code, persists it for the user,
+/// renders the verification HTML via <see cref="IVerificationRenderer"/>,
+/// and delivers the e-mail. Rendering is delegated to an injected renderer
+/// so the Application layer stays free of HTML/template concerns.
+/// </summary>
 public sealed class VerificationDigestService(
     IUserStore users,
     IEmailSender emailSender,
+    IVerificationRenderer verificationRenderer,
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,
     IOptions<SecurityOptions> securityOptions,
     ILogger<VerificationDigestService> logger) : IVerificationDigestService
 {
     public const int VERIFICATION_CODE_VALIDITY_MINUTES = 15;
-    private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
+    /// <summary>
+    /// Sends a verification e-mail containing a six-digit code to the user
+    /// identified by <paramref name="userId"/>. The code is persisted
+    /// (optionally hashed) before the e-mail is dispatched.
+    /// </summary>
     public async Task SendAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -45,14 +54,17 @@ public sealed class VerificationDigestService(
         HermesSiteUrlsOptions site = siteUrlsOptions.Value;
         string? baseUrl = (site.PublicBaseUrl ?? "https://hermes.de").TrimEnd('/');
         string? supportEmail = (site.SupportEmail ?? "support@hermes.de").Trim();
-        string? body = await BuildVerificationBodyAsync(
-                user.Name,
-                user.Email.Trim(),
-                code,
-                supportEmail,
-                $"{baseUrl}/unsubscribe",
-                $"{baseUrl}/settings",
-                cancellationToken)
+
+        VerificationRenderRequest renderRequest = new(
+            UserDisplayName: user.Name,
+            RecipientEmail: user.Email.Trim(),
+            VerificationCode: code,
+            SupportEmail: supportEmail,
+            UnsubscribeUrl: $"{baseUrl}/unsubscribe",
+            SettingsUrl: $"{baseUrl}/settings");
+
+        string body = await verificationRenderer
+            .RenderVerificationAsync(renderRequest, cancellationToken)
             .ConfigureAwait(false);
 
         string? subject = $"Hermes — Konto-Verifizierung";
@@ -75,44 +87,13 @@ public sealed class VerificationDigestService(
         }
     }
 
+    /// <summary>
+    /// Generates a cryptographically random six-digit numeric code
+    /// used for e-mail verification challenges.
+    /// </summary>
     private static string GenerateNumericVerificationCode()
     {
         int randomNumber = RandomNumberGenerator.GetInt32(0, 1_000_000);
         return randomNumber.ToString("D6", CultureInfo.InvariantCulture);
-    }
-
-    private static async Task<string> BuildVerificationBodyAsync(
-        string? userDisplayName,
-        string recipientEmail,
-        string verificationCode,
-        string supportEmail,
-        string deaboUrl,
-        string settingsUrl,
-        CancellationToken cancellationToken)
-    {
-        string? dateDisplay = DateTime.UtcNow.ToString("dd. MMMM yyyy", _digestCulture);
-
-        string? intro = string.IsNullOrWhiteSpace(userDisplayName)
-            ? "Hallo,"
-            : $"Hallo {userDisplayName.Trim()},";
-
-        const string INTRO_2 =
-            "Vielen Dank für Ihre Registrierung bei Hermes. Um Ihr Konto zu verifizieren, verwenden Sie bitte den folgenden Verifizierungscode:";
-
-        string? infoFooter = $"Diese E-Mail wurde an {recipientEmail} gesendet";
-
-        VerificationContent content = new(
-            Header: "Hermes",
-            Header2: "Konto-Verifizierung",
-            DateDisplay: dateDisplay,
-            Intro: intro,
-            Intro2: INTRO_2,
-            VerificationCode: verificationCode,
-            SupportMail: supportEmail,
-            InfoFooter: infoFooter,
-            DeaboUrl: deaboUrl,
-            SettingsUrl: settingsUrl);
-
-        return await VerificationHtmlComposer.BuildAsync(content, cancellationToken).ConfigureAwait(false);
     }
 }

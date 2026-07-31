@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hermes.Domain\Hermes.Domain.csproj" />
-    <ProjectReference Include="..\Hermes.Notifications\Hermes.Notifications.csproj" />
   </ItemGroup>
 
 </Project>

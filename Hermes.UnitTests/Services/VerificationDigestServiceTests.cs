@@ -17,8 +17,19 @@ public sealed class VerificationDigestServiceTests
     private static VerificationDigestService CreateSut(
         IUserStore db,
         IEmailSender? emailSender = null,
+        IVerificationRenderer? verificationRenderer = null,
         bool hashEmailVerificationCodes = true)
     {
+        if (verificationRenderer is null)
+        {
+            Mock<IVerificationRenderer> rendererMock = new();
+            rendererMock
+                .Setup(r => r.RenderVerificationAsync(It.IsAny<VerificationRenderRequest>(), It.IsAny<CancellationToken>()))
+                .Returns<VerificationRenderRequest, CancellationToken>((req, _) =>
+                    Task.FromResult($"<html>code={req.VerificationCode} email={req.RecipientEmail}</html>"));
+            verificationRenderer = rendererMock.Object;
+        }
+
         IOptions<HermesSiteUrlsOptions> site = Options.Create(new HermesSiteUrlsOptions
         {
             PublicBaseUrl = "https://test.example",
@@ -31,6 +42,7 @@ public sealed class VerificationDigestServiceTests
         return new VerificationDigestService(
             db,
             emailSender ?? Mock.Of<IEmailSender>(),
+            verificationRenderer,
             site,
             security,
             NullLogger<VerificationDigestService>.Instance);

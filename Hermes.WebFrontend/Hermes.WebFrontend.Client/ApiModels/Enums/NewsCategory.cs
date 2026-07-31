@@ -1,9 +1,6 @@
-﻿namespace Hermes.WebFrontend.Client.ApiModels.Enums;
+namespace Hermes.WebFrontend.Client.ApiModels.Enums;
 
 
-/// <summary>
-/// News-Kategorien (wie in der UI / NewsData.io Filter).
-/// </summary>
 public enum NewsCategory
 {
     Breaking,
