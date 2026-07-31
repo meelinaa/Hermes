@@ -1,4 +1,4 @@
-using Hermes.Application.Models.News;
+using Hermes.Application.Models.NewsArticle;
 
 namespace Hermes.Application.Ports;
 

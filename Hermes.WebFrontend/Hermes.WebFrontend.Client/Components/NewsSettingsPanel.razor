@@ -333,7 +333,7 @@
         await InvokeAsync(StateHasChanged).ConfigureAwait(false);
         try
         {
-            var payload = new UpdateNewsPayloadDto
+            var payload = new UpdateNewsletterSubscriptionPayloadDto
             {
                 Id = n.Id,
                 Keywords = n.Keywords,
@@ -345,7 +345,7 @@
                 IsEnabled = targetEnabled,
             };
 
-            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/news", payload, HermesNewsJson.Options).ConfigureAwait(false);
+            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", payload, HermesNewsJson.Options).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 NewsListCache.Invalidate();
@@ -372,7 +372,7 @@
         try
         {
             HttpResponseMessage response = await Http.DeleteAsync(
-                $"api/v1/users/{userId.Value}/news/{n.Id}").ConfigureAwait(false);
+                $"api/v1/users/{userId.Value}/newsletter-subscriptions/{n.Id}").ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 NewsListCache.Invalidate();

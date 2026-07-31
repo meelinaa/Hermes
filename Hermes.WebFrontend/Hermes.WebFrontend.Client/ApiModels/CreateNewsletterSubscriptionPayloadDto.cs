@@ -2,8 +2,8 @@ using Hermes.WebFrontend.Client.ApiModels.Enums;
 
 namespace Hermes.WebFrontend.Client.ApiModels;
 
-/// <summary>Body for <c>POST /api/v1/users/news</c> (owner from JWT).</summary>
-public sealed class CreateNewsPayloadDto
+/// <summary>Body for <c>POST /api/v1/users/newsletter-subscriptions</c> (owner from JWT).</summary>
+public sealed class CreateNewsletterSubscriptionPayloadDto
 {
     public List<string>? Keywords { get; set; }
 

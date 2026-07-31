@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Hermes.Application.Models.News;
+using Hermes.Application.Models.NewsArticle;
 using Hermes.Application.Ports;
 
 namespace Hermes.Infrastructure.NewsDataIo;

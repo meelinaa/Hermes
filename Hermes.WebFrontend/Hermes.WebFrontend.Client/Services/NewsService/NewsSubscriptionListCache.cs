@@ -58,7 +58,7 @@ public sealed class NewsSubscriptionListCache
         int? afterId)
     {
         StringBuilder sb = new();
-        sb.Append(CultureInfo.InvariantCulture, $"api/v1/users/{userId}/news?page={page}");
+        sb.Append(CultureInfo.InvariantCulture, $"api/v1/users/{userId}/newsletter-subscriptions?page={page}");
         sb.Append(CultureInfo.InvariantCulture, $"&pageSize={pageSize}");
         sb.Append(sortDescending ? "&sort=-id" : "&sort=id");
         if (!string.IsNullOrWhiteSpace(q))

@@ -38,14 +38,14 @@ public static class ApiServiceCollectionExtensions
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, serverVersion));
         services.AddScoped<IUserStore, UserStore>();
-        services.AddScoped<INewsStore, NewsStore>();
+        services.AddScoped<INewsletterSubscriptionStore, NewsletterSubscriptionStore>();
         services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
         services.AddScoped<INotificationLogStore, NotificationLogStore>();
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
-        services.AddScoped<INewsService, NewsService>();
+        services.AddScoped<INewsletterSubscriptionService, NewsletterSubscriptionService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
         services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         services.Configure<PaginationOptions>(configuration.GetSection(PaginationOptions.SECTION_NAME));
@@ -53,7 +53,7 @@ public static class ApiServiceCollectionExtensions
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
         services.AddHttpContextAccessor();
         services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
-        Log.Information("Registered application services: UserService, AuthTokenService, NewsService, NotificationLogService");
+        Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");
 
         services.AddSingleton(_ => CreateHangfireJobStorage(configuration));
         services.AddSingleton<INewsletterSchedulerRunTrigger, HangfireNewsletterSchedulerRunTrigger>();

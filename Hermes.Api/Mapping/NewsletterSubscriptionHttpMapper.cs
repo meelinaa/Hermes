@@ -1,11 +1,17 @@
-using Hermes.Application.Models.News;
+using Hermes.Application.Models.NewsletterSubscription;
 using Hermes.Domain.Entities;
 
 namespace Hermes.Api.Mapping;
 
-internal static class NewsHttpMapper
+/// <summary>
+/// Static mapper class converting newsletter subscription DTOs to domain entities and vice versa.
+/// </summary>
+internal static class NewsletterSubscriptionHttpMapper
 {
-    public static News ToEntity(this CreateNewsRequest dto, int userId) =>
+    /// <summary>
+    /// Converts a <see cref="CreateNewsletterSubscriptionRequest"/> DTO to a domain entity.
+    /// </summary>
+    public static NewsletterSubscription ToEntity(this CreateNewsletterSubscriptionRequest dto, int userId) =>
         new()
         {
             UserId = userId,
@@ -18,7 +24,10 @@ internal static class NewsHttpMapper
             IsEnabled = dto.IsEnabled ?? true,
         };
 
-    public static News ToEntity(this UpdateNewsRequest dto, int userId, News existing) =>
+    /// <summary>
+    /// Converts an <see cref="UpdateNewsletterSubscriptionRequest"/> DTO to a domain entity.
+    /// </summary>
+    public static NewsletterSubscription ToEntity(this UpdateNewsletterSubscriptionRequest dto, int userId, NewsletterSubscription existing) =>
         new()
         {
             Id = dto.Id,
@@ -33,7 +42,10 @@ internal static class NewsHttpMapper
             IsEnabled = dto.IsEnabled ?? existing.IsEnabled,
         };
 
-    public static NewsResponse ToResponse(this News entity) =>
+    /// <summary>
+    /// Converts a <see cref="NewsletterSubscription"/> domain entity to a response DTO.
+    /// </summary>
+    public static NewsletterSubscriptionResponse ToResponse(this NewsletterSubscription entity) =>
         new()
         {
             Id = entity.Id,

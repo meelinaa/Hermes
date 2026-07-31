@@ -29,10 +29,14 @@ public sealed record ScheduleWindow
         return new ScheduleWindow(wd, tm);
     }
 
-    public void ApplyToNews(News news)
+    /// <summary>
+    /// Applies the schedule weekdays and times to the specified newsletter subscription target.
+    /// </summary>
+    /// <param name="subscription">The newsletter subscription to apply the schedule to.</param>
+    public void ApplyToSubscription(NewsletterSubscription subscription)
     {
-        ArgumentNullException.ThrowIfNull(news);
-        news.SendOnWeekdays = Weekdays.ToList();
-        news.SendAtTimes = Times.ToList();
+        ArgumentNullException.ThrowIfNull(subscription);
+        subscription.SendOnWeekdays = Weekdays.ToList();
+        subscription.SendAtTimes = Times.ToList();
     }
 }

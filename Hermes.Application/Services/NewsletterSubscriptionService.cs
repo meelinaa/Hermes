@@ -1,4 +1,4 @@
-using Hermes.Application.Models.News;
+using Hermes.Application.Models.NewsletterSubscription;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;
@@ -8,12 +8,18 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Services;
 
-public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsletterOptions) : INewsService
+/// <summary>
+/// Service implementation for managing newsletter subscriptions.
+/// </summary>
+public sealed class NewsletterSubscriptionService(INewsletterSubscriptionStore db, IOptions<NewsletterOptions> newsletterOptions) : INewsletterSubscriptionService
 {
-    public async Task<int> SetNewsAsync(News news, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Creates or sets a newsletter subscription, validating the schedule and advancing its next run time.
+    /// </summary>
+    public async Task<int> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
-        if(news.UserId <= 0)
+        if (news.UserId <= 0)
             throw new ArgumentOutOfRangeException(nameof(news.UserId), "Owning user ID must be greater than zero.");
         ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
         news.AssignDigestSchedule(window);
@@ -22,7 +28,10 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
         return news.Id;
     }
 
-    public async Task UpdateNewsAsync(News news, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Updates an existing newsletter subscription's config, schedule, and next run time.
+    /// </summary>
+    public async Task UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
@@ -31,20 +40,29 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
         await AdvanceDigestSlotAfterMutationAsync(news, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task AdvanceDigestSlotAfterMutationAsync(News news, CancellationToken cancellationToken)
+    /// <summary>
+    /// Recalculates and advances the next digest run slot for a mutated newsletter subscription.
+    /// </summary>
+    private async Task AdvanceDigestSlotAfterMutationAsync(NewsletterSubscription news, CancellationToken cancellationToken)
     {
         TimeZoneInfo zone = NewsletterSchedulingClock.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
         await db.AdvanceNextDigestSlotAsync(news.Id, news.UserId, zone, DateTime.UtcNow, cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task DeleteNewsAsync(News news, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Deletes a specific newsletter subscription from the store.
+    /// </summary>
+    public async Task DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         await db.DeleteNewsAsync(news, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<News?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Retrieves a newsletter subscription by ID for a specific user.
+    /// </summary>
+    public async Task<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
             throw new ArgumentException("User id must be greater than zero.", nameof(userId));
@@ -53,14 +71,20 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
         return await db.GetNewsByIdAsync(userId, id, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<News?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Finds a newsletter subscription by its ID.
+    /// </summary>
+    public async Task<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             throw new ArgumentException("News id must be greater than zero.", nameof(id));
         return await db.FindNewsByIdAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<NewsListResult> GetNewsListAsync(NewsListQuery query, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Retrieves a paged list of newsletter subscriptions matching the query parameters.
+    /// </summary>
+    public async Task<NewsletterSubscriptionListResult> GetNewsListAsync(NewsletterSubscriptionListQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         if (query.UserId <= 0)
@@ -79,6 +103,9 @@ public sealed class NewsService(INewsStore db, IOptions<NewsletterOptions> newsl
         return await db.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Deletes all newsletter subscriptions belonging to a user.
+    /// </summary>
     public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)

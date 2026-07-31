@@ -418,7 +418,7 @@
             HttpResponseMessage response;
             if (_editingId <= 0)
             {
-                var createPayload = new CreateNewsPayloadDto
+                var createPayload = new CreateNewsletterSubscriptionPayloadDto
                 {
                     Keywords = keywords.Count > 0 ? keywords : null,
                     Category = selectedCategories.Count > 0 ? selectedCategories.ToList() : null,
@@ -429,7 +429,7 @@
                     IsEnabled = isEnabled,
                 };
 
-                response = await Http.PostAsJsonAsync("api/v1/users/news", createPayload, HermesNewsJson.Options).ConfigureAwait(false);
+                response = await Http.PostAsJsonAsync("api/v1/users/newsletter-subscriptions", createPayload, HermesNewsJson.Options).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
                     newsFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);
@@ -440,15 +440,15 @@
                     await OnReturnToList.InvokeAsync(true).ConfigureAwait(false);
                 else
                 {
-                    CreateNewsResponseDto? created = await response.Content.ReadFromJsonAsync<CreateNewsResponseDto>(HermesNewsJson.Options).ConfigureAwait(false);
+                    CreateNewsletterSubscriptionResponseDto? created = await response.Content.ReadFromJsonAsync<CreateNewsletterSubscriptionResponseDto>(HermesNewsJson.Options).ConfigureAwait(false);
                     newsFeedback = created != null
-                        ? $"Gespeichert (News-Konfiguration #{created.NewsId})."
+                        ? $"Gespeichert (Newsletter-Abonnement #{created.SubscriptionId})."
                         : "Gespeichert.";
                 }
             }
             else
             {
-                var updatePayload = new UpdateNewsPayloadDto
+                var updatePayload = new UpdateNewsletterSubscriptionPayloadDto
                 {
                     Id = _editingId,
                     Keywords = keywords.Count > 0 ? keywords : null,
@@ -460,7 +460,7 @@
                     IsEnabled = isEnabled,
                 };
 
-                response = await Http.PutAsJsonAsync("api/v1/users/news", updatePayload, HermesNewsJson.Options).ConfigureAwait(false);
+                response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", updatePayload, HermesNewsJson.Options).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
                     newsFeedback = await ReadErrorDetailAsync(response).ConfigureAwait(false);

@@ -1,7 +1,7 @@
 using System.Globalization;
 using Hermes.Application.Mapping;
 using Hermes.Application.Models.Email;
-using Hermes.Application.Models.News;
+using Hermes.Application.Models.NewsArticle;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Scheduling;
@@ -20,7 +20,7 @@ namespace Hermes.Application.Services;
 /// </summary>
 public sealed class NewsletterDigestService(
     IUserStore users,
-    INewsStore news,
+    INewsletterSubscriptionStore newsletterSubscriptions,
     INotificationLogStore notificationLogs,
     INewsArticleProvider newsArticleProvider,
     IEmailSender emailSender,
@@ -33,7 +33,7 @@ public sealed class NewsletterDigestService(
     private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
     /// <summary>
-    /// Sends a newsletter digest for the given user and news subscription.
+    /// Sends a newsletter digest for the given user and newsletter subscription.
     /// Deduplicates within a one-minute UTC window, advances the next digest
     /// slot on success or permanent failure, and logs the outcome.
     /// </summary>
@@ -67,17 +67,17 @@ public sealed class NewsletterDigestService(
             if (user is null || string.IsNullOrWhiteSpace(user.Email))
                 return;
 
-            News? newsEntity = await news.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
-            if (newsEntity is null)
+            NewsletterSubscription? subscription = await newsletterSubscriptions.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+            if (subscription is null)
                 return;
 
-            if (!newsEntity.IsEnabled)
+            if (!subscription.IsEnabled)
             {
                 advanceDigestSlot = true;
                 return;
             }
 
-            NewsArticleQuery? query = BuildArticleQuery(apiKey, newsEntity);
+            NewsArticleQuery? query = BuildArticleQuery(apiKey, subscription);
             if (query is null)
                 return;
 
@@ -146,7 +146,7 @@ public sealed class NewsletterDigestService(
                 {
                     TimeZoneInfo zone = NewsletterSchedulingClock.ResolveTimeZone(
                         newsletterOptions.Value.TimeZoneId);
-                    await news
+                    await newsletterSubscriptions
                         .AdvanceNextDigestSlotAsync(newsId, userId, zone, windowEnd, cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -163,25 +163,25 @@ public sealed class NewsletterDigestService(
     }
 
     /// <summary>
-    /// Builds the external article query from the news subscription filters.
+    /// Builds the external article query from the newsletter subscription filters.
     /// Returns null when no meaningful filter criteria are present.
     /// </summary>
-    private static NewsArticleQuery? BuildArticleQuery(string apiKey, News news)
+    private static NewsArticleQuery? BuildArticleQuery(string apiKey, NewsletterSubscription subscription)
     {
-        List<string>? countries = news.Countries is { Count: > 0 }
-            ? news.Countries.Select(CountryIsoCodeMapper.ToIso3166Alpha2).ToList()
+        List<string>? countries = subscription.Countries is { Count: > 0 }
+            ? subscription.Countries.Select(CountryIsoCodeMapper.ToIso3166Alpha2).ToList()
             : null;
-        List<string>? languages = news.Languages is { Count: > 0 }
-            ? news.Languages.Select(LanguageIsoCodeMapper.ToIso639Code).ToList()
+        List<string>? languages = subscription.Languages is { Count: > 0 }
+            ? subscription.Languages.Select(LanguageIsoCodeMapper.ToIso639Code).ToList()
             : null;
-        List<string>? categories = news.Category is { Count: > 0 }
-            ? news.Category.Select(category => category.ToString().ToLowerInvariant()).ToList()
+        List<string>? categories = subscription.Category is { Count: > 0 }
+            ? subscription.Category.Select(category => category.ToString().ToLowerInvariant()).ToList()
             : null;
 
         string? keywordsQuery = null;
-        if (news.Keywords is { Count: > 0 })
+        if (subscription.Keywords is { Count: > 0 })
         {
-            List<string> terms = news.Keywords.Where(keyword => !string.IsNullOrWhiteSpace(keyword)).Select(keyword => keyword.Trim()).ToList();
+            List<string> terms = subscription.Keywords.Where(keyword => !string.IsNullOrWhiteSpace(keyword)).Select(keyword => keyword.Trim()).ToList();
             if (terms.Count > 0)
                 keywordsQuery = string.Join(" OR ", terms);
         }

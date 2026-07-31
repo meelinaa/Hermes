@@ -15,7 +15,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     public DbSet<User> Users { get; set; } = null!;
 
     /// <inheritdoc />
-    public DbSet<News> News { get; set; } = null!;
+    public DbSet<NewsletterSubscription> NewsletterSubscriptions { get; set; } = null!;
 
     /// <inheritdoc />
     public DbSet<NotificationLog> NotificationLogs { get; set; } = null!;
@@ -33,14 +33,14 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
             entity.HasIndex(userEntity => userEntity.Email).IsUnique();
         });
 
-        modelBuilder.Entity<News>(entity =>
+        modelBuilder.Entity<NewsletterSubscription>(entity =>
         {
             entity.ToTable("news");
             entity.HasKey(newsEntity => newsEntity.Id);
             entity.HasIndex(newsEntity => newsEntity.UserId);
 
             entity.HasOne<User>()
-                .WithMany(userEntity => userEntity.News)
+                .WithMany(userEntity => userEntity.NewsletterSubscriptions)
                 .HasForeignKey(newsEntity => newsEntity.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 

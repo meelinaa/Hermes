@@ -12,7 +12,7 @@ public class User
     public string? TwoFactorCode { get; set; }
     public DateTime? TwoFactorExpiry { get; set; }
 
-    public ICollection<News> News { get; set; } = [];
+    public ICollection<NewsletterSubscription> NewsletterSubscriptions { get; set; } = [];
 
     public ICollection<NotificationLog> NotificationLogs { get; set; } = [];
 

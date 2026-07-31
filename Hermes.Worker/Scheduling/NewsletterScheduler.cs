@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Hermes.Worker.Scheduling;
 
-/// <summary>Hangfire minutely tick: resolve due news (UTC slot wall clock) and enqueue one digest job per row.</summary>
+/// <summary>Hangfire minutely tick: resolve due newsletter subscriptions (UTC slot wall clock) and enqueue one digest job per row.</summary>
 public sealed class NewsletterScheduler(
     INewsletterScheduleService newsletterScheduleService,
     ILogger<NewsletterScheduler> logger,
@@ -46,7 +46,7 @@ public sealed class NewsletterScheduler(
         if (due.Count > 0)
         {
             logger.LogInformation(
-                "[NewsletterScheduler] Found {Count} due news items. Enqueuing jobs for NewsIds: {NewsIds}",
+                "[NewsletterScheduler] Found {Count} due newsletter subscription items. Enqueuing jobs for SubscriptionIds: {SubscriptionIds}",
                 due.Count,
                 string.Join(", ", due.Select(d => d.NewsId)));
         }

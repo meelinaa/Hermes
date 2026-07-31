@@ -2,8 +2,8 @@ using Hermes.WebFrontend.Client.ApiModels.Enums;
 
 namespace Hermes.WebFrontend.Client.ApiModels;
 
-/// <summary>Body for <c>PUT /api/v1/users/news</c>.</summary>
-public sealed class UpdateNewsPayloadDto
+/// <summary>Body for <c>PUT /api/v1/users/newsletter-subscriptions</c>.</summary>
+public sealed class UpdateNewsletterSubscriptionPayloadDto
 {
     public int Id { get; set; }
 

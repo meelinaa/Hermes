@@ -33,7 +33,7 @@ public static class WorkerServiceCollectionExtensions
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
         builder.Services.AddScoped<IUserStore, UserStore>();
-        builder.Services.AddScoped<INewsStore, NewsStore>();
+        builder.Services.AddScoped<INewsletterSubscriptionStore, NewsletterSubscriptionStore>();
         builder.Services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
         builder.Services.AddScoped<INotificationLogStore, NotificationLogStore>();
         builder.Services.AddSingleton(WorkerServiceCollectionHelper.BindEmailSettings(builder.Configuration));

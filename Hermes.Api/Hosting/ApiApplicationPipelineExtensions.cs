@@ -78,24 +78,24 @@ public static class ApiApplicationPipelineExtensions
                     return;
                 }
 
-                if (error is NewsNotFoundException)
+                if (error is NewsletterSubscriptionNotFoundException)
                 {
                     context.Response.StatusCode = StatusCodes.Status404NotFound;
                     await problemDetailsService.WriteAsync(new ProblemDetailsContext
                     {
                         HttpContext = context,
-                        ProblemDetails = CreateMinimalProblem("News not found.", StatusCodes.Status404NotFound)
+                        ProblemDetails = CreateMinimalProblem("Newsletter subscription not found.", StatusCodes.Status404NotFound)
                     });
                     return;
                 }
 
-                if (error is NewsAccessDeniedException)
+                if (error is NewsletterSubscriptionAccessDeniedException)
                 {
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     await problemDetailsService.WriteAsync(new ProblemDetailsContext
                     {
                         HttpContext = context,
-                        ProblemDetails = CreateMinimalProblem("News access denied.", StatusCodes.Status403Forbidden)
+                        ProblemDetails = CreateMinimalProblem("Newsletter subscription access denied.", StatusCodes.Status403Forbidden)
                     });
                     return;
                 }
