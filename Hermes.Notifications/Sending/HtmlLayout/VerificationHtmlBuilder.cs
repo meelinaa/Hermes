@@ -4,7 +4,7 @@ using System.Reflection;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;
 
-public class VerificationHtmlComposer
+public class VerificationHtmlBuilder
 {
     public static async Task<string> BuildAsync(
         VerificationContentDto verificationContent,
@@ -12,7 +12,7 @@ public class VerificationHtmlComposer
     {
         ArgumentNullException.ThrowIfNull(verificationContent);
 
-        Assembly assembly = typeof(VerificationHtmlComposer).Assembly;
+        Assembly assembly = typeof(VerificationHtmlBuilder).Assembly;
 
         string? verificationTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "Verification.html", cancellationToken).ConfigureAwait(false);
 

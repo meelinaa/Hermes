@@ -10,7 +10,7 @@
 @using Hermes.WebFrontend.Client.Services.User
 @inject HttpClient Http
 @inject AuthTokenStore AuthTokens
-@inject NewsSubscriptionListCache NewsListCache
+@inject NewsSubscriptionListStore NewsListCache
 
 <div class="news-settings-panel">
     @if (!showForm)
@@ -246,7 +246,7 @@
         loading = true;
         loadError = null;
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = AuthTokens.AccessToken.TryGetUserId();
         if (userId is null)
         {
             loadError = "Bitte erneut anmelden.";
@@ -321,7 +321,7 @@
             return;
 
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = AuthTokens.AccessToken.TryGetUserId();
         if (userId is null)
         {
             loadError = "Bitte erneut anmelden.";
@@ -345,7 +345,7 @@
                 IsEnabled = targetEnabled,
             };
 
-            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", payload, HermesNewsJsonSerializer.Options).ConfigureAwait(false);
+            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", payload, HermesNewsJsonMapper.Options).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 NewsListCache.Invalidate();
@@ -364,7 +364,7 @@
     private async Task DeleteAsync(NewsSubscriptionDto n)
     {
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = AuthTokens.AccessToken.TryGetUserId();
         if (userId is null)
             return;
 

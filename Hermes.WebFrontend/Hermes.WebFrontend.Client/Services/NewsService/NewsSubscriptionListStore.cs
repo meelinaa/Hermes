@@ -9,7 +9,7 @@ namespace Hermes.WebFrontend.Client.Services.NewsService;
 /// Loads paged news list responses from the API. <see cref="Invalidate"/> is a no-op kept for logout hooks;
 /// list data is not cached between calls.
 /// </summary>
-public sealed class NewsSubscriptionListCache
+public sealed class NewsSubscriptionListStore
 {
     /// <summary>Clears any client-side list state (hook for logout; no in-memory list cache).</summary>
     public void Invalidate()
@@ -38,7 +38,7 @@ public sealed class NewsSubscriptionListCache
             }
 
             NewsListPageDto? dto = await response.Content
-                .ReadFromJsonAsync<NewsListPageDto>(HermesNewsJsonSerializer.Options, cancellationToken)
+                .ReadFromJsonAsync<NewsListPageDto>(HermesNewsJsonMapper.Options, cancellationToken)
                 .ConfigureAwait(false);
             return (dto, null);
         }

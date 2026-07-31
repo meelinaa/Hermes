@@ -201,7 +201,7 @@ public sealed class UserService(
         bool hashingEnabled = securityOptions.Value.HashEmailVerificationCodes;
         if (hashingEnabled && LooksLikeStoredVerificationCodeHash(stored))
         {
-            string expectedHash = RefreshTokenHasher.Hash(providedSixDigit);
+            string expectedHash = RefreshTokenHashService.Hash(providedSixDigit);
             ReadOnlySpan<byte> a = Encoding.UTF8.GetBytes(stored);
             ReadOnlySpan<byte> b = Encoding.UTF8.GetBytes(expectedHash);
             return CryptographicOperations.FixedTimeEquals(a, b);

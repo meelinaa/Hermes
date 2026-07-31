@@ -1,6 +1,6 @@
 namespace Hermes.Application.Scheduling;
 
-public static class NewsletterSchedulingClock
+public static class NewsletterSchedulingProvider
 {
     public static TimeZoneInfo ResolveTimeZone(string? timeZoneId)
     {

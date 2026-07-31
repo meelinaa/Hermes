@@ -9,7 +9,7 @@ namespace Hermes.WebFrontend.Client.Services.Auth;
 /// <summary>
 /// Revokes server sessions, clears stored tokens, drops readable cookies, and hard-navigates to login.
 /// </summary>
-public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, NewsSubscriptionListCache newsListCache, IJSRuntime js, NavigationManager nav)
+public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, NewsSubscriptionListStore newsListCache, IJSRuntime js, NavigationManager nav)
 {
     private static readonly JsonSerializerOptions _jsonWeb = JsonSerializerOptions.Web;
 

@@ -51,7 +51,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
         builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();
-        builder.Services.AddScoped<NotificationJobs>();
+        builder.Services.AddScoped<NotificationJobService>();
         builder.Services.AddScoped<NewsletterSchedulerWorker>();
 
         builder.Services.AddHangfire(configuration => configuration

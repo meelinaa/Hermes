@@ -10,7 +10,7 @@ namespace Hermes.Application.Security;
 
 public sealed class AuthTokenService(
     IRefreshTokenRepository db,
-    IJwtTokenIssuer jwt,
+    IJwtTokenProvider jwt,
     IOptions<JwtOptions> options,
     ILogger<AuthTokenService> logger) : IAuthTokenService
 {
@@ -26,7 +26,7 @@ public sealed class AuthTokenService(
         RefreshToken row = new()
         {
             UserId = userId,
-            TokenHash = RefreshTokenHasher.Hash(plain),
+            TokenHash = RefreshTokenHashService.Hash(plain),
             ExpiresAt = DateTime.UtcNow.AddDays(_o.RefreshTokenDays),
             CreatedAt = DateTime.UtcNow,
         };
@@ -43,7 +43,7 @@ public sealed class AuthTokenService(
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return null;
 
-        string? hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
+        string? hash = RefreshTokenHashService.Hash(refreshTokenPlain.Trim());
         RefreshToken? old = await db.GetRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
         if (old is null || old.User is null)
             return null;
@@ -60,7 +60,7 @@ public sealed class AuthTokenService(
         RefreshToken newRow = new()
         {
             UserId = old.UserId,
-            TokenHash = RefreshTokenHasher.Hash(newPlain),
+            TokenHash = RefreshTokenHashService.Hash(newPlain),
             ExpiresAt = DateTime.UtcNow.AddDays(_o.RefreshTokenDays),
             CreatedAt = DateTime.UtcNow,
         };
@@ -81,7 +81,7 @@ public sealed class AuthTokenService(
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return false;
 
-        string? hash = RefreshTokenHasher.Hash(refreshTokenPlain.Trim());
+        string? hash = RefreshTokenHashService.Hash(refreshTokenPlain.Trim());
         RefreshToken? row = await db.GetActiveRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
         if (row is null || row.UserId != userId)
             return false;

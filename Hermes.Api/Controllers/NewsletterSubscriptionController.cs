@@ -38,7 +38,7 @@ public class NewsletterSubscriptionController(
     /// <param name="category">Optional news category filter.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A paged list of newsletter subscription profiles.</returns>
-    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/newsletter-subscriptions")]
     public async Task<ActionResult<PagedNewsletterSubscriptionListResponseDto>> GetNewsList(
         int userId,
@@ -137,7 +137,7 @@ public class NewsletterSubscriptionController(
     /// <param name="newsId">The ID of the newsletter subscription.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The newsletter subscription details.</returns>
-    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/newsletter-subscriptions/{newsId:int}")]
     public async Task<ActionResult<NewsletterSubscriptionResponseDto>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
     {
@@ -198,7 +198,7 @@ public class NewsletterSubscriptionController(
     /// <param name="userId">The ID of the user.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The delete status summary.</returns>
-    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/newsletter-subscriptions/all")]
     public async Task<ActionResult<DeleteAllNewsletterSubscriptionResponseDto>> DeleteAllNews(int userId, CancellationToken cancellationToken)
@@ -214,7 +214,7 @@ public class NewsletterSubscriptionController(
     /// <param name="newsId">The ID of the newsletter subscription to delete.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>An OK result if deleted successfully.</returns>
-    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/newsletter-subscriptions/{newsId:int}")]
     public async Task<ActionResult> DeleteNews(int userId, int newsId, CancellationToken cancellationToken)

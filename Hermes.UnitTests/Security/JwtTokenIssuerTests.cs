@@ -43,7 +43,7 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_Embed_SubClaim_WithUserIdString_AndAllowValidation()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenIssuer issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o));
 
         JwtAccessTokenResultDto result = issuer.Issue(42, "user@site.test", "  Name  ");
 
@@ -66,7 +66,7 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_OmitOptionalClaims_WhenEmailAndNameMissingOrWhitespace()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenIssuer issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o));
 
         JwtAccessTokenResultDto result = issuer.Issue(1, null, "   ");
 
@@ -82,7 +82,7 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_GenerateDistinctCompactTokens_PerIssuance()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenIssuer issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o));
 
         JwtAccessTokenResultDto a = issuer.Issue(1, "a@test", "A");
         JwtAccessTokenResultDto b = issuer.Issue(1, "a@test", "A");
@@ -95,7 +95,7 @@ public sealed class JwtTokenIssuerTests
     {
         JwtOptions o = CreateValidOptions();
         o.AccessTokenMinutes = 5;
-        JwtTokenIssuer issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o));
         DateTime before = DateTime.UtcNow;
 
         JwtAccessTokenResultDto result = issuer.Issue(1, null, null);
@@ -112,7 +112,7 @@ public sealed class JwtTokenIssuerTests
     [InlineData(-1)]
     public void Issue_Should_RejectNonPositiveUserIdentifier(int invalidUserId)
     {
-        JwtTokenIssuer issuer = new(Options.Create(CreateValidOptions()));
+        JwtTokenProvider issuer = new(Options.Create(CreateValidOptions()));
 
         Assert.Throws<ArgumentOutOfRangeException>(() => issuer.Issue(invalidUserId, null, null));
     }

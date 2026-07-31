@@ -23,13 +23,13 @@ public sealed class NewsletterSchedulerWorker(
     IOptions<NewsletterOptions> newsletterOptions)
 {
     private readonly TimeZoneInfo _newsletterTimeZone =
-        NewsletterSchedulingClock.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
+        NewsletterSchedulingProvider.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        DateTime wallNow = NewsletterSchedulingClock.GetWallClockNow(_newsletterTimeZone);
-        DateTime slotStartWall = NewsletterSchedulingClock.GetWallClockMinuteStart(_newsletterTimeZone);
-        DateTime slotStartUtc = NewsletterSchedulingClock.WallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
+        DateTime wallNow = NewsletterSchedulingProvider.GetWallClockNow(_newsletterTimeZone);
+        DateTime slotStartWall = NewsletterSchedulingProvider.GetWallClockMinuteStart(_newsletterTimeZone);
+        DateTime slotStartUtc = NewsletterSchedulingProvider.WallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
         DateTimeOffset wallStamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _newsletterTimeZone);
 
         logger.LogInformation(
@@ -55,10 +55,10 @@ public sealed class NewsletterSchedulerWorker(
 
         foreach ((int newsId, int userId) in due)
         {
-            string? jobId = BackgroundJob.Enqueue<NotificationJobs>(notificationJobs =>
+            string? jobId = BackgroundJob.Enqueue<NotificationJobService>(notificationJobs =>
                 notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
             logger.LogDebug(
-                "[NewsletterSchedulerWorker] Enqueued NotificationJobs newsId={NewsId} userId={UserId}, Hangfire job id={JobId}.",
+                "[NewsletterSchedulerWorker] Enqueued NotificationJobService newsId={NewsId} userId={UserId}, Hangfire job id={JobId}.",
                 newsId,
                 userId,
                 jobId);

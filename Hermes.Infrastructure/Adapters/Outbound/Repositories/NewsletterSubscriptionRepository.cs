@@ -235,7 +235,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
 
         try
         {
-            DateTime next = NewsletterNextRunCalculator.ComputeNextOccurrenceUtcAfter(
+            DateTime next = NewsletterNextRunService.ComputeNextOccurrenceUtcAfter(
                 row.SendOnWeekdays,
                 row.SendAtTimes,
                 newsletterTimeZone,

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;
 
-public sealed class NewsletterHtmlComposer
+public sealed class NewsletterHtmlBuilder
 {
     public static async Task<string> BuildAsync(
         NewsletterHeaderContentDto header,
@@ -17,7 +17,7 @@ public sealed class NewsletterHtmlComposer
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(footer);
 
-        Assembly assembly = typeof(NewsletterHtmlComposer).Assembly;
+        Assembly assembly = typeof(NewsletterHtmlBuilder).Assembly;
 
         string? headerTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "NewsletterHeader.html", cancellationToken).ConfigureAwait(false);
         string? itemTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "NewsletterItem.html", cancellationToken).ConfigureAwait(false);

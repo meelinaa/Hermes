@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Hermes.WebFrontend.Client.Services.NewsService;
 
 /// <summary>Provides shared JSON serializer options for news API payloads.</summary>
-public static class HermesNewsJsonSerializer
+public static class HermesNewsJsonMapper
 {
     public static JsonSerializerOptions Options { get; } = Create();
 

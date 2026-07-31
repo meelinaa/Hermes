@@ -146,7 +146,7 @@ public sealed class NewsletterDigestService(
             {
                 try
                 {
-                    TimeZoneInfo zone = NewsletterSchedulingClock.ResolveTimeZone(
+                    TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(
                         newsletterOptions.Value.TimeZoneId);
                     await newsletterSubscriptions
                         .AdvanceNextDigestSlotAsync(newsId, userId, zone, windowEnd, cancellationToken)

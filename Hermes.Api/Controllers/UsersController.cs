@@ -73,7 +73,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <param name="id">The ID of the user to delete.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>An OK result if deleted successfully.</returns>
-    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_ID)]
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteUser(int id, CancellationToken cancellationToken)
@@ -92,7 +92,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <param name="id">The ID of the user.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The user details.</returns>
-    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_ID)]
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
     {
@@ -128,7 +128,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <param name="id">The ID of the user to send the verification email to.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result status of the verification email request.</returns>
-    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_ID)]
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("VerifyMailPolicy")]
     [HttpPost("{id:int}/verify")]
     public async Task<ActionResult<SendVerificationMailResponseDto>> SendVerificationMail(int id, CancellationToken cancellationToken)

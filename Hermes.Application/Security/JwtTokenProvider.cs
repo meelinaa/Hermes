@@ -8,7 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Hermes.Application.Security;
 
-public sealed class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
+public sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtTokenProvider
 {
     public JwtAccessTokenResultDto Issue(int userId, string? email, string? name)
     {

@@ -13,8 +13,8 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<AuthTokenStore>();
 builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<AuthLogoutService>();
-builder.Services.AddSingleton<UserProfileRefreshNotifier>();
-builder.Services.AddScoped<NewsSubscriptionListCache>();
+builder.Services.AddSingleton<UserProfileRefreshService>();
+builder.Services.AddScoped<NewsSubscriptionListStore>();
 
 builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
 

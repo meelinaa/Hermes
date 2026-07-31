@@ -7,7 +7,7 @@ namespace Hermes.Notifications.Sending.HtmlLayout;
 
 /// <summary>
 /// Produces verification HTML by mapping Application-layer render requests
-/// to the internal <see cref="VerificationHtmlComposer"/> templates.
+/// to the internal <see cref="VerificationHtmlBuilder"/> templates.
 /// Keeps HTML templating concerns inside the Notifications boundary.
 /// </summary>
 public sealed class VerificationHtmlRenderer : IVerificationRenderer
@@ -16,7 +16,7 @@ public sealed class VerificationHtmlRenderer : IVerificationRenderer
 
     /// <summary>
     /// Renders a complete verification HTML body from the supplied request data
-    /// by delegating to <see cref="VerificationHtmlComposer"/>.
+    /// by delegating to <see cref="VerificationHtmlBuilder"/>.
     /// </summary>
     public async Task<string> RenderVerificationAsync(
         VerificationRenderRequest request,
@@ -47,7 +47,7 @@ public sealed class VerificationHtmlRenderer : IVerificationRenderer
             DeaboUrl: request.UnsubscribeUrl,
             SettingsUrl: request.SettingsUrl);
 
-        return await VerificationHtmlComposer
+        return await VerificationHtmlBuilder
             .BuildAsync(content, cancellationToken)
             .ConfigureAwait(false);
     }

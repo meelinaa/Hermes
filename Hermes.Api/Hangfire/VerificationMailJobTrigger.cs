@@ -14,7 +14,7 @@ public sealed class VerificationMailJobTrigger(JobStorage jobStorage)
             throw new ArgumentOutOfRangeException(nameof(userId), "User id must be positive.");
 
         BackgroundJobClient client = new(jobStorage);
-        string? jobId = client.Enqueue<NotificationJobs>(notificationJobs =>
+        string? jobId = client.Enqueue<NotificationJobService>(notificationJobs =>
             notificationJobs.SendVerificationMailAsync(userId, CancellationToken.None));
         return jobId;
     }

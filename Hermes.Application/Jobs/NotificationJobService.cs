@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Hermes.Application.Jobs;
 
-public sealed class NotificationJobs(
+public sealed class NotificationJobService(
     INewsletterDigestService newsletterDigestService,
     IVerificationDigestService verificationDigestService)
 {

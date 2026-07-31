@@ -33,7 +33,7 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     /// </code>
     /// <c>status</c>: Pending | Sent | Failed; <c>channel</c>: Email | Telegram.
     /// </remarks>
-    [Authorize(Policy = HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID)]
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPost]
     public async Task<ActionResult<NotificationLogResponseDto>> Post(

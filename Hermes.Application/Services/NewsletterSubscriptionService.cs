@@ -47,7 +47,7 @@ public sealed class NewsletterSubscriptionService(INewsletterSubscriptionReposit
     /// </summary>
     private async Task AdvanceDigestSlotAfterMutationAsync(NewsletterSubscription news, CancellationToken cancellationToken)
     {
-        TimeZoneInfo zone = NewsletterSchedulingClock.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
+        TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
         await db.AdvanceNextDigestSlotAsync(news.Id, news.UserId, zone, DateTime.UtcNow, cancellationToken)
             .ConfigureAwait(false);
     }

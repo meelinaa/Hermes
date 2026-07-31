@@ -2,7 +2,7 @@ using Hermes.Notifications.Receiving.Models;
 
 namespace Hermes.Notifications.Receiving;
 
-public interface IEmailReceiver
+public interface IEmailProvider
 {
     Task<EmailResultDto> GetLatestAsync(CancellationToken cancellationToken = default);
 

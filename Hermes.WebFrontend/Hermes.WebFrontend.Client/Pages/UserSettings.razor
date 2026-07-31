@@ -12,7 +12,7 @@
 @implements IAsyncDisposable
 @inject AuthTokenStore AuthTokens
 @inject HttpClient Http
-@inject UserProfileRefreshNotifier ProfileRefresh
+@inject UserProfileRefreshService ProfileRefresh
 @inject AuthLogoutService Logout
 
 <PageTitle>Profil — Hermes</PageTitle>
@@ -367,7 +367,7 @@
     {
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
 
-        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = AuthTokens.AccessToken.TryGetUserId();
         if (userId is null)
         {
             profileFeedback = "Benutzer konnte nicht ermittelt werden. Bitte erneut anmelden.";

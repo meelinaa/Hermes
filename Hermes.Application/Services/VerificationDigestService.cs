@@ -46,7 +46,7 @@ public sealed class VerificationDigestService(
         DateTime expiresAt = DateTime.UtcNow.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
 
         string persisted = securityOptions.Value.HashEmailVerificationCodes
-            ? RefreshTokenHasher.Hash(code)
+            ? RefreshTokenHashService.Hash(code)
             : code;
 
         await users

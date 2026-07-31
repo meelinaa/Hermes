@@ -7,7 +7,7 @@ namespace Hermes.WebFrontend.Client.Services.User;
 /// <summary>
 /// Reads claims from JWT payload (signed token; no validation — client display / routing only).
 /// </summary>
-public static class JwtPayloadDisplayName
+public static class JwtPayloadExtensions
 {
     private const string CLAIM_NAME =
         "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name";
@@ -16,7 +16,7 @@ public static class JwtPayloadDisplayName
         "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress";
 
     /// <summary>Returns display name or fallback e-mail from JWT payload claims.</summary>
-    public static string? TryGet(string? accessToken)
+    public static string? TryGetDisplayName(this string? accessToken)
     {
         string? json = DecodePayloadJson(accessToken);
         if (json is null)
@@ -45,7 +45,7 @@ public static class JwtPayloadDisplayName
     }
 
     /// <summary>Returns <c>sub</c> claim as user id (matches API JWT).</summary>
-    public static int? TryGetUserId(string? accessToken)
+    public static int? TryGetUserId(this string? accessToken)
     {
         string? json = DecodePayloadJson(accessToken);
         if (json is null)
@@ -75,7 +75,7 @@ public static class JwtPayloadDisplayName
     }
 
     /// <summary>JWT <c>exp</c> as UTC (Unix seconds); no signature validation.</summary>
-    public static DateTimeOffset? TryGetExpiresAtUtc(string? accessToken)
+    public static DateTimeOffset? TryGetExpiresAtUtc(this string? accessToken)
     {
         string? json = DecodePayloadJson(accessToken);
         if (json is null)

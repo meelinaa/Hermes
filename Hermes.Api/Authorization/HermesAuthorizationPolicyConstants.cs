@@ -1,6 +1,6 @@
 namespace Hermes.Api.Authorization;
 
-public static class HermesAuthorizationPolicies
+public static class HermesAuthorizationPolicyConstants
 {
     public const string OWN_USER_ROUTE_USER_ID = "Hermes.OwnUser:userId";
 

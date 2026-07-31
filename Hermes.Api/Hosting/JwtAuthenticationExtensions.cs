@@ -31,7 +31,7 @@ public static class JwtAuthenticationExtensions
                 $"{JwtOptions.SECTION_NAME}:Issuer and Audience must be set.");
         }
 
-        services.AddSingleton<IJwtTokenIssuer, JwtTokenIssuer>();
+        services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
 
         services.AddSingleton<IAuthorizationHandler, RouteUserMatchesClaimHandler>();
 
@@ -54,12 +54,12 @@ public static class JwtAuthenticationExtensions
 
         services.AddAuthorization(options =>
         {
-            options.AddPolicy(HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID, policy =>
+            options.AddPolicy(HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID, policy =>
             {
                 policy.RequireAuthenticatedUser();
                 policy.AddRequirements(new RouteUserMatchesClaimRequirement("userId"));
             });
-            options.AddPolicy(HermesAuthorizationPolicies.OWN_USER_ROUTE_ID, policy =>
+            options.AddPolicy(HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID, policy =>
             {
                 policy.RequireAuthenticatedUser();
                 policy.AddRequirements(new RouteUserMatchesClaimRequirement("id"));

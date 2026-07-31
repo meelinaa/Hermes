@@ -6,17 +6,17 @@ using Hermes.Notifications.Receiving.Models;
 
 namespace Hermes.Notifications.Receiving;
 
-public sealed class MailHogEmailReceiver : IEmailReceiver, IDisposable
+public sealed class MailHogEmailProvider : IEmailProvider, IDisposable
 {
     private const int PAGE_SIZE = 250;
 
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
-    private readonly MailHogEnvelopeReader _envelopeReader;
+    private readonly MailHogEnvelopeProvider _envelopeReader;
     private readonly MailHogMessageMapper _messageMapper;
     private bool _disposed;
 
-    public MailHogEmailReceiver(MailHogOptions settings)
+    public MailHogEmailProvider(MailHogOptions settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
