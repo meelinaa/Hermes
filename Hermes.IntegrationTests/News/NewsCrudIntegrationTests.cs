@@ -40,9 +40,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         using JsonDocument doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
         JsonElement root = doc.RootElement;
         Assert.True(root.TryGetProperty("userId", out JsonElement u) && userId == u.GetInt32(), "Expect userId (camelCase) matching JWT subject.");
-        Assert.True(root.TryGetProperty("newsId", out JsonElement n) && n.GetInt32() > 0, "Expect newsId (camelCase).");
+        Assert.True(root.TryGetProperty("subscriptionId", out JsonElement n) && n.GetInt32() > 0, "Expect subscriptionId (camelCase).");
         Assert.False(root.TryGetProperty("UserId", out JsonElement _), "Pascal-case keys break Web defaults.");
-        Assert.False(root.TryGetProperty("NewsId", out JsonElement _), "Pascal-case keys break Web defaults.");
+        Assert.False(root.TryGetProperty("SubscriptionId", out JsonElement _), "Pascal-case keys break Web defaults.");
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         using JsonDocument createdJson = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         Assert.Equal(userId, createdJson.RootElement.GetProperty("userId").GetInt32());
-        int newsId = createdJson.RootElement.GetProperty("newsId").GetInt32();
+        int newsId = createdJson.RootElement.GetProperty("subscriptionId").GetInt32();
         Assert.True(newsId > 0);
 
         using HttpResponseMessage listResp = await client.SendAsync(Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/newsletter-subscriptions", access));
@@ -201,7 +201,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         using HttpResponseMessage victimNewsResp = await client.SendAsync(victimCreate);
         victimNewsResp.EnsureSuccessStatusCode();
         using JsonDocument victimJson = JsonDocument.Parse(await victimNewsResp.Content.ReadAsStringAsync());
-        int victimNewsId = victimJson.RootElement.GetProperty("newsId").GetInt32();
+        int victimNewsId = victimJson.RootElement.GetProperty("subscriptionId").GetInt32();
 
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
