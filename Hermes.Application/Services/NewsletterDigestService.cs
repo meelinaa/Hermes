@@ -84,6 +84,12 @@ public sealed class NewsletterDigestService(
                 return;
 
             IReadOnlyList<NewsArticle> articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
+            if (articles.Count == 0)
+            {
+                advanceDigestSlot = true;
+                return;
+            }
+
             string? subject = $"Hermes Newsletter (#{newsId}) — {DateTime.UtcNow.ToString("d", _digestCulture)}";
 
             List<NewsletterArticleItemDto> articleItems = articles

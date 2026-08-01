@@ -46,6 +46,8 @@ public static class ApiServiceCollectionExtensions
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IUserAuthenticationService, UserAuthenticationService>();
+        services.AddScoped<IUserVerificationService, UserVerificationService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsletterSubscriptionService, NewsletterSubscriptionService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();

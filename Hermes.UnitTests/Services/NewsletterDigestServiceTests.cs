@@ -148,6 +148,36 @@ public sealed class NewsletterDigestServiceTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task SendAsync_Should_AdvanceSlot_ButNotSendEmail_WhenNoArticlesFound()
+    {
+        // Arrange
+        Mock<INewsArticleProvider> newsProvider = new();
+        newsProvider.Setup(p => p.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<NewsArticle>());
+
+        Mock<IUserRepository> users = new();
+        users.Setup(u => u.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 5, Name = "Alice", Email = "alice@test.com" });
+
+        Mock<INewsletterSubscriptionRepository> newsStore = new();
+        newsStore.Setup(s => s.GetNewsByIdAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NewsletterSubscription { Id = 10, UserId = 5, IsEnabled = true, Keywords = ["test"] });
+        SetupAdvanceDigestSlot(newsStore);
+
+        Mock<IEmailProvider> emailSender = new();
+        Mock<INotificationLogRepository> logs = new();
+
+        NewsletterDigestService sut = CreateSut(users.Object, newsStore.Object, logs.Object, newsProvider.Object, emailSender.Object);
+
+        // Act
+        await sut.SendAsync(5, 10, new DateTime(2026, 6, 15, 14, 30, 22, DateTimeKind.Utc));
+
+        // Assert
+        newsStore.Verify(s => s.AdvanceNextDigestSlotAsync(10, 5, It.IsAny<TimeZoneInfo>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        emailSender.Verify(e => e.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     /// <summary>
     /// Verifies that the duplicate check uses a normalized minute slice.
     /// </summary>
@@ -377,7 +407,7 @@ public sealed class NewsletterDigestServiceTests
         Mock<INewsArticleProvider> articles = new();
         articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()))
             .Callback<NewsArticleQueryDto, CancellationToken>((q, _) => capturedQuery = q)
-            .ReturnsAsync([]);
+            .ReturnsAsync([new NewsArticle("1", "A", "desc", "http://a", null, null)]);
 
         Mock<IEmailProvider> email = new();
         email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
@@ -435,7 +465,7 @@ public sealed class NewsletterDigestServiceTests
 
         Mock<INewsArticleProvider> articles = new();
         articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+            .ReturnsAsync([new NewsArticle("2", "X", "desc", "http://x", null, null)]);
 
         Mock<IEmailProvider> email = new();
         email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))

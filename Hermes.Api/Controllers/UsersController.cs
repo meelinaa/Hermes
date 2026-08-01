@@ -18,7 +18,10 @@ namespace Hermes.Api.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/v1/users")]
-public class UsersController(IUserService userService) : ControllerBase
+public class UsersController(
+    IUserService userService,
+    IUserAuthenticationService authService,
+    IUserVerificationService verificationService) : ControllerBase
 {
     private static readonly TimeSpan _verificationMailCooldown = TimeSpan.FromSeconds(60);
     private static readonly ConcurrentDictionary<int, DateTimeOffset> _lastVerificationMailByUserId = new();
@@ -34,7 +37,7 @@ public class UsersController(IUserService userService) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<UserResponseDto>> SetNewUser([FromBody] RegisterUserRequestDto request, CancellationToken cancellationToken)
     {
-        UserScopeDto userScope = await userService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
+        UserScopeDto userScope = await authService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
         return Ok(userScope.ToUserResponse());
     }
 
@@ -61,7 +64,7 @@ public class UsersController(IUserService userService) : ControllerBase
             PasswordHash = request.NewPassword
         };
 
-        await userService.UpdateUserAsync(user, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
+        await authService.UpdateUserAsync(user, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
 
         UserScopeDto? updated = await userService.GetUserByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
         return updated is null ? this.NotFoundProblem() : Ok(updated.ToUserResponse());
@@ -140,7 +143,7 @@ public class UsersController(IUserService userService) : ControllerBase
         if (TryGetVerificationMailCooldownResponse(id) is { } cooldownResult)
             return cooldownResult;
 
-        await userService.SendVerificationMailAsync(user.Email, cancellationToken).ConfigureAwait(false);
+        await verificationService.SendVerificationMailAsync(user.Email, cancellationToken).ConfigureAwait(false);
         RegisterVerificationMailSend(id);
         return Ok(new SendVerificationMailResponseDto(id, user.Email));
     }
@@ -159,7 +162,7 @@ public class UsersController(IUserService userService) : ControllerBase
         if (this.WhenCannotAccessUser(request.UserId) is { } denied)
             return denied;
 
-        await userService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
+        await verificationService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
 
         UserScopeDto? refreshed = await userService.GetUserByIdAsync(request.UserId, cancellationToken).ConfigureAwait(false);
         return refreshed is null ? this.NotFoundProblem() : Ok(refreshed.ToUserResponse());

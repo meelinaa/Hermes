@@ -14,7 +14,7 @@ namespace Hermes.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/auth")]
-public class AuthController(IUserService userService) : ControllerBase
+public class AuthController(IUserAuthenticationService authService) : ControllerBase
 {
     /// <summary>
     /// Processes a user login request, validating the credentials and returning access/refresh tokens.
@@ -32,7 +32,7 @@ public class AuthController(IUserService userService) : ControllerBase
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        LoginResultDto result = await userService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
+        LoginResultDto result = await authService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
 
