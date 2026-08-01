@@ -233,20 +233,18 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (row.SendOnWeekdays.Count == 0 || row.SendAtTimes.Count == 0)
             return;
 
-        try
+        DateTime? next = NewsletterNextRunService.ComputeNextOccurrenceUtcAfter(
+            row.SendOnWeekdays,
+            row.SendAtTimes,
+            newsletterTimeZone,
+            referenceUtcExclusive);
+
+        if (next.HasValue)
         {
-            DateTime next = NewsletterNextRunService.ComputeNextOccurrenceUtcAfter(
-                row.SendOnWeekdays,
-                row.SendAtTimes,
-                newsletterTimeZone,
-                referenceUtcExclusive);
-            row.NextDigestSlotUtc = next;
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            row.NextDigestSlotUtc = next.Value;
         }
-        catch (InvalidOperationException)
-        {
-            // Leave NextDigestSlotUtc unchanged if no future slot exists (should not occur for valid schedules).
-        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

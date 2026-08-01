@@ -7,7 +7,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Scheduling;
 public static class NewsletterNextRunService
 {
     /// <summary>Returns the earliest scheduled send strictly after <paramref name="referenceUtcExclusive"/>.</summary>
-    public static DateTime ComputeNextOccurrenceUtcAfter(
+    public static DateTime? ComputeNextOccurrenceUtcAfter(
         IReadOnlyList<Weekdays> weekdays,
         IReadOnlyList<TimeOnly> times,
         TimeZoneInfo zone,
@@ -45,7 +45,7 @@ public static class NewsletterNextRunService
         }
 
         if (bestUtc is null)
-            throw new InvalidOperationException("Could not compute the next newsletter digest slot.");
+            return null;
 
         return DateTime.SpecifyKind(bestUtc.Value, DateTimeKind.Utc);
     }
