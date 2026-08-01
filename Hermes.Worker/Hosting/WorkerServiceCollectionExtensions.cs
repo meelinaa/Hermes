@@ -60,7 +60,8 @@ public static class WorkerServiceCollectionExtensions
             .UseStorage(new MySqlStorage(hangfireConnection, new MySqlStorageOptions
             {
                 TablesPrefix = "Hangfire"
-            })));
+            }))
+            .UseFilter(new Hermes.Worker.Hangfire.CorrelationIdServerFilter()));
 
         builder.Services.AddHangfireServer();
     }
