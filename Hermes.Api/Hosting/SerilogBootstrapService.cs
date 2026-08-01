@@ -3,7 +3,7 @@ using Serilog;
 namespace Hermes.Api.Hosting;
 
 /// <summary>Console Serilog until full host/appsettings wiring (startup errors still logged).</summary>
-public static class SerilogBootstrap
+public static class SerilogBootstrapService
 {
     public static LoggerConfiguration CreateBootstrapLoggerConfiguration() =>
         new LoggerConfiguration()

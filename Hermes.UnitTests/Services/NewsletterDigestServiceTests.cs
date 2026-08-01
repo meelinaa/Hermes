@@ -57,15 +57,15 @@ public sealed class NewsletterDigestServiceTests
         INewsletterSubscriptionRepository? news = null,
         INotificationLogRepository? notificationLogs = null,
         INewsArticleProvider? newsProvider = null,
-        IEmailSender? emailSender = null,
-        INewsletterRenderer? newsletterRenderer = null,
+        IEmailProvider? emailSender = null,
+        INewsletterHtmlService? newsletterRenderer = null,
         IOptions<NewsDataIoOptions>? newsOptions = null,
         IOptions<NewsletterOptions>? newsletterOptions = null,
         ILogger<NewsletterDigestService>? logger = null)
     {
         if (newsletterRenderer is null)
         {
-            Mock<INewsletterRenderer> rendererMock = new();
+            Mock<INewsletterHtmlService> rendererMock = new();
             rendererMock
                 .Setup(r => r.RenderNewsletterAsync(It.IsAny<NewsletterRenderRequestDto>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("<html>test-newsletter</html>");
@@ -77,7 +77,7 @@ public sealed class NewsletterDigestServiceTests
             news ?? CreateDefaultNewsStore(),
             notificationLogs ?? Mock.Of<INotificationLogRepository>(),
             newsProvider ?? Mock.Of<INewsArticleProvider>(),
-            emailSender ?? Mock.Of<IEmailSender>(),
+            emailSender ?? Mock.Of<IEmailProvider>(),
             newsletterRenderer,
             newsOptions ?? Options.Create(new NewsDataIoOptions { Key = "integration-test-api-key" }),
             newsletterOptions ?? Options.Create(new NewsletterOptions()),
@@ -379,7 +379,7 @@ public sealed class NewsletterDigestServiceTests
             .Callback<NewsArticleQueryDto, CancellationToken>((q, _) => capturedQuery = q)
             .ReturnsAsync([]);
 
-        Mock<IEmailSender> email = new();
+        Mock<IEmailProvider> email = new();
         email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -437,7 +437,7 @@ public sealed class NewsletterDigestServiceTests
         articles.Setup(articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        Mock<IEmailSender> email = new();
+        Mock<IEmailProvider> email = new();
         email.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SMTP unavailable"));
 

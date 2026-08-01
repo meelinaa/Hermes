@@ -39,11 +39,11 @@ public sealed class NewsletterSchedulerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<(int NewsId, int UserId)>());
 
-        Mock<IEmailSender> emailSender = new();
+        Mock<IEmailProvider> emailSender = new();
 
-        NewsletterSchedulerWorker sut = new(
+        NewsletterSchedulerWorkerService sut = new(
             schedule.Object,
-            NullLogger<NewsletterSchedulerWorker>.Instance,
+            NullLogger<NewsletterSchedulerWorkerService>.Instance,
             emailSender.Object,
             CreateEmailOptions(),
             Options.Create(new MailHogOptions { SendSchedulerTestMailEachMinute = false }),
@@ -74,10 +74,10 @@ public sealed class NewsletterSchedulerTests
             .Callback<DateTime, DateTime, DateTime, CancellationToken>((_, _, _, ct) => captured = ct)
             .ReturnsAsync([]);
 
-        NewsletterSchedulerWorker sut = new(
+        NewsletterSchedulerWorkerService sut = new(
             schedule.Object,
-            NullLogger<NewsletterSchedulerWorker>.Instance,
-            Mock.Of<IEmailSender>(),
+            NullLogger<NewsletterSchedulerWorkerService>.Instance,
+            Mock.Of<IEmailProvider>(),
             CreateEmailOptions(),
             Options.Create(new MailHogOptions()),
             Options.Create(new NewsletterOptions()));

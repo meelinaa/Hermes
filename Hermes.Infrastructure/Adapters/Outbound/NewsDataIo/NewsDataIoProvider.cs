@@ -6,7 +6,7 @@ using Hermes.Application.Ports.Outbound;
 namespace Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
 
 /// <summary>HTTP client adapter for retrieving latest articles from NewsData.io.</summary>
-public sealed class NewsDataIoClient(HttpClient httpClient) : INewsArticleProvider
+public sealed class NewsDataIoProvider(HttpClient httpClient) : INewsArticleProvider
 {
     /// <summary>Fetches latest articles for the supplied query and maps them into application news article models.</summary>
     public async Task<IReadOnlyList<NewsArticle>> GetLatestAsync(NewsArticleQueryDto query, CancellationToken cancellationToken = default)

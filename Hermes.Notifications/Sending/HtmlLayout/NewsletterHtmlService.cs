@@ -10,7 +10,7 @@ namespace Hermes.Notifications.Sending.HtmlLayout;
 /// to the internal <see cref="NewsletterHtmlBuilder"/> templates.
 /// Keeps HTML templating concerns inside the Notifications boundary.
 /// </summary>
-public sealed class NewsletterHtmlRenderer : INewsletterRenderer
+public sealed class NewsletterHtmlService : INewsletterHtmlService
 {
     private const int MAX_ARTICLES = 10;
     private static readonly CultureInfo _culture = CultureInfo.GetCultureInfo("de-DE");

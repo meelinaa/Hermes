@@ -16,7 +16,7 @@ namespace Hermes.Application.Services;
 
 /// <summary>
 /// Orchestrates the newsletter digest pipeline: duplicate check, article fetch,
-/// HTML rendering (via <see cref="INewsletterRenderer"/>), e-mail delivery,
+/// HTML rendering (via <see cref="INewsletterHtmlService"/>), e-mail delivery,
 /// and notification logging. Rendering is delegated to an injected renderer
 /// so the Application layer stays free of HTML/template concerns.
 /// </summary>
@@ -25,8 +25,8 @@ public sealed class NewsletterDigestService(
     INewsletterSubscriptionRepository newsletterSubscriptions,
     INotificationLogRepository notificationLogs,
     INewsArticleProvider newsArticleProvider,
-    IEmailSender emailSender,
-    INewsletterRenderer newsletterRenderer,
+    IEmailProvider emailSender,
+    INewsletterHtmlService newsletterRenderer,
     IOptions<NewsDataIoOptions> newsDataOptions,
     IOptions<NewsletterOptions> newsletterOptions,
     ILogger<NewsletterDigestService> logger) : INewsletterDigestService

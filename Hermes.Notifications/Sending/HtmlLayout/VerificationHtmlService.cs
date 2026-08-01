@@ -10,7 +10,7 @@ namespace Hermes.Notifications.Sending.HtmlLayout;
 /// to the internal <see cref="VerificationHtmlBuilder"/> templates.
 /// Keeps HTML templating concerns inside the Notifications boundary.
 /// </summary>
-public sealed class VerificationHtmlRenderer : IVerificationRenderer
+public sealed class VerificationHtmlService : IVerificationHtmlService
 {
     private static readonly CultureInfo _culture = CultureInfo.GetCultureInfo("de-DE");
 

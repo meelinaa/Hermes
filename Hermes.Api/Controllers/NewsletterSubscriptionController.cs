@@ -23,7 +23,7 @@ namespace Hermes.Api.Controllers;
 [Route("api/v1/users")]
 public class NewsletterSubscriptionController(
     INewsletterSubscriptionService newsService,
-    INewsletterSchedulerJobTrigger newsletterSchedulerRunTrigger,
+    INewsletterSchedulerJobService newsletterSchedulerRunTrigger,
     IOptions<PaginationOptions> paginationOptions) : ControllerBase
 {
     /// <summary>

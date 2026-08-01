@@ -4,24 +4,24 @@ using Microsoft.Extensions.Logging;
 
 namespace Hermes.Api.Hangfire;
 
-public sealed class NewsletterSchedulerJobTrigger(JobStorage jobStorage, ILogger<NewsletterSchedulerJobTrigger> logger)
-    : INewsletterSchedulerJobTrigger
+public sealed class NewsletterSchedulerJobService(JobStorage jobStorage, ILogger<NewsletterSchedulerJobService> logger)
+    : INewsletterSchedulerJobService
 {
     public void RequestRunAfterNewsMutation()
     {
         try
         {
-            new RecurringJobManager(jobStorage).TriggerJob(NewsletterSchedulerRecurringJob.ID);
+            new RecurringJobManager(jobStorage).TriggerJob(NewsletterSchedulerRecurringService.ID);
             logger.LogInformation(
                 "Triggered Hangfire recurring job {JobId} after news mutation.",
-                NewsletterSchedulerRecurringJob.ID);
+                NewsletterSchedulerRecurringService.ID);
         }
         catch (Exception ex)
         {
             logger.LogWarning(
                 ex,
                 "Could not trigger Hangfire recurring job {JobId} after news mutation; hourly schedule still applies.",
-                NewsletterSchedulerRecurringJob.ID);
+                NewsletterSchedulerRecurringService.ID);
         }
     }
 }

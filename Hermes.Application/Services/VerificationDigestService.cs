@@ -14,14 +14,14 @@ namespace Hermes.Application.Services;
 
 /// <summary>
 /// Generates a six-digit verification code, persists it for the user,
-/// renders the verification HTML via <see cref="IVerificationRenderer"/>,
+/// renders the verification HTML via <see cref="IVerificationHtmlService"/>,
 /// and delivers the e-mail. Rendering is delegated to an injected renderer
 /// so the Application layer stays free of HTML/template concerns.
 /// </summary>
 public sealed class VerificationDigestService(
     IUserRepository users,
-    IEmailSender emailSender,
-    IVerificationRenderer verificationRenderer,
+    IEmailProvider emailSender,
+    IVerificationHtmlService verificationRenderer,
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,
     IOptions<SecurityOptions> securityOptions,
     ILogger<VerificationDigestService> logger) : IVerificationDigestService

@@ -57,12 +57,12 @@ public static class JwtAuthenticationExtensions
             options.AddPolicy(HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID, policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.AddRequirements(new RouteUserMatchesClaimRequirement("userId"));
+                policy.AddRequirements(new RouteUserMatchesClaimPolicy("userId"));
             });
             options.AddPolicy(HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID, policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.AddRequirements(new RouteUserMatchesClaimRequirement("id"));
+                policy.AddRequirements(new RouteUserMatchesClaimPolicy("id"));
             });
         });
         return services;

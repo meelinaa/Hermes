@@ -14,7 +14,7 @@ using Serilog;
 
 
 
-WorkerSerilogBootstrap.InitializeBootstrapLogger();
+WorkerSerilogBootstrapService.InitializeBootstrapLogger();
 
 
 
@@ -66,9 +66,9 @@ try
 
 
 
-    RecurringJob.AddOrUpdate<NewsletterSchedulerWorker>(
+    RecurringJob.AddOrUpdate<NewsletterSchedulerWorkerService>(
 
-        NewsletterSchedulerRecurringJob.ID,
+        NewsletterSchedulerRecurringService.ID,
 
         scheduler => scheduler.RunAsync(CancellationToken.None),
 

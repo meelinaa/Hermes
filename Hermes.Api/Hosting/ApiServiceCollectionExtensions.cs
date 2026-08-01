@@ -54,11 +54,11 @@ public static class ApiServiceCollectionExtensions
         services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SectionName));
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
         services.AddHttpContextAccessor();
-        services.AddSingleton<IVerificationMailJobTrigger, VerificationMailJobTrigger>();
+        services.AddSingleton<IVerificationMailJobService, VerificationMailJobService>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");
 
         services.AddSingleton(_ => CreateHangfireJobStorage(configuration));
-        services.AddSingleton<INewsletterSchedulerJobTrigger, NewsletterSchedulerJobTrigger>();
+        services.AddSingleton<INewsletterSchedulerJobService, NewsletterSchedulerJobService>();
         Log.Information("Registered Hangfire JobStorage (MySQL) for newsletter scheduler triggers (same DB as Hermes.Worker).");
 
         services.AddControllers(options =>

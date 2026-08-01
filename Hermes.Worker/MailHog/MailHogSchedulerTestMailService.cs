@@ -5,10 +5,10 @@ using Hermes.Application.Ports.Outbound;
 
 namespace Hermes.Worker.MailHog;
 
-public static class MailHogSchedulerTestMail
+public static class MailHogSchedulerTestMailService
 {
     public static async Task SendAsync(
-        IEmailSender emailSender,
+        IEmailProvider emailSender,
         EmailOptions smtp,
         DateTimeOffset schedulerRunAt,
         ILogger logger,

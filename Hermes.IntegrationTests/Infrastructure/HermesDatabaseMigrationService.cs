@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.IntegrationTests.Infrastructure;
 
-internal static class HermesDatabaseMigrator
+internal static class HermesDatabaseMigrationService
 {
     public static async Task MigrateAsync(string connectionString, CancellationToken cancellationToken = default)
     {

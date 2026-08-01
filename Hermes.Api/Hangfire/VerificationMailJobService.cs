@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Hermes.Api.Hangfire;
 
-public sealed class VerificationMailJobTrigger(JobStorage jobStorage)
-    : IVerificationMailJobTrigger
+public sealed class VerificationMailJobService(JobStorage jobStorage)
+    : IVerificationMailJobService
 {
     public string? EnqueueSendVerificationMail(int userId)
     {

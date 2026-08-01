@@ -11,7 +11,7 @@ namespace Hermes.Notifications.Sending;
 /// <summary>
 /// Sends e-mail via <see cref="SmtpClient"/> using <see cref="EmailOptions"/>.
 /// </summary>
-public sealed class SmtpEmailSender(EmailOptions settings) : IEmailSender
+public sealed class SmtpEmailProvider(EmailOptions settings) : IEmailProvider
 {
     /// <summary>Sends an e-mail message via SMTP using configured sender defaults.</summary>
     public async Task SendAsync(EmailMessageDto message, CancellationToken cancellationToken = default)

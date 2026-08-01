@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Routing;
 namespace Hermes.Api.Authorization;
 
 public sealed class RouteUserMatchesClaimHandler(IHttpContextAccessor httpContextAccessor)
-    : AuthorizationHandler<RouteUserMatchesClaimRequirement>
+    : AuthorizationHandler<RouteUserMatchesClaimPolicy>
 {
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
-        RouteUserMatchesClaimRequirement requirement)
+        RouteUserMatchesClaimPolicy requirement)
     {
         HttpContext? httpContext = httpContextAccessor.HttpContext;
         if (httpContext is null)

@@ -1,6 +1,6 @@
 namespace Hermes.Application.Scheduling;
 
-public static class NewsletterSchedulerRecurringJob
+public static class NewsletterSchedulerRecurringService
 {
     public const string ID = "newsletter-scheduler-hourly";
 }

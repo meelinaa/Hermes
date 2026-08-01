@@ -19,11 +19,11 @@ public sealed class UserServiceTests
 {
     private static UserService CreateUserService(
         IUserRepository db,
-        IVerificationMailJobTrigger? trigger = null,
+        IVerificationMailJobService? trigger = null,
         bool hashEmailVerificationCodes = true) =>
         new(
             db,
-            trigger ?? Mock.Of<IVerificationMailJobTrigger>(),
+            trigger ?? Mock.Of<IVerificationMailJobService>(),
             Options.Create(new SecurityOptions { HashEmailVerificationCodes = hashEmailVerificationCodes }));
 
     [Fact]
@@ -290,7 +290,7 @@ public sealed class UserServiceTests
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync("u@test.dev", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 42, Email = "u@test.dev" });
 
-        Mock<IVerificationMailJobTrigger> trigger = new();
+        Mock<IVerificationMailJobService> trigger = new();
         trigger.Setup(jobTrigger => jobTrigger.EnqueueSendVerificationMail(42)).Returns("job-1");
 
         UserService sut = CreateUserService(db.Object, trigger.Object);

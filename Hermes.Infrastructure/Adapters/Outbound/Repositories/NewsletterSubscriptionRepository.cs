@@ -25,7 +25,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (news.Id != 0)
             throw new ArgumentException("Insert requires news id 0; use update for an existing row.", nameof(news));
 
-        await UserExistenceGuard.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
         await db.NewsletterSubscriptions.AddAsync(news, cancellationToken).ConfigureAwait(false);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -49,7 +49,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (existing.UserId != news.UserId)
             throw new NewsletterSubscriptionAccessDeniedException("This news entry belongs to another user.");
 
-        await UserExistenceGuard.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
         db.NewsletterSubscriptions.Update(news);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -88,7 +88,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (query.PageSize < 1)
             throw new ArgumentOutOfRangeException(nameof(query.PageSize), query.PageSize, "Page size must be at least 1.");
 
-        await UserExistenceGuard.EnsureExistsAsync(db, query.UserId, cancellationToken).ConfigureAwait(false);
+        await UserExistenceValidator.EnsureExistsAsync(db, query.UserId, cancellationToken).ConfigureAwait(false);
 
         IQueryable<NewsletterSubscription> filtered = db.NewsletterSubscriptions.AsNoTracking().Where(n => n.UserId == query.UserId);
 

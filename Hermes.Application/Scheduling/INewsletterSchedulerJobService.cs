@@ -1,6 +1,6 @@
 namespace Hermes.Application.Scheduling;
 
-public interface INewsletterSchedulerJobTrigger
+public interface INewsletterSchedulerJobService
 {
     void RequestRunAfterNewsMutation();
 }

@@ -5,7 +5,7 @@ namespace Hermes.Application.Ports.Outbound;
 /// Implemented by the Notifications layer to keep HTML templating
 /// out of the Application layer (Dependency Inversion).
 /// </summary>
-public interface IVerificationRenderer
+public interface IVerificationHtmlService
 {
     /// <summary>
     /// Produces a complete HTML e-mail body for a verification e-mail

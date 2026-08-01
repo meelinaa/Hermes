@@ -18,7 +18,7 @@ namespace Hermes.Application.Services;
 
 public sealed class UserService(
     IUserRepository db,
-    IVerificationMailJobTrigger verificationMailJobTrigger,
+    IVerificationMailJobService verificationMailJobTrigger,
     IOptions<SecurityOptions> securityOptions) : IUserService
 {
     public async Task<UserScopeDto> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)

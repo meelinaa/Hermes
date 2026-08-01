@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 
 /// <summary>Shared FK precondition checks against <see cref="HermesDbContext.Users"/>.</summary>
-internal static class UserExistenceGuard
+internal static class UserExistenceValidator
 {
     public static async Task EnsureExistsAsync(HermesDbContext db, int userId, CancellationToken cancellationToken)
     {

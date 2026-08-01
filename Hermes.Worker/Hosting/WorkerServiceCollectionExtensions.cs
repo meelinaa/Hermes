@@ -39,20 +39,20 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
         builder.Services.AddSingleton(builder.Configuration.BindEmailOptions());
-        builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        builder.Services.AddSingleton<IEmailProvider, SmtpEmailProvider>();
         builder.Services.Configure<MailHogOptions>(builder.Configuration.GetSection("MailHog"));
         builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
         builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         builder.Services.Configure<NewsletterOptions>(builder.Configuration.GetSection(NewsletterOptions.SectionName));
         builder.Services.Configure<SecurityOptions>(builder.Configuration.GetSection(SecurityOptions.SECTION_NAME));
-        builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
-        builder.Services.AddSingleton<INewsletterRenderer, NewsletterHtmlRenderer>();
-        builder.Services.AddSingleton<IVerificationRenderer, VerificationHtmlRenderer>();
+        builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoProvider>();
+        builder.Services.AddSingleton<INewsletterHtmlService, NewsletterHtmlService>();
+        builder.Services.AddSingleton<IVerificationHtmlService, VerificationHtmlService>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
         builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();
         builder.Services.AddScoped<NotificationJobService>();
-        builder.Services.AddScoped<NewsletterSchedulerWorker>();
+        builder.Services.AddScoped<NewsletterSchedulerWorkerService>();
 
         builder.Services.AddHangfire(configuration => configuration
             .UseSimpleAssemblyNameTypeSerializer()
