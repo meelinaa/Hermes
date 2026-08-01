@@ -78,6 +78,10 @@ public sealed class NewsletterSchedulerWorkerService(
                         cancellationToken)
                     .ConfigureAwait(false);
             }
+            catch (OperationCanceledException)
+            {
+                logger.LogInformation("[NewsletterSchedulerWorkerService] Testmail-Versand aufgrund von Cancellation abgebrochen.");
+            }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "[NewsletterSchedulerWorkerService] MailHog-Scheduler-Testmail fehlgeschlagen.");
