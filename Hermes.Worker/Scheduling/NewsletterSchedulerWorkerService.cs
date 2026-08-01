@@ -16,6 +16,7 @@ namespace Hermes.Worker.Scheduling;
 /// <summary>Hangfire minutely tick: resolve due newsletter subscriptions (UTC slot wall clock) and enqueue one digest job per row.</summary>
 public sealed class NewsletterSchedulerWorkerService(
     INewsletterScheduleService newsletterScheduleService,
+    IBackgroundJobClient backgroundJobClient,
     ILogger<NewsletterSchedulerWorkerService> logger,
     IEmailProvider emailSender,
     EmailOptions EmailOptions,
@@ -55,7 +56,7 @@ public sealed class NewsletterSchedulerWorkerService(
 
         foreach ((int newsId, int userId) in due)
         {
-            string? jobId = BackgroundJob.Enqueue<NotificationJobService>(notificationJobs =>
+            string? jobId = backgroundJobClient.Enqueue<NotificationJobService>(notificationJobs =>
                 notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
             logger.LogDebug(
                 "[NewsletterSchedulerWorkerService] Enqueued NotificationJobService newsId={NewsId} userId={UserId}, Hangfire job id={JobId}.",
