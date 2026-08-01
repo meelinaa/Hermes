@@ -201,6 +201,77 @@ public sealed class AuthTokenServiceTests
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
 
+    [Fact]
+    public async Task RotateAsync_Should_RevokeFamily_WhenExpired_ButNotExplicitlyRevoked()
+    {
+        // Arrange
+        string plainOld = "expired-refresh-plain";
+        string hashOld = RefreshTokenHashService.Hash(plainOld);
+        RefreshToken oldRow = new()
+        {
+            Id = 11,
+            UserId = 8,
+            TokenHash = hashOld,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(-10),
+            CreatedAt = DateTime.UtcNow.AddDays(-15),
+            RevokedAt = null,
+            User = new User { Id = 8, Email = "e@example.org", Name = "E" },
+        };
+
+        Mock<IRefreshTokenRepository> db = new();
+        db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldRow);
+
+        Mock<ILogger<AuthTokenService>> logger = new();
+        Mock<IJwtTokenProvider> jwt = new();
+
+        AuthTokenService sut = CreateSut(db, jwt, logger);
+
+        // Act
+        AuthTokensResultDto? result = await sut.RotateAsync(plainOld);
+
+        // Assert
+        Assert.Null(result);
+        db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
+        db.Verify(dataStore => dataStore.RevokeTokenFamilyAsync(oldRow, It.IsAny<CancellationToken>()), Times.Once);
+        jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task TryRevokeRefreshForUserAsync_Should_ReturnFalse_WhenTokenBlank(string? blankToken)
+    {
+        // Arrange
+        Mock<IRefreshTokenRepository> db = new();
+        AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
+
+        // Act
+        bool result = await sut.TryRevokeRefreshForUserAsync(blankToken!, 1);
+
+        // Assert
+        Assert.False(result);
+        db.Verify(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TryRevokeRefreshForUserAsync_Should_ReturnFalse_WhenTokenNotFound()
+    {
+        // Arrange
+        Mock<IRefreshTokenRepository> db = new();
+        db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((RefreshToken?)null);
+        AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
+
+        // Act
+        bool result = await sut.TryRevokeRefreshForUserAsync("unknown-token", 1);
+
+        // Assert
+        Assert.False(result);
+        db.Verify(dataStore => dataStore.RevokeRefreshTokenAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     /// <summary>Revocation is user-scoped, not plaintext-hash alone.</summary>
     [Fact]
     public async Task TryRevokeRefreshForUserAsync_Should_NotRevokeForeignSession()
