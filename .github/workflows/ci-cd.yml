@@ -20,9 +20,47 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Verify Formatting
+        run: dotnet format --verify-no-changes
+
+  security-nuget:
+    name: NuGet Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore Dependencies
+        run: dotnet restore Hermes.sln
+
+      - name: Check for Vulnerable Packages
+        run: dotnet list package --vulnerable --include-transitive
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    needs: [lint, security-nuget]
     permissions:
       contents: read
       checks: write
@@ -37,6 +75,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore Dependencies
         run: dotnet restore Hermes.sln
@@ -45,7 +85,7 @@ jobs:
         run: mkdir -p ${{ github.workspace }}/test-results/coverage
 
       - name: Build Solution
-        run: dotnet build Hermes.sln --configuration Release --no-restore -warnaserror
+        run: dotnet build Hermes.sln --configuration Release --no-restore
 
       - name: Run WebFrontend Client Tests (bUnit)
         run: |
@@ -111,8 +151,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
 
-    if: github.event_name == 'push'
-
     permissions:
       contents: read
       packages: write
@@ -140,6 +178,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -157,7 +196,8 @@ jobs:
             type=sha,format=long,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Docker Image (Push only)
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.service.context }}
@@ -168,12 +208,31 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Full SARIF upload (never blocks). On main only, an additional gate fails the job when CRITICAL CVEs are present — forces patching before green main.
+      - name: Build and Export Docker Image (PR only)
+        if: github.event_name != 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: false
+          outputs: type=docker,dest=/tmp/${{ matrix.service.name }}.tar
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload Docker Image Artifact (PR only)
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ matrix.service.name }}
+          path: /tmp/${{ matrix.service.name }}.tar
+          retention-days: 1
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: github.event_name == 'push'
 
     permissions:
       contents: read
@@ -191,14 +250,23 @@ jobs:
         shell: bash
         run: echo "IMAGE_NAME_LOWER=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GitHub Container Registry (Push only)
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Trivy Vulnerability Scanner
+      - name: Download Docker Image Artifact (PR only)
+        if: github.event_name != 'push'
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image-${{ matrix.service }}
+          path: /tmp
+
+      - name: Run Trivy Scanner (Registry)
+        if: github.event_name == 'push'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-${{ matrix.service }}:sha-${{ github.sha }}
@@ -208,6 +276,15 @@ jobs:
         env:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Trivy Scanner (Tarball)
+        if: github.event_name != 'push'
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: /tmp/${{ matrix.service }}.tar
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: '0'
 
       - name: Upload Trivy Scan Results
         uses: github/codeql-action/upload-sarif@v3

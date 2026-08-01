@@ -2,6 +2,8 @@
 
 # Hermes
 
+[![CI/CD Pipeline](https://github.com/meelinaa/Hermes/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/meelinaa/Hermes/actions/workflows/ci-cd.yml)
+
 Hermes is a **personal news digest service**: configure **who you are** and **what news you care about** in a **Blazor** front end; **`Hermes.Api`** persists profiles; **`Hermes.Worker`** (Hangfire on **MySQL**) runs on your schedule, fetches headlines from **[NewsData.io](https://newsdata.io/)** via **`Hermes.Infrastructure`**, renders HTML via **`Hermes.Notifications`**, and delivers mail over **SMTP**.
 
 The codebase uses a **hexagonal (ports-and-adapters)** shape: **`Hermes.Domain`** and **`Hermes.Application`** define the core; adapters include REST (**`Hermes.Api`**), EF Core (**`Hermes.Infrastructure`** → **MySQL**), **`NewsDataIoClient`**, and **`Hermes.Notifications`**. Automated tests live in **`Hermes.UnitTests`** and **`Hermes.IntegrationTests`** (Docker/Testcontainers MySQL).
