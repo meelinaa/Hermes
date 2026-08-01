@@ -1,10 +1,10 @@
+using System.Net;
+using System.Net.Mail;
+using System.Text;
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
-using System.Net;
-using System.Net.Mail;
-using System.Text;
 
 namespace Hermes.Notifications.Sending;
 

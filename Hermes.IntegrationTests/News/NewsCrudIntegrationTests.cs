@@ -13,7 +13,7 @@ namespace Hermes.IntegrationTests.News;
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
 {
-    private static readonly JsonSerializerOptions JsonWeb = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonWeb = new(JsonSerializerDefaults.Web);
 
     private static object MinimalNewsCreatePayload() =>
         new
@@ -34,7 +34,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage req = Authorized(HttpMethod.Post, "/api/v1/users/news", access);
-        req.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: JsonWeb);
+        req.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage resp = await client.SendAsync(req);
         resp.EnsureSuccessStatusCode();
         using JsonDocument doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
@@ -53,7 +53,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage createReq = Authorized(HttpMethod.Post, "/api/v1/users/news", access);
-        createReq.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: JsonWeb);
+        createReq.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage create = await client.SendAsync(createReq);
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         using JsonDocument createdJson = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
@@ -100,7 +100,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             isEnabled = false,
         };
         using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/news", access);
-        putReq.Content = JsonContent.Create(updateBody, options: JsonWeb);
+        putReq.Content = JsonContent.Create(updateBody, options: _jsonWeb);
         using HttpResponseMessage putResp = await client.SendAsync(putReq);
         Assert.Equal(HttpStatusCode.OK, putResp.StatusCode);
 
@@ -180,7 +180,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendAtTimes = new[] { "09:00:00" },
         };
         using HttpRequestMessage req = Authorized(HttpMethod.Post, "/api/v1/users/news", access);
-        req.Content = JsonContent.Create(bodyWithIgnoredUserId, options: JsonWeb);
+        req.Content = JsonContent.Create(bodyWithIgnoredUserId, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(req);
 
@@ -197,7 +197,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         string victimAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, victimEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpRequestMessage victimCreate = Authorized(HttpMethod.Post, "/api/v1/users/news", victimAccess);
-        victimCreate.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: JsonWeb);
+        victimCreate.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage victimNewsResp = await client.SendAsync(victimCreate);
         victimNewsResp.EnsureSuccessStatusCode();
         using JsonDocument victimJson = JsonDocument.Parse(await victimNewsResp.Content.ReadAsStringAsync());
@@ -217,7 +217,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendAtTimes = new[] { "10:00:00" },
         };
         using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/news", attackerAccess);
-        putReq.Content = JsonContent.Create(attackerUpdate, options: JsonWeb);
+        putReq.Content = JsonContent.Create(attackerUpdate, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(putReq);
 
@@ -282,7 +282,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendOnWeekdays = new[] { (int)Weekdays.Monday },
             sendAtTimes = new[] { "09:00:00" },
         };
-        string json = JsonSerializer.Serialize(badBody, JsonWeb);
+        string json = JsonSerializer.Serialize(badBody, _jsonWeb);
 
         using HttpRequestMessage req = Authorized(HttpMethod.Put, "/api/v1/users/news", access);
         req.Content = new StringContent(json, Encoding.UTF8, "application/json");

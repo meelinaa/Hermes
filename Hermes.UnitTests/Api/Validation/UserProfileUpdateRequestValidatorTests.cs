@@ -26,10 +26,10 @@ public sealed class UserProfileUpdateRequestValidatorTests
     public void Should_NotHaveError_When_RequestIsValid_WithPassword()
     {
         // Arrange
-        UserProfileUpdateRequestDto request = new() 
-        { 
-            Id = 1, 
-            Name = "ValidName", 
+        UserProfileUpdateRequestDto request = new()
+        {
+            Id = 1,
+            Name = "ValidName",
             Email = "test@example.com",
             NewPassword = "NewPassword123",
             CurrentPassword = "OldPassword123"
@@ -96,10 +96,10 @@ public sealed class UserProfileUpdateRequestValidatorTests
     public void Should_HaveError_When_NewPasswordIsSet_ButCurrentPasswordIsMissing()
     {
         // Arrange
-        UserProfileUpdateRequestDto request = new() 
-        { 
-            Id = 1, 
-            Name = "ValidName", 
+        UserProfileUpdateRequestDto request = new()
+        {
+            Id = 1,
+            Name = "ValidName",
             Email = "test@example.com",
             NewPassword = "NewPassword123",
             CurrentPassword = null
@@ -117,10 +117,10 @@ public sealed class UserProfileUpdateRequestValidatorTests
     public void Should_NotHaveError_ForCurrentPassword_When_NewPasswordIsMissing()
     {
         // Arrange
-        UserProfileUpdateRequestDto request = new() 
-        { 
-            Id = 1, 
-            Name = "ValidName", 
+        UserProfileUpdateRequestDto request = new()
+        {
+            Id = 1,
+            Name = "ValidName",
             Email = "test@example.com",
             NewPassword = null,
             CurrentPassword = null // This is valid because NewPassword is not set

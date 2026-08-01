@@ -1,9 +1,8 @@
-namespace Hermes.Notifications.Receiving.DTOs
-{
-    internal sealed class MailHogPathDto
-    {
-        public string? Mailbox { get; init; }
+namespace Hermes.Notifications.Receiving.DTOs;
 
-        public string? Domain { get; init; }
-    }
+internal sealed class MailHogPathDto
+{
+    public string? Mailbox { get; init; }
+
+    public string? Domain { get; init; }
 }

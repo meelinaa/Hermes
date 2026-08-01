@@ -1,5 +1,5 @@
-using Hermes.Application.DTOs.User;
 using Hermes.Application.DTOs.Login;
+using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;

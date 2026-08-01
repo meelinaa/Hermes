@@ -1,14 +1,14 @@
+using System.Collections.Concurrent;
 using Hermes.Api.Authorization;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Application.DTOs.User;
-using Hermes.Domain.Entities;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services;
+using Hermes.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Collections.Concurrent;
 
 namespace Hermes.Api.Controllers;
 

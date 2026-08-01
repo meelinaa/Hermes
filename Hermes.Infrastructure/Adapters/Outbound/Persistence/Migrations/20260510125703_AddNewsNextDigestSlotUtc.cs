@@ -3,36 +3,35 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Migrations
+namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Migrations;
+
+/// <inheritdoc />
+public partial class AddNewsNextDigestSlotUtc : Migration
 {
     /// <inheritdoc />
-    public partial class AddNewsNextDigestSlotUtc : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<DateTime>(
-                name: "NextDigestSlotUtc",
-                table: "news",
-                type: "datetime(6)",
-                nullable: true);
+        migrationBuilder.AddColumn<DateTime>(
+            name: "NextDigestSlotUtc",
+            table: "news",
+            type: "datetime(6)",
+            nullable: true);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_news_NextDigestSlotUtc",
-                table: "news",
-                column: "NextDigestSlotUtc");
-        }
+        migrationBuilder.CreateIndex(
+            name: "IX_news_NextDigestSlotUtc",
+            table: "news",
+            column: "NextDigestSlotUtc");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropIndex(
-                name: "IX_news_NextDigestSlotUtc",
-                table: "news");
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropIndex(
+            name: "IX_news_NextDigestSlotUtc",
+            table: "news");
 
-            migrationBuilder.DropColumn(
-                name: "NextDigestSlotUtc",
-                table: "news");
-        }
+        migrationBuilder.DropColumn(
+            name: "NextDigestSlotUtc",
+            table: "news");
     }
 }

@@ -23,5 +23,5 @@ public class UserScopeDto
     /// <summary>
     /// Gets or sets a value indicating whether the user's email is verified.
     /// </summary>
-    public bool IsEmailVerified { get; set; }  
+    public bool IsEmailVerified { get; set; }
 }

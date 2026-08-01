@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
@@ -7,7 +8,6 @@ using Hermes.Domain.Exceptions;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Scheduling;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;
 
@@ -166,7 +166,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
 
         List<(int Id, int UserId)> materialized = rawMaterialized.Select(x => (x.Id, x.UserId)).ToList();
 
-        string weekdayLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(weekday, HermesJsonOptions.ForEnums))!;
+        string weekdayLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(weekday, HermesJsonOptions._forEnums))!;
         string timeLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(new TimeOnly(hour, minute)))!;
         List<DueNewsScheduleSlotRow> fromJson = await db.Database
             .SqlQueryRaw<DueNewsScheduleSlotRow>(

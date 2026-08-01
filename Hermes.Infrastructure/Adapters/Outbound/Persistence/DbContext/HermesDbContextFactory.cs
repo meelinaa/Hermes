@@ -1,6 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using System.Text.Json;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 

@@ -1,7 +1,7 @@
-using Hermes.Domain.Entities;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
+using Hermes.Domain.Entities;
 
 namespace Hermes.Application.Services;
 

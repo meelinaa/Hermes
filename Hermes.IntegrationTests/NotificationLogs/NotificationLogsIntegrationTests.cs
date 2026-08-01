@@ -12,7 +12,7 @@ namespace Hermes.IntegrationTests.NotificationLogs;
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 {
-    private static readonly JsonSerializerOptions JsonWeb = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonWeb = new(JsonSerializerDefaults.Web);
 
     private static object MinimalLogBody() =>
         new
@@ -35,7 +35,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{userId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        req.Content = JsonContent.Create(MinimalLogBody(), options: JsonWeb); // Create the POST request to create a new notification log entry for the authenticated user, with a minimal body containing default values, and capture the response to verify that the API successfully creates the log entry and returns the expected data in the response (e.g., generated ID, userId, status, channel).
+        req.Content = JsonContent.Create(MinimalLogBody(), options: _jsonWeb); // Create the POST request to create a new notification log entry for the authenticated user, with a minimal body containing default values, and capture the response to verify that the API successfully creates the log entry and returns the expected data in the response (e.g., generated ID, userId, status, channel).
 
         using HttpResponseMessage response = await client.SendAsync(req); // Send the POST request to create a new notification log entry and capture the response.
 
@@ -69,7 +69,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{attackerId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        req.Content = JsonContent.Create(bodyWithIgnoredUserId, options: JsonWeb);
+        req.Content = JsonContent.Create(bodyWithIgnoredUserId, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(req);
 
@@ -87,7 +87,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         using HttpResponseMessage response = await client.PostAsJsonAsync(
             $"/api/v1/users/{userId}/notification-logs",
             MinimalLogBody(),
-            options: JsonWeb);
+            options: _jsonWeb);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -100,7 +100,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{userId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", JwtIntegrationTestTokens.MALFORMED_JWT_MATERIAL);
-        req.Content = JsonContent.Create(MinimalLogBody(), options: JsonWeb);
+        req.Content = JsonContent.Create(MinimalLogBody(), options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(req);
 
@@ -117,7 +117,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{victimId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        req.Content = JsonContent.Create(MinimalLogBody(), options: JsonWeb);
+        req.Content = JsonContent.Create(MinimalLogBody(), options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(req);
 

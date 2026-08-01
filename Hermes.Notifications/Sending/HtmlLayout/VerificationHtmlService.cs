@@ -30,7 +30,7 @@ public sealed class VerificationHtmlService : IVerificationHtmlService
             ? "Hallo,"
             : $"Hallo {request.UserDisplayName.Trim()},";
 
-        const string intro2 =
+        const string INTRO2 =
             "Vielen Dank für Ihre Registrierung bei Hermes. Um Ihr Konto zu verifizieren, verwenden Sie bitte den folgenden Verifizierungscode:";
 
         string infoFooter = $"Diese E-Mail wurde an {request.RecipientEmail} gesendet";
@@ -40,7 +40,7 @@ public sealed class VerificationHtmlService : IVerificationHtmlService
             Header2: "Konto-Verifizierung",
             DateDisplay: dateDisplay,
             Intro: intro,
-            Intro2: intro2,
+            Intro2: INTRO2,
             VerificationCode: request.VerificationCode,
             SupportMail: request.SupportEmail,
             InfoFooter: infoFooter,

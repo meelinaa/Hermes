@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Hermes.Application.DTOs.Login;
 using Hermes.Application.Options;
 using Microsoft.AspNetCore.Authorization;
@@ -5,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using System.Text.Json.Nodes;
 
 namespace Hermes.Api.Hosting;
 

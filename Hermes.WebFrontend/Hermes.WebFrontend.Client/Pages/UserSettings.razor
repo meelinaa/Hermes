@@ -772,7 +772,7 @@
                 ProblemRead problem = await TryReadProblemAsync(response).ConfigureAwait(false);
                 string? msg = ProblemUserMessage(problem, response);
                 if (newPw is not null
-                    && string.Equals(problem.Type, HermesApiProblemTypeConstants.WrongCurrentPassword, StringComparison.Ordinal))
+                    && string.Equals(problem.Type, HermesApiProblemTypeConstants.WRONG_CURRENT_PASSWORD, StringComparison.Ordinal))
                 {
                     oldPasswordFieldError = msg;
                     profileFeedback = null;

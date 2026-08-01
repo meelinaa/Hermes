@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Hermes.Api.Middleware;
 using Hermes.Domain;
 using Hermes.Domain.Exceptions;
@@ -11,7 +12,6 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Serilog;
-using System.Text.Json;
 
 namespace Hermes.Api.Hosting;
 

@@ -2,28 +2,27 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Migrations
+namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Migrations;
+
+/// <inheritdoc />
+public partial class AddNewsIsEnabled : Migration
 {
     /// <inheritdoc />
-    public partial class AddNewsIsEnabled : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<bool>(
-                name: "IsEnabled",
-                table: "news",
-                type: "tinyint(1)",
-                nullable: false,
-                defaultValue: true);
-        }
+        migrationBuilder.AddColumn<bool>(
+            name: "IsEnabled",
+            table: "news",
+            type: "tinyint(1)",
+            nullable: false,
+            defaultValue: true);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "IsEnabled",
-                table: "news");
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "IsEnabled",
+            table: "news");
     }
 }

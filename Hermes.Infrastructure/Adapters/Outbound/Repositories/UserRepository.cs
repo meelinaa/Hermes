@@ -1,11 +1,11 @@
+using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
-using EmailAddress = Hermes.Domain.ValueObjects.Email;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
-using Hermes.Application.DTOs.User;
+using EmailAddress = Hermes.Domain.ValueObjects.Email;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;
 

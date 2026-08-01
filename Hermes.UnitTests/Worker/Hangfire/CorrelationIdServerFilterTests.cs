@@ -13,7 +13,7 @@ public sealed class CorrelationIdServerFilterTests
     private static PerformingContext CreatePerformingContext(string? correlationIdValue)
     {
         Mock<IStorageConnection> connectionMock = new();
-        
+
         if (correlationIdValue != null)
         {
             // Hangfire job parameters are stored as JSON strings.
@@ -74,14 +74,14 @@ public sealed class CorrelationIdServerFilterTests
         // Arrange
         CorrelationIdServerFilter sut = new();
         Mock<IDisposable> scopeMock = new();
-        
+
         // We use a dummy context and inject our mock scope manually
         PerformedContext context = new(
             CreatePerformingContext(null),
             null,
             false,
             null);
-            
+
         context.Items["CorrelationIdLogScope"] = scopeMock.Object;
 
         // Act

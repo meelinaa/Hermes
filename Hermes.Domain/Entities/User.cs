@@ -26,7 +26,8 @@ public class User
     }
 
     /// <summary>Primary e-mail change clears <see cref="IsEmailVerified"/> until the new address is verified.</summary>
-    public void ChangePrimaryEmail(Email email)    {
+    public void ChangePrimaryEmail(Email email)
+    {
         string next = email.Value;
         string? previous = Email;
         Email = next;

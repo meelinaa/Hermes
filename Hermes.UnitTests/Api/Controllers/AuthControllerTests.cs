@@ -136,7 +136,7 @@ public sealed class AuthControllerTests
     {
         // Arrange
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>()); // No user claims
-        
+
         // Act
         IActionResult result = await sut.Logout(new LogoutRequestDto() { RefreshToken = "refresh-token" }, Mock.Of<IAuthTokenService>(), CancellationToken.None);
 
@@ -155,7 +155,7 @@ public sealed class AuthControllerTests
             .ReturnsAsync(true);
 
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>(), CreatePrincipalWithId(1));
-        
+
         // Act
         IActionResult result = await sut.Logout(new LogoutRequestDto() { RefreshToken = "valid-refresh-token" }, authTokenServiceMock.Object, CancellationToken.None);
 
@@ -172,7 +172,7 @@ public sealed class AuthControllerTests
             .Returns(Task.CompletedTask);
 
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>(), CreatePrincipalWithId(1));
-        
+
         // Act
         IActionResult result = await sut.Logout(new LogoutRequestDto() { RefreshToken = null }, authTokenServiceMock.Object, CancellationToken.None);
 
@@ -190,7 +190,7 @@ public sealed class AuthControllerTests
             .ReturnsAsync(false);
 
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>(), CreatePrincipalWithId(1));
-        
+
         // Act
         IActionResult result = await sut.Logout(new LogoutRequestDto() { RefreshToken = "invalid-refresh-token" }, authTokenServiceMock.Object, CancellationToken.None);
 

@@ -61,7 +61,7 @@ jobs:
         run: dotnet restore Hermes.sln
 
       - name: Check for Vulnerable Packages
-        run: dotnet list package --vulnerable --include-transitive
+        run: dotnet list Hermes.sln package --vulnerable --include-transitive
 
   test:
     name: Run Tests

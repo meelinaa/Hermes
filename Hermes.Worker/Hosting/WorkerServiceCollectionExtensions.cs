@@ -3,17 +3,17 @@ using Hangfire.MySql;
 using Hermes.Application.Jobs;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
-using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Ports.Inbound;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services;
+using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
-using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
 using Hermes.Notifications.Receiving.Models;
+using Hermes.Notifications.Sending;
 using Hermes.Notifications.Sending.HtmlLayout;
 using Hermes.Worker.Scheduling;
 using Microsoft.EntityFrameworkCore;
-using Hermes.Notifications.Sending;
 
 namespace Hermes.Worker.Hosting;
 
@@ -43,7 +43,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.Configure<MailHogOptions>(builder.Configuration.GetSection("MailHog"));
         builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
         builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
-        builder.Services.Configure<NewsletterOptions>(builder.Configuration.GetSection(NewsletterOptions.SectionName));
+        builder.Services.Configure<NewsletterOptions>(builder.Configuration.GetSection(NewsletterOptions.SECTION_NAME));
         builder.Services.Configure<SecurityOptions>(builder.Configuration.GetSection(SecurityOptions.SECTION_NAME));
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoProvider>();
         builder.Services.AddSingleton<INewsletterHtmlService, NewsletterHtmlService>();

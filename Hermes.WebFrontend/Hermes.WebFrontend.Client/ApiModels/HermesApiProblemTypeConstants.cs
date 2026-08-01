@@ -4,5 +4,5 @@ namespace Hermes.WebFrontend.Client.ApiModels;
 public static class HermesApiProblemTypeConstants
 {
     /// <summary>PUT user profile: <c>currentPassword</c> does not match the stored hash.</summary>
-    public const string WrongCurrentPassword = "https://hermes.dev/problems/wrong-current-password";
+    public const string WRONG_CURRENT_PASSWORD = "https://hermes.dev/problems/wrong-current-password";
 }

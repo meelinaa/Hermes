@@ -24,7 +24,7 @@ public sealed class AutoValidationFilterTests
             new List<IFilterMetadata>(),
             new Dictionary<string, object?>(),
             new object());
-        
+
         if (argument != null)
         {
             context.ActionArguments["dummy"] = argument;
@@ -41,7 +41,7 @@ public sealed class AutoValidationFilterTests
         Mock<IServiceProvider> serviceProviderMock = new();
         ActionExecutingContext context = CreateContext(null, serviceProviderMock.Object);
         bool nextCalled = false;
-        ActionExecutionDelegate next = () => 
+        ActionExecutionDelegate next = () =>
         {
             nextCalled = true;
             return Task.FromResult(new ActionExecutedContext(context, new List<IFilterMetadata>(), new object()));
@@ -62,10 +62,10 @@ public sealed class AutoValidationFilterTests
         AutoValidationFilter sut = new();
         Mock<IServiceProvider> serviceProviderMock = new();
         serviceProviderMock.Setup(x => x.GetService(typeof(IValidator<DummyDto>))).Returns((object?)null);
-        
+
         ActionExecutingContext context = CreateContext(new DummyDto(), serviceProviderMock.Object);
         bool nextCalled = false;
-        ActionExecutionDelegate next = () => 
+        ActionExecutionDelegate next = () =>
         {
             nextCalled = true;
             return Task.FromResult(new ActionExecutedContext(context, new List<IFilterMetadata>(), new object()));
@@ -85,7 +85,7 @@ public sealed class AutoValidationFilterTests
         // Arrange
         AutoValidationFilter sut = new();
         DummyDto dummyDto = new();
-        
+
         Mock<IValidator<DummyDto>> validatorMock = new();
         validatorMock.Setup(x => x.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult()); // valid result
@@ -93,10 +93,10 @@ public sealed class AutoValidationFilterTests
         Mock<IServiceProvider> serviceProviderMock = new();
         serviceProviderMock.Setup(x => x.GetService(typeof(IValidator<DummyDto>)))
             .Returns(validatorMock.Object);
-        
+
         ActionExecutingContext context = CreateContext(dummyDto, serviceProviderMock.Object);
         bool nextCalled = false;
-        ActionExecutionDelegate next = () => 
+        ActionExecutionDelegate next = () =>
         {
             nextCalled = true;
             return Task.FromResult(new ActionExecutedContext(context, new List<IFilterMetadata>(), new object()));
@@ -117,8 +117,8 @@ public sealed class AutoValidationFilterTests
         // Arrange
         AutoValidationFilter sut = new();
         DummyDto dummyDto = new();
-        
-        ValidationResult validationResult = new(new[] 
+
+        ValidationResult validationResult = new(new[]
         {
             new ValidationFailure("Property", "Error message")
         });
@@ -130,10 +130,10 @@ public sealed class AutoValidationFilterTests
         Mock<IServiceProvider> serviceProviderMock = new();
         serviceProviderMock.Setup(x => x.GetService(typeof(IValidator<DummyDto>)))
             .Returns(validatorMock.Object);
-        
+
         ActionExecutingContext context = CreateContext(dummyDto, serviceProviderMock.Object);
         bool nextCalled = false;
-        ActionExecutionDelegate next = () => 
+        ActionExecutionDelegate next = () =>
         {
             nextCalled = true;
             return Task.FromResult(new ActionExecutedContext(context, new List<IFilterMetadata>(), new object()));
@@ -145,10 +145,10 @@ public sealed class AutoValidationFilterTests
         // Assert
         Assert.False(nextCalled, "next delegate should not be called when validation fails");
         Assert.False(context.ModelState.IsValid);
-        
+
         BadRequestObjectResult? badRequestResult = context.Result as BadRequestObjectResult;
         Assert.NotNull(badRequestResult);
-        
+
         ValidationProblemDetails? problemDetails = badRequestResult.Value as ValidationProblemDetails;
         Assert.NotNull(problemDetails);
         Assert.True(problemDetails.Errors.ContainsKey("Property"));

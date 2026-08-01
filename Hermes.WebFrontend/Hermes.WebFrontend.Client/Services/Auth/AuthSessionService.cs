@@ -1,8 +1,8 @@
-using Hermes.WebFrontend.Client.Model;
-using Hermes.WebFrontend.Client.Services.User;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Hermes.WebFrontend.Client.Model;
+using Hermes.WebFrontend.Client.Services.User;
 
 namespace Hermes.WebFrontend.Client.Services.Auth;
 

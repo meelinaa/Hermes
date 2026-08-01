@@ -1,7 +1,7 @@
 using System.Globalization;
-using Hermes.Application.Mapping;
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.DTOs.NewsArticle;
+using Hermes.Application.Mapping;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
@@ -156,11 +156,11 @@ public sealed class NewsletterDigestService(
         {
             if (advanceDigestSlot)
             {
-                    TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(
-                        newsletterOptions.Value.TimeZoneId);
-                    await newsletterSubscriptions
-                        .AdvanceNextDigestSlotAsync(newsId, userId, zone, windowEnd, cancellationToken)
-                        .ConfigureAwait(false);
+                TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(
+                    newsletterOptions.Value.TimeZoneId);
+                await newsletterSubscriptions
+                    .AdvanceNextDigestSlotAsync(newsId, userId, zone, windowEnd, cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
     }

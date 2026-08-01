@@ -1,15 +1,17 @@
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using Hangfire;
 using Hangfire.MySql;
 using Hermes.Api.Hangfire;
 using Hermes.Api.Validation;
 using Hermes.Application.Options;
+using Hermes.Application.Ports;
+using Hermes.Application.Ports.Inbound;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Scheduling;
 using Hermes.Application.Security;
-using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services;
-using Hermes.Application.Ports;
-using Hermes.Application.Ports.Outbound;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -18,10 +20,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
-using Serilog.Enrichers.Span;
 using Serilog;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
+using Serilog.Enrichers.Span;
 
 namespace Hermes.Api.Hosting;
 
@@ -53,7 +53,7 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<INotificationLogService, NotificationLogService>();
         services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         services.Configure<PaginationOptions>(configuration.GetSection(PaginationOptions.SECTION_NAME));
-        services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SectionName));
+        services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SECTION_NAME));
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
         services.AddHttpContextAccessor();
         services.AddSingleton<IVerificationMailJobService, VerificationMailJobService>();

@@ -18,7 +18,7 @@ public sealed class AuthTokenService(
 
     public async Task<AuthTokensResultDto> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
-        if(userId <= 0)
+        if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
         JwtAccessTokenResultDto access = jwt.Issue(userId, email, name);

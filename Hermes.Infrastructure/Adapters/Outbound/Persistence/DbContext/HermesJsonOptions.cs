@@ -8,7 +8,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 /// </summary>
 internal static class HermesJsonOptions
 {
-    internal static readonly JsonSerializerOptions ForEnums = new()
+    internal static readonly JsonSerializerOptions _forEnums = new()
     {
         PropertyNamingPolicy = null,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,

@@ -38,7 +38,7 @@ try
 
     var newsletterOpts = new NewsletterOptions();
 
-    builder.Configuration.GetSection(NewsletterOptions.SectionName).Bind(newsletterOpts);
+    builder.Configuration.GetSection(NewsletterOptions.SECTION_NAME).Bind(newsletterOpts);
 
     TimeZoneInfo hangfireNewsletterTz = NewsletterSchedulingProvider.ResolveTimeZone(newsletterOpts.TimeZoneId);
 

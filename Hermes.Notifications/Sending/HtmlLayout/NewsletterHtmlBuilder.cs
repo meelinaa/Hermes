@@ -1,7 +1,7 @@
-using Hermes.Notifications.Sending.HtmlLayout.Models;
 using System.Net;
 using System.Reflection;
 using System.Text;
+using Hermes.Notifications.Sending.HtmlLayout.Models;
 
 namespace Hermes.Notifications.Sending.HtmlLayout;
 

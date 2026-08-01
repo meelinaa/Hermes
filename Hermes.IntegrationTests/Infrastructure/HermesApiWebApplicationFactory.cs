@@ -1,7 +1,6 @@
+using Hermes.Api;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-
-using Hermes.Api;
 
 namespace Hermes.IntegrationTests.Infrastructure;
 

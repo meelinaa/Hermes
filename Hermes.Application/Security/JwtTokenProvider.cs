@@ -12,7 +12,7 @@ public sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtTokenPr
 {
     public JwtAccessTokenResultDto Issue(int userId, string? email, string? name)
     {
-        if(userId <= 0)
+        if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
         JwtOptions jwtOptions = options.Value;

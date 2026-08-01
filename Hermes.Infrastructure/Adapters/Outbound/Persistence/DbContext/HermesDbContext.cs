@@ -1,7 +1,7 @@
+using System.Text.Json;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 
@@ -51,31 +51,31 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
 
             entity.Property(newsEntity => newsEntity.Category)
                 .HasConversion(
-                    categoryValues => categoryValues == null ? null : JsonSerializer.Serialize(categoryValues, HermesJsonOptions.ForEnums),
+                    categoryValues => categoryValues == null ? null : JsonSerializer.Serialize(categoryValues, HermesJsonOptions._forEnums),
                     serializedCategories => string.IsNullOrEmpty(serializedCategories)
                         ? null
-                        : JsonSerializer.Deserialize<List<NewsCategory>>(serializedCategories, HermesJsonOptions.ForEnums));
+                        : JsonSerializer.Deserialize<List<NewsCategory>>(serializedCategories, HermesJsonOptions._forEnums));
 
             entity.Property(newsEntity => newsEntity.Languages)
                 .HasConversion(
-                    languageValues => languageValues == null ? null : JsonSerializer.Serialize(languageValues, HermesJsonOptions.ForEnums),
+                    languageValues => languageValues == null ? null : JsonSerializer.Serialize(languageValues, HermesJsonOptions._forEnums),
                     serializedLanguages => string.IsNullOrEmpty(serializedLanguages)
                         ? null
-                        : JsonSerializer.Deserialize<List<Language>>(serializedLanguages, HermesJsonOptions.ForEnums));
+                        : JsonSerializer.Deserialize<List<Language>>(serializedLanguages, HermesJsonOptions._forEnums));
 
             entity.Property(newsEntity => newsEntity.Countries)
                 .HasConversion(
-                    countryValues => countryValues == null ? null : JsonSerializer.Serialize(countryValues, HermesJsonOptions.ForEnums),
+                    countryValues => countryValues == null ? null : JsonSerializer.Serialize(countryValues, HermesJsonOptions._forEnums),
                     serializedCountries => string.IsNullOrEmpty(serializedCountries)
                         ? null
-                        : JsonSerializer.Deserialize<List<Country>>(serializedCountries, HermesJsonOptions.ForEnums));
+                        : JsonSerializer.Deserialize<List<Country>>(serializedCountries, HermesJsonOptions._forEnums));
 
             entity.Property(newsEntity => newsEntity.SendOnWeekdays)
                 .HasConversion(
-                    weekdayValues => JsonSerializer.Serialize(weekdayValues ?? new List<Weekdays>(), HermesJsonOptions.ForEnums),
+                    weekdayValues => JsonSerializer.Serialize(weekdayValues ?? new List<Weekdays>(), HermesJsonOptions._forEnums),
                     serializedWeekdays => string.IsNullOrWhiteSpace(serializedWeekdays)
                         ? new List<Weekdays>()
-                        : JsonSerializer.Deserialize<List<Weekdays>>(serializedWeekdays, HermesJsonOptions.ForEnums) ?? new List<Weekdays>());
+                        : JsonSerializer.Deserialize<List<Weekdays>>(serializedWeekdays, HermesJsonOptions._forEnums) ?? new List<Weekdays>());
 
             entity.Property(newsEntity => newsEntity.SendAtTimes)
                 .HasConversion(

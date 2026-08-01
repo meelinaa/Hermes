@@ -1,9 +1,8 @@
-namespace Hermes.Domain.Enums
+namespace Hermes.Domain.Enums;
+
+public enum NotificationStatus
 {
-    public enum NotificationStatus
-    {
-        Pending,
-        Sent,
-        Failed
-    }
+    Pending,
+    Sent,
+    Failed
 }

@@ -138,8 +138,12 @@ public static class JwtPayloadExtensions
         string normalized = input.Replace('-', '+').Replace('_', '/');
         switch (normalized.Length % 4)
         {
-            case 2: normalized += "=="; break;
-            case 3: normalized += "="; break;
+            case 2:
+                normalized += "==";
+                break;
+            case 3:
+                normalized += "=";
+                break;
         }
 
         return Convert.FromBase64String(normalized);
