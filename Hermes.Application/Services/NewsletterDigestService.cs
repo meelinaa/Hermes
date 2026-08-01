@@ -122,6 +122,12 @@ public sealed class NewsletterDigestService(
                     cancellationToken).ConfigureAwait(false);
                 advanceDigestSlot = true;
             }
+            catch (OperationCanceledException)
+            {
+                logger.LogWarning("Newsletter digest sending for user {UserId}, news {NewsId} was canceled.", userId, newsId);
+                advanceDigestSlot = true;
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to send newsletter digest for user {UserId}, news {NewsId}.", userId, newsId);
@@ -144,22 +150,11 @@ public sealed class NewsletterDigestService(
         {
             if (advanceDigestSlot)
             {
-                try
-                {
                     TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(
                         newsletterOptions.Value.TimeZoneId);
                     await newsletterSubscriptions
                         .AdvanceNextDigestSlotAsync(newsId, userId, zone, windowEnd, cancellationToken)
                         .ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(
-                        ex,
-                        "Failed to advance NextDigestSlotUtc for news {NewsId}, user {UserId}.",
-                        newsId,
-                        userId);
-                }
             }
         }
     }

@@ -82,6 +82,11 @@ public sealed class VerificationDigestService(
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+        catch (OperationCanceledException)
+        {
+            logger.LogWarning("Verification e-mail sending for user {UserId} was canceled.", userId);
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to send verification e-mail for user {UserId}.", userId);
