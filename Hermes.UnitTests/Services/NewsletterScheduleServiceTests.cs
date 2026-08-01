@@ -34,8 +34,8 @@ public sealed class NewsletterScheduleServiceTests
                 Weekdays.Monday,
                 9,
                 30,
-                SampleSlotStartUtc: _sampleSlotStartUtc,
-                SampleSlotEndUtc: _sampleSlotEndUtc,
+                _sampleSlotStartUtc,
+                _sampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         NewsletterScheduleService sut = new(store.Object);
@@ -57,8 +57,8 @@ public sealed class NewsletterScheduleServiceTests
                 Weekdays.Monday,
                 9,
                 30,
-                SampleSlotStartUtc: _sampleSlotStartUtc,
-                SampleSlotEndUtc: _sampleSlotEndUtc,
+                _sampleSlotStartUtc,
+                _sampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([(42, 7), (43, 7)]);
         NewsletterScheduleService sut = new(store.Object);
@@ -83,8 +83,8 @@ public sealed class NewsletterScheduleServiceTests
                 Weekdays.Tuesday,
                 14,
                 5,
-                SampleSlotStartUtc: _sampleSlotStartUtc,
-                SampleSlotEndUtc: _sampleSlotEndUtc,
+                _sampleSlotStartUtc,
+                _sampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([(1, 2)]);
         NewsletterScheduleService sut = new(store.Object);
