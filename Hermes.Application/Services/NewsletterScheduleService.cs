@@ -7,13 +7,18 @@ using Hermes.Domain.Enums;
 namespace Hermes.Application.Services;
 
 /// <summary>
-/// Service implementation for determining which newsletter schedules are due for processing.
+/// Evaluates newsletter dispatch schedules against system time slots to identify pending digest tasks for background worker polling.
 /// </summary>
 public sealed class NewsletterScheduleService(INewsletterSubscriptionRepository newsletterSubscriptionRepository) : INewsletterScheduleService
 {
     /// <summary>
-    /// Evaluates current local time and UTC windows to identify due newsletter subscriptions.
+    /// Translates local wall-clock time into Hermes weekday enums and queries repository stores for due newsletter subscriptions.
     /// </summary>
+    /// <param name="nowLocal">The current local date and time of the schedule evaluator.</param>
+    /// <param name="slotStartUtc">The UTC timestamp marking the beginning of the evaluation time slot.</param>
+    /// <param name="slotEndUtc">The UTC timestamp marking the end of the evaluation time slot.</param>
+    /// <param name="cancellationToken">Token to monitor for cancellation requests during async database lookup.</param>
+    /// <returns>A collection of tuple pairs containing the due subscription ID (<c>NewsId</c>) and owning user ID (<c>UserId</c>).</returns>
     public async Task<IReadOnlyList<(int NewsId, int UserId)>> GetDueItemsAsync(
         DateTime nowLocal,
         DateTime slotStartUtc,

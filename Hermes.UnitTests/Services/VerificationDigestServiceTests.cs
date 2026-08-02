@@ -50,27 +50,34 @@ public sealed class VerificationDigestServiceTests
             NullLogger<VerificationDigestService>.Instance);
     }
 
+    // [B]OUNDARY: Rejects non-positive user ID input parameter
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public async Task SendAsync_Should_RejectNonPositiveUserId(int invalidId)
     {
+        // Arrange
         VerificationDigestService sut = CreateSut(Mock.Of<IUserRepository>());
 
+        // Act & Assert
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SendAsync(invalidId));
     }
 
+    // [B]OUNDARY: Aborts early without sending email or setting challenge when user is missing
     [Fact]
     public async Task SendAsync_Should_ReturnWithoutMail_WhenUserMissing()
     {
+        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
         Mock<IEmailProvider> mail = new();
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);
 
+        // Act
         await sut.SendAsync(3);
 
+        // Assert
         mail.Verify(
             emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -79,9 +86,11 @@ public sealed class VerificationDigestServiceTests
             Times.Never);
     }
 
+    // [B]OUNDARY: Aborts early without sending email when target user has blank email address
     [Fact]
     public async Task SendAsync_Should_ReturnWithoutMail_WhenUserHasNoEmail()
     {
+        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(3, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 3, Name = "N", Email = "  " });
@@ -89,16 +98,20 @@ public sealed class VerificationDigestServiceTests
         Mock<IEmailProvider> mail = new();
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);
 
+        // Act
         await sut.SendAsync(3);
 
+        // Assert
         mail.Verify(
             emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
+    // [R]IGHT: Generates 6-digit OTP code, persists hashed challenge, and dispatches verification email
     [Fact]
     public async Task SendAsync_Should_PersistChallenge_AndSendMail_WhenUserValid()
     {
+        // Arrange
         User user = new() { Id = 10, Name = "Pat", Email = "pat@test.dev" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(10, It.IsAny<CancellationToken>())).ReturnsAsync(user);
@@ -118,8 +131,10 @@ public sealed class VerificationDigestServiceTests
 
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);
 
+        // Act
         await sut.SendAsync(10);
 
+        // Assert
         Assert.NotNull(capturedCode);
         Assert.Matches("^[0-9A-F]{64}$", capturedCode!);
         db.Verify(
@@ -132,9 +147,11 @@ public sealed class VerificationDigestServiceTests
             Times.Once);
     }
 
+    // [R]IGHT: Persists plain 6-digit challenge code when code hashing option is disabled
     [Fact]
     public async Task SendAsync_Should_PersistPlainSixDigitCode_WhenHashingDisabled()
     {
+        // Arrange
         User user = new() { Id = 11, Name = "Pat", Email = "pat@test.dev" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(11, It.IsAny<CancellationToken>())).ReturnsAsync(user);
@@ -149,16 +166,20 @@ public sealed class VerificationDigestServiceTests
 
         VerificationDigestService sut = CreateSut(db.Object, mail.Object, hashEmailVerificationCodes: false);
 
+        // Act
         await sut.SendAsync(11);
 
+        // Assert
         Assert.NotNull(capturedCode);
         Assert.Equal(6, capturedCode!.Length);
         Assert.True(capturedCode.All(char.IsDigit));
     }
 
+    // [E]RROR: Propagates exception when underlying email provider fails to send
     [Fact]
     public async Task SendAsync_Should_Propagate_WhenSmtpFails()
     {
+        // Arrange
         User user = new() { Id = 1, Email = "e@test.dev", Name = "E" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(user);
@@ -171,6 +192,7 @@ public sealed class VerificationDigestServiceTests
 
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);
 
+        // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SendAsync(1));
     }
 }

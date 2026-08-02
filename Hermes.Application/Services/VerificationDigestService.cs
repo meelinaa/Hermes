@@ -13,10 +13,8 @@ using Microsoft.Extensions.Options;
 namespace Hermes.Application.Services;
 
 /// <summary>
-/// Generates a six-digit verification code, persists it for the user,
-/// renders the verification HTML via <see cref="IVerificationHtmlService"/>,
-/// and delivers the e-mail. Rendering is delegated to an injected renderer
-/// so the Application layer stays free of HTML/template concerns.
+/// Generates cryptographically secure 6-digit OTP verification codes, persists active verification challenges (optionally hashed),
+/// delegates template rendering to <see cref="IVerificationHtmlService"/>, and dispatches activation emails.
 /// </summary>
 public sealed class VerificationDigestService(
     IUserRepository users,
@@ -29,10 +27,12 @@ public sealed class VerificationDigestService(
     public const int VERIFICATION_CODE_VALIDITY_MINUTES = 15;
 
     /// <summary>
-    /// Sends a verification e-mail containing a six-digit code to the user
-    /// identified by <paramref name="userId"/>. The code is persisted
-    /// (optionally hashed) before the e-mail is dispatched.
+    /// Generates a cryptographically random 6-digit OTP, persists the active verification challenge (optionally hashed)
+    /// with a 15-minute expiration window, renders the HTML email body, and sends the account activation message.
     /// </summary>
+    /// <param name="userId">The unique identifier of the target user requesting email verification.</param>
+    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="userId"/> is less than or equal to zero.</exception>
     public async Task SendAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -95,9 +95,10 @@ public sealed class VerificationDigestService(
     }
 
     /// <summary>
-    /// Generates a cryptographically random six-digit numeric code
-    /// used for e-mail verification challenges.
+    /// Generates a cryptographically random six-digit numeric code using <see cref="RandomNumberGenerator"/>
+    /// to prevent predictable OTP challenge generation.
     /// </summary>
+    /// <returns>A formatted 6-digit numeric string (padded with leading zeros if necessary).</returns>
     private static string GenerateNumericVerificationCode()
     {
         int randomNumber = RandomNumberGenerator.GetInt32(0, 1_000_000);

@@ -87,14 +87,17 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync throws an ArgumentOutOfRangeException for non-positive IDs.
     /// </summary>
+    // [B]OUNDARY: Rejects non-positive user ID or news ID input parameters
     [Theory]
     [InlineData(0, 1)]
     [InlineData(1, 0)]
     [InlineData(-5, 10)]
     public async Task SendAsync_Should_RejectNonPositiveUserOrNewsIdentifiers(int userId, int newsId)
     {
+        // Arrange
         NewsletterDigestService sut = CreateSut();
 
+        // Act & Assert
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
             sut.SendAsync(userId, newsId, DateTime.UtcNow));
     }
@@ -102,11 +105,15 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync throws an InvalidOperationException if the API Key is empty or whitespace.
     /// </summary>
+    // [B]OUNDARY: Throws when NewsDataIo API key configuration is missing or blank
     [Fact]
     public async Task SendAsync_Should_ThrowInvalidOperation_WhenApiKeyMissingOrWhitespaceOnly()
     {
+        // Arrange
         NewsletterDigestService sutEmpty = CreateSut(newsOptions: Options.Create(new NewsDataIoOptions { Key = "" }));
         NewsletterDigestService sutWs = CreateSut(newsOptions: Options.Create(new NewsDataIoOptions { Key = "   " }));
+
+        // Act & Assert
         InvalidOperationException ex1 = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sutEmpty.SendAsync(1, 1, new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)));
         Assert.Equal("Configure NewsDataIo:Key.", ex1.Message);
@@ -118,9 +125,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync returns early and does not load user/subscription if a duplicate log is found in the current minute window.
     /// </summary>
+    // [B]OUNDARY: Aborts early when a duplicate notification was already sent in the UTC minute window
     [Fact]
     public async Task SendAsync_Should_NotLoadUserOrNews_WhenDuplicateAlreadySentInWindow()
     {
+        // Arrange
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
@@ -135,7 +144,11 @@ public sealed class NewsletterDigestServiceTests
         SetupAdvanceDigestSlot(newsPort);
 
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object);
+
+        // Act
         await sut.SendAsync(5, 10, new DateTime(2026, 6, 15, 14, 30, 22, DateTimeKind.Utc));
+
+        // Assert
         users.Verify(store => store.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         newsPort.Verify(store => store.GetNewsByIdAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         newsPort.Verify(
@@ -148,6 +161,7 @@ public sealed class NewsletterDigestServiceTests
             Times.Once);
     }
 
+    // [B]OUNDARY: Advances digest slot without dispatching email when article fetch yields zero results
     [Fact]
     public async Task SendAsync_Should_AdvanceSlot_ButNotSendEmail_WhenNoArticlesFound()
     {
@@ -181,9 +195,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that the duplicate check uses a normalized minute slice.
     /// </summary>
+    // [R]IGHT: Normalizes digest slot UTC timestamp to top of minute for duplicate check window
     [Fact]
     public async Task SendAsync_Should_CheckDuplicateWindow_WithNormalizedUtcMinuteSlice()
     {
+        // Arrange
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
@@ -197,7 +213,11 @@ public sealed class NewsletterDigestServiceTests
         DateTime digestUtc = new(2026, 3, 20, 9, 45, 59, DateTimeKind.Utc);
         DateTime expectedStart = new(2026, 3, 20, 9, 45, 0, DateTimeKind.Utc);
         DateTime expectedEnd = expectedStart.AddMinutes(1);
+
+        // Act
         await sut.SendAsync(1, 2, digestUtc);
+
+        // Assert
         logs.Verify(
             s => s.ExistsSentNotificationInWindowAsync(1, 2, expectedStart, expectedEnd, It.IsAny<CancellationToken>()),
             Times.Once);
@@ -206,9 +226,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync aborts silently if the target user is not found.
     /// </summary>
+    // [B]OUNDARY: Aborts execution silently when requested user record is missing
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenUserMissing()
     {
+        // Arrange
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
@@ -225,8 +247,10 @@ public sealed class NewsletterDigestServiceTests
         Mock<INewsArticleProvider> articles = new();
         NewsletterDigestService sut = CreateSut(users.Object, notificationLogs: logs.Object, newsProvider: articles.Object);
 
+        // Act
         await sut.SendAsync(7, 99, DateTime.UtcNow);
 
+        // Assert
         articles.Verify(
             articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -235,9 +259,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync aborts silently if the target user email address is empty.
     /// </summary>
+    // [B]OUNDARY: Aborts execution silently when target user email is blank
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenUserHasNoDeliverableEmail()
     {
+        // Arrange
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
@@ -253,8 +279,10 @@ public sealed class NewsletterDigestServiceTests
         Mock<INewsArticleProvider> articles = new();
         NewsletterDigestService sut = CreateSut(users.Object, notificationLogs: logs.Object, newsProvider: articles.Object);
 
+        // Act
         await sut.SendAsync(1, 2, DateTime.UtcNow);
 
+        // Assert
         articles.Verify(
             articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -263,9 +291,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync aborts silently if the subscription configuration is not found.
     /// </summary>
+    // [B]OUNDARY: Aborts execution silently when newsletter subscription profile does not exist
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenNewsProfileMissing()
     {
+        // Arrange
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
@@ -285,8 +315,10 @@ public sealed class NewsletterDigestServiceTests
         Mock<INewsArticleProvider> articles = new();
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object);
 
+        // Act
         await sut.SendAsync(1, 88, DateTime.UtcNow);
 
+        // Assert
         articles.Verify(
             articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -295,9 +327,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync skips article query logic and advances scheduling slots if the subscription is disabled.
     /// </summary>
+    // [B]OUNDARY: Advances slot without sending email when newsletter subscription is disabled
     [Fact]
     public async Task SendAsync_Should_SkipSend_AndAdvanceSlot_WhenNewsDisabled()
     {
+        // Arrange
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
@@ -317,8 +351,10 @@ public sealed class NewsletterDigestServiceTests
         Mock<INewsArticleProvider> articles = new();
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object);
 
+        // Act
         await sut.SendAsync(1, 42, DateTime.UtcNow);
 
+        // Assert
         articles.Verify(
             articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -335,9 +371,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync does not call the news API provider if the subscription produces an empty query payload.
     /// </summary>
+    // [B]OUNDARY: Skips API fetch when filter criteria result in an empty query object
     [Fact]
     public async Task SendAsync_Should_NotCallNewsApi_WhenFiltersProduceNoQuery()
     {
+        // Arrange
         NewsletterSubscription news = new()
         {
             Id = 3,
@@ -365,7 +403,11 @@ public sealed class NewsletterDigestServiceTests
 
         Mock<INewsArticleProvider> articles = new();
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object);
+
+        // Act
         await sut.SendAsync(1, 3, DateTime.UtcNow);
+
+        // Assert
         articles.Verify(
             articleProvider => articleProvider.GetLatestAsync(It.IsAny<NewsArticleQueryDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -374,9 +416,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync sends a rendered digest, saves a successful log, and advances scheduling slots under normal operation.
     /// </summary>
+    // [R]IGHT: Standard success pipeline renders template, sends email, writes audit log, and advances slot
     [Fact]
     public async Task SendAsync_Should_SendMail_WriteSentLog_WhenPipelineSucceeds()
     {
+        // Arrange
         NewsArticleQueryDto? capturedQuery = null;
         NotificationLog? capturedLog = null;
 
@@ -418,7 +462,11 @@ public sealed class NewsletterDigestServiceTests
             .Returns(Task.CompletedTask);
 
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object, email.Object);
+
+        // Act
         await sut.SendAsync(2, 12, new DateTime(2026, 8, 1, 11, 0, 0, DateTimeKind.Utc));
+
+        // Assert
         Assert.NotNull(capturedQuery);
         Assert.Equal("integration-test-api-key", capturedQuery!.ApiKey);
         Assert.Equal("Berlin", capturedQuery.KeywordsQuery);
@@ -441,9 +489,11 @@ public sealed class NewsletterDigestServiceTests
     /// <summary>
     /// Verifies that SendAsync logs delivery failures and propagates exceptions to Hangfire when the email sender fails.
     /// </summary>
+    // [E]RROR: Logs failed delivery attempt and rethrows exception when SMTP provider fails
     [Fact]
     public async Task SendAsync_Should_WriteFailedLog_AndPropagate_WhenSmtpFails()
     {
+        // Arrange
         NewsletterSubscription news = new() { Id = 1, UserId = 1, Keywords = ["test"] };
 
         Mock<INotificationLogRepository> logs = new();
@@ -478,6 +528,7 @@ public sealed class NewsletterDigestServiceTests
 
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object, email.Object);
 
+        // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sut.SendAsync(1, 1, DateTime.UtcNow));
 

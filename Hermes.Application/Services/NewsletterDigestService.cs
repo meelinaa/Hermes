@@ -15,10 +15,10 @@ using Microsoft.Extensions.Options;
 namespace Hermes.Application.Services;
 
 /// <summary>
-/// Orchestrates the newsletter digest pipeline: duplicate check, article fetch,
-/// HTML rendering (via <see cref="INewsletterHtmlService"/>), e-mail delivery,
-/// and notification logging. Rendering is delegated to an injected renderer
-/// so the Application layer stays free of HTML/template concerns.
+/// Orchestrates the automated newsletter digest delivery pipeline for background jobs.
+/// Executes deduplication checks within minute windows, queries external news providers,
+/// formats top article previews, delegates HTML template rendering to <see cref="INewsletterHtmlService"/>,
+/// dispatches emails, and logs execution audit trails.
 /// </summary>
 public sealed class NewsletterDigestService(
     IUserRepository users,
@@ -35,10 +35,17 @@ public sealed class NewsletterDigestService(
     private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
 
     /// <summary>
-    /// Sends a newsletter digest for the given user and newsletter subscription.
-    /// Deduplicates within a one-minute UTC window, advances the next digest
-    /// slot on success or permanent failure, and logs the outcome.
+    /// Executes the full newsletter digest pipeline for a specific user and subscription slot.
+    /// Performs UTC minute deduplication to prevent duplicate emails, fetches matching news articles,
+    /// renders localized HTML templates, dispatches the email, and records audit logs.
+    /// Advances the subscription's next digest slot upon completion or permanent failure to prevent stuck job queues.
     /// </summary>
+    /// <param name="userId">The unique identifier of the recipient user.</param>
+    /// <param name="newsId">The unique identifier of the active newsletter subscription profile.</param>
+    /// <param name="digestSlotStartUtc">The UTC timestamp representing the start of the scheduled digest execution slot.</param>
+    /// <param name="cancellationToken">Token to monitor for cancellation requests during async operations.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="userId"/> or <paramref name="newsId"/> is less than or equal to zero.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the required NewsDataIo API key configuration is missing or blank.</exception>
     public async Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -166,9 +173,12 @@ public sealed class NewsletterDigestService(
     }
 
     /// <summary>
-    /// Builds the external article query from the newsletter subscription filters.
-    /// Returns null when no meaningful filter criteria are present.
+    /// Builds the external article query parameters from subscription filter criteria.
+    /// Maps country names to ISO 3166-1 Alpha-2 codes, languages to ISO 639 codes, and combines keyword terms with OR operators.
     /// </summary>
+    /// <param name="apiKey">The external API provider key.</param>
+    /// <param name="subscription">The newsletter subscription containing user-selected topic filters.</param>
+    /// <returns>A populated <see cref="NewsArticleQueryDto"/> if valid filters exist; otherwise <c>null</c> when no filter criteria are specified.</returns>
     private static NewsArticleQueryDto? BuildArticleQuery(string apiKey, NewsletterSubscription subscription)
     {
         List<string>? countries = subscription.Countries is { Count: > 0 }
@@ -203,9 +213,12 @@ public sealed class NewsletterDigestService(
     }
 
     /// <summary>
-    /// Truncates plain text to the specified maximum length, appending
-    /// a suffix when the original value exceeds the limit.
+    /// Truncates raw text content to a specified maximum character length for digest card preview snippets.
     /// </summary>
+    /// <param name="value">The raw input string to truncate.</param>
+    /// <param name="maxLength">The maximum allowed character length including the suffix.</param>
+    /// <param name="suffix">The string appended to indicate truncation (defaults to "...").</param>
+    /// <returns>The truncated text snippet or empty string if input is null/empty.</returns>
     private static string TruncatePlainText(string? value, int maxLength, string suffix = "...")
     {
         if (string.IsNullOrEmpty(value))
