@@ -1,5 +1,5 @@
 using FluentValidation.TestHelper;
-using Hermes.Api.Validation;
+using Hermes.Api.Validators.Auth;
 using Hermes.Application.DTOs.Login;
 using Xunit;
 

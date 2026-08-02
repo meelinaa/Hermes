@@ -1,7 +1,7 @@
 using FluentValidation;
 using Hermes.Application.DTOs.User;
 
-namespace Hermes.Api.Validation;
+namespace Hermes.Api.Validators.Auth;
 
 /// <summary>
 /// Validator for the UserVerificationCodeRequestDto DTO to ensure email verification codes are valid.

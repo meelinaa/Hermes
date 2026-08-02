@@ -9,7 +9,7 @@ using Hermes.Api.Constants;
 using Hermes.Api.Extensions;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
-using Hermes.Api.Validation;
+using Hermes.Api.Validators.NotificationLogs;
 using Hermes.Application.DTOs.NotificationLogs;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;

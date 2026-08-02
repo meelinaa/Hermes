@@ -1,7 +1,7 @@
 using FluentValidation;
 using Hermes.Application.DTOs.NewsletterSubscription;
 
-namespace Hermes.Api.Validation;
+namespace Hermes.Api.Validators.Newsletter;
 
 /// <summary>
 /// Validator for the UpdateNewsletterSubscriptionRequestDto DTO to ensure update parameters are valid.

@@ -1,7 +1,7 @@
 using FluentValidation;
 using Hermes.Application.DTOs.User;
 
-namespace Hermes.Api.Validation;
+namespace Hermes.Api.Validators.Auth;
 
 /// <summary>
 /// Validator for the RegisterUserRequestDto DTO to ensure user registration inputs are valid.

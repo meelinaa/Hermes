@@ -9,7 +9,7 @@ using Moq;
 using Xunit;
 
 using Hermes.Api.Filters;
-using Hermes.Api.Validation;
+using Hermes.Api.Validators.Auth;
 
 namespace Hermes.UnitTests.Api.Validation;
 

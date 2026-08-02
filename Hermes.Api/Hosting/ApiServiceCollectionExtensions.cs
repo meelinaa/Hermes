@@ -15,7 +15,7 @@ using Serilog.Enrichers.Span;
 
 using Hermes.Api.Filters;
 using Hermes.Api.Hangfire;
-using Hermes.Api.Validation;
+using Hermes.Api.Validators.Auth;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Options.Common;
 using Hermes.Application.Options.External;

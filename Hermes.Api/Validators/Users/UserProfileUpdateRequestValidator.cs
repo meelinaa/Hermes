@@ -1,7 +1,7 @@
 using FluentValidation;
 using Hermes.Application.DTOs.User;
 
-namespace Hermes.Api.Validation;
+namespace Hermes.Api.Validators.Users;
 
 /// <summary>
 /// Validator for the UserProfileUpdateRequestDto DTO to ensure update parameters are valid.
