@@ -1,6 +1,6 @@
 using System.Reflection;
 using Hermes.Domain.Enums;
-using Hermes.Domain.Enums.Attribute;
+using Hermes.Domain.Enums.Attributes;
 
 namespace Hermes.Application.Mapping;
 

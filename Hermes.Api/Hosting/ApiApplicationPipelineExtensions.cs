@@ -13,7 +13,7 @@ using Serilog;
 
 using Hermes.Api.Middleware;
 using Hermes.Api.Options;
-using Hermes.Domain;
+using Hermes.Domain.Constants;
 using Hermes.Domain.Exceptions;
 
 namespace Hermes.Api.Hosting;

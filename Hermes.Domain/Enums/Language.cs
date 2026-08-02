@@ -1,3 +1,5 @@
+using Hermes.Domain.Enums.Attributes;
+
 namespace Hermes.Domain.Enums;
 
 public enum Language

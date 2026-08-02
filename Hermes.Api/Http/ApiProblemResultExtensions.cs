@@ -1,4 +1,4 @@
-using Hermes.Domain;
+using Hermes.Domain.Constants;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hermes.Api.Http;
