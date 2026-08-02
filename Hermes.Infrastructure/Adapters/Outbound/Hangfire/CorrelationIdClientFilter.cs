@@ -1,7 +1,7 @@
 using Hangfire.Client;
-using Hermes.Api.Middleware;
+using Microsoft.AspNetCore.Http;
 
-namespace Hermes.Api.Hangfire;
+namespace Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 
 /// <summary>
 /// Hangfire client filter that extracts the CorrelationId from the current HTTP request
@@ -10,10 +10,15 @@ namespace Hermes.Api.Hangfire;
 public sealed class CorrelationIdClientFilter(IHttpContextAccessor httpContextAccessor) : IClientFilter
 {
     public const string JOB_PARAMETER_NAME = "CorrelationId";
+    public const string HTTP_CONTEXT_ITEM_KEY = "CorrelationId";
 
+    /// <summary>
+    /// Captures correlation ID from HTTP context items before Hangfire job creation.
+    /// </summary>
+    /// <param name="filterContext">The Hangfire client filter creation context.</param>
     public void OnCreating(CreatingContext filterContext)
     {
-        string? correlationId = httpContextAccessor.HttpContext?.Items[CorrelationIdMiddleware.HTTP_CONTEXT_ITEM_KEY]?.ToString();
+        string? correlationId = httpContextAccessor.HttpContext?.Items[HTTP_CONTEXT_ITEM_KEY]?.ToString();
 
         if (!string.IsNullOrWhiteSpace(correlationId))
         {
@@ -21,6 +26,10 @@ public sealed class CorrelationIdClientFilter(IHttpContextAccessor httpContextAc
         }
     }
 
+    /// <summary>
+    /// Post-creation callback for Hangfire client filter.
+    /// </summary>
+    /// <param name="filterContext">The Hangfire client filter created context.</param>
     public void OnCreated(CreatedContext filterContext)
     {
         // No action required after creation.

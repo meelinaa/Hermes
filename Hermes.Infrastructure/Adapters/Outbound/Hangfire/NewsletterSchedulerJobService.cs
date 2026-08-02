@@ -3,10 +3,12 @@ using Microsoft.Extensions.Logging;
 
 using Hermes.Application.Constants;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Services.Newsletter;
 
-namespace Hermes.Api.Hangfire;
+namespace Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 
+/// <summary>
+/// Infrastructure adapter implementation for triggering recurring newsletter scheduling runs in Hangfire.
+/// </summary>
 public sealed class NewsletterSchedulerJobService(JobStorage jobStorage, ILogger<NewsletterSchedulerJobService> logger)
     : INewsletterSchedulerJobService
 {
