@@ -14,9 +14,9 @@ public sealed class NewsletterSchedulerJobService(JobStorage jobStorage, ILogger
     /// </summary>
     public void RequestRunAfterNewsMutation()
     {
-        new RecurringJobManager(jobStorage).TriggerJob(NewsletterSchedulerRecurringService.ID);
+        new RecurringJobManager(jobStorage).TriggerJob(RecurringJobConstants.ID);
         logger.LogInformation(
-            "Triggered Hangfire recurring job {JobId} after news mutation.",
-            NewsletterSchedulerRecurringService.ID);
+            "Newsletter scheduler execution requested manually for job {JobId}",
+            RecurringJobConstants.ID);
     }
 }

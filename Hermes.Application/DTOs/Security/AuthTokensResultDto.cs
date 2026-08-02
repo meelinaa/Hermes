@@ -1,4 +1,4 @@
-namespace Hermes.Application.Security;
+namespace Hermes.Application.DTOs.Security;
 
 public sealed record AuthTokensResultDto(
     string AccessToken,

@@ -68,7 +68,7 @@ try
 
     RecurringJob.AddOrUpdate<NewsletterSchedulerWorkerService>(
 
-        NewsletterSchedulerRecurringService.ID,
+        RecurringJobConstants.ID,
 
         scheduler => scheduler.RunAsync(CancellationToken.None),
 
