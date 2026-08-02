@@ -1,6 +1,6 @@
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Services;
+using Hermes.Application.Services.Users;
 using Moq;
 using Xunit;
 

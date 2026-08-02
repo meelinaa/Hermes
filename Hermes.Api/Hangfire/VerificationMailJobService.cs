@@ -1,7 +1,7 @@
 using Hangfire;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Jobs;
-using Hermes.Application.Scheduling;
+using Hermes.Application.Services.Newsletter;
+using Hermes.Application.Services.NotificationLogs;
 using Microsoft.Extensions.Logging;
 
 namespace Hermes.Api.Hangfire;

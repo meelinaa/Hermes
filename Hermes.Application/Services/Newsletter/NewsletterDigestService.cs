@@ -6,19 +6,15 @@ using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Scheduling;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Services.Newsletter;
 
 /// <summary>
-/// Orchestrates the automated newsletter digest delivery pipeline for background jobs.
-/// Executes deduplication checks within minute windows, queries external news providers,
-/// formats top article previews, delegates HTML template rendering to <see cref="INewsletterHtmlService"/>,
-/// dispatches emails, and logs execution audit trails.
+/// Service implementation for fetching external news articles, rendering HTML newsletter digests, sending email notifications, and recording delivery attempts.
 /// </summary>
 public sealed class NewsletterDigestService(
     IUserRepository users,
@@ -31,21 +27,16 @@ public sealed class NewsletterDigestService(
     IOptions<NewsletterOptions> newsletterOptions,
     ILogger<NewsletterDigestService> logger) : INewsletterDigestService
 {
-    private const int MAX_ARTICLES_IN_NEWSLETTER = 10;
-    private static readonly CultureInfo _digestCulture = CultureInfo.GetCultureInfo("de-DE");
+    private const int MAX_ARTICLES_IN_NEWSLETTER = 5;
+    private readonly CultureInfo _digestCulture = new("de-DE");
 
     /// <summary>
-    /// Executes the full newsletter digest pipeline for a specific user and subscription slot.
-    /// Performs UTC minute deduplication to prevent duplicate emails, fetches matching news articles,
-    /// renders localized HTML templates, dispatches the email, and records audit logs.
-    /// Advances the subscription's next digest slot upon completion or permanent failure to prevent stuck job queues.
+    /// Executes the end-to-end newsletter digest workflow: verifies deduplication, fetches relevant news articles, renders template HTML, dispatches email, records status, and advances schedule slot.
     /// </summary>
-    /// <param name="userId">The unique identifier of the recipient user.</param>
-    /// <param name="newsId">The unique identifier of the active newsletter subscription profile.</param>
-    /// <param name="digestSlotStartUtc">The UTC timestamp representing the start of the scheduled digest execution slot.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests during async operations.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="userId"/> or <paramref name="newsId"/> is less than or equal to zero.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when the required NewsDataIo API key configuration is missing or blank.</exception>
+    /// <param name="userId">The unique identifier of the receiving user.</param>
+    /// <param name="newsId">The unique identifier of the newsletter subscription.</param>
+    /// <param name="digestSlotStartUtc">The UTC timestamp marking the start of the current digest schedule window.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for async operations to complete.</param>
     public async Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)

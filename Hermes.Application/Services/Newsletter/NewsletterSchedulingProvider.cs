@@ -1,4 +1,4 @@
-namespace Hermes.Application.Scheduling;
+namespace Hermes.Application.Services.Newsletter;
 
 /// <summary>
 /// Provides utility methods for time zone resolution and wall-clock time conversions used in newsletter scheduling.

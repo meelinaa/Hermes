@@ -3,7 +3,6 @@ using Hermes.Application.DTOs.Login;
 using Hermes.Application.DTOs.Security;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services.Security;
-using Hermes.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;

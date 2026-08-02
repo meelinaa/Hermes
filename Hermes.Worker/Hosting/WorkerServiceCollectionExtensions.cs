@@ -1,11 +1,11 @@
 using Hangfire;
 using Hangfire.MySql;
-using Hermes.Application.Jobs;
 using Hermes.Application.Options;
-using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Services;
+using Hermes.Application.Services.Newsletter;
+using Hermes.Application.Services.NotificationLogs;
+using Hermes.Application.Services.Users;
 using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Providers;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;

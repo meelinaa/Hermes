@@ -6,7 +6,7 @@ using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Services.Users;
 
 /// <summary>
 /// Service implementation for user account registration, authentication via BCrypt password verification, and credential updates.

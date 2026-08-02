@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 using Hermes.Application.Constants;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Scheduling;
+using Hermes.Application.Services.Newsletter;
 
 namespace Hermes.Api.Hangfire;
 

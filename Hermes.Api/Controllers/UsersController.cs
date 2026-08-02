@@ -9,7 +9,6 @@ using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Inbound;
-using Hermes.Application.Services;
 using Hermes.Domain.Entities;
 
 namespace Hermes.Api.Controllers;

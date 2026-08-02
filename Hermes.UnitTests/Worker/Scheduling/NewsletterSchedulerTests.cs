@@ -116,7 +116,7 @@ public sealed class NewsletterSchedulerTests
         // Assert
         jobClient.Verify(
             x => x.Create(
-                It.Is<global::Hangfire.Common.Job>(j => j.Type == typeof(Hermes.Application.Jobs.NotificationJobService) && j.Method.Name == nameof(Hermes.Application.Jobs.NotificationJobService.SendNewsDigestAsync)),
+                It.Is<global::Hangfire.Common.Job>(j => j.Type == typeof(Hermes.Application.Services.NotificationLogs.NotificationJobService) && j.Method.Name == nameof(Hermes.Application.Services.NotificationLogs.NotificationJobService.SendNewsDigestAsync)),
                 It.IsAny<global::Hangfire.States.EnqueuedState>()),
             Times.Exactly(2));
     }

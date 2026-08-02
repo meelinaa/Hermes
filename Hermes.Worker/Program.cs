@@ -3,7 +3,7 @@ using Serilog;
 
 using Hermes.Application.Constants;
 using Hermes.Application.Options;
-using Hermes.Application.Scheduling;
+using Hermes.Application.Services.Newsletter;
 using Hermes.Worker.Hosting;
 using Hermes.Worker.Services.Scheduling;
 using Hermes.Worker.Services.Serilog;

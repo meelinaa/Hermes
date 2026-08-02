@@ -1,9 +1,9 @@
 using Hangfire;
-using Hermes.Application.Jobs;
 using Hermes.Application.Options;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Scheduling;
+using Hermes.Application.Services.Newsletter;
+using Hermes.Application.Services.NotificationLogs;
 using Hermes.Notifications.Receiving.Options;
 using Hermes.Worker.Services.MailHog;
 using Microsoft.Extensions.Logging;

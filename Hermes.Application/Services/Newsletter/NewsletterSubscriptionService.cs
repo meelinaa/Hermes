@@ -3,21 +3,21 @@ using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Scheduling;
 using Hermes.Domain.Entities;
 using Hermes.Domain.ValueObjects;
 using Microsoft.Extensions.Options;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Services.Newsletter;
 
 /// <summary>
-/// Provides management operations for user newsletter subscriptions, handling schedule window validation,
-/// persistence, next digest slot calculation, and list queries.
+/// Service implementation for managing newsletter subscription domain entities, schedule window assignments, and persistence operations.
 /// </summary>
-public sealed class NewsletterSubscriptionService(INewsletterSubscriptionRepository db, IOptions<NewsletterOptions> newsletterOptions) : INewsletterSubscriptionService
+public sealed class NewsletterSubscriptionService(
+    INewsletterSubscriptionRepository db,
+    IOptions<NewsletterOptions> newsletterOptions) : INewsletterSubscriptionService
 {
     /// <summary>
-    /// Creates a new newsletter subscription, validating the selected schedule window and computing its next execution slot.
+    /// Validates schedule window requirements and persists a new newsletter subscription profile.
     /// </summary>
     /// <param name="news">The subscription entity to create and persist.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>

@@ -3,7 +3,7 @@ using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Services.NotificationLogs;
 
 /// <summary>
 /// Service implementation for persisting notification audit logs to record email delivery attempts and status outcomes.

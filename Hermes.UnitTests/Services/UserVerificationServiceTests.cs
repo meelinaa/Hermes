@@ -1,8 +1,7 @@
 using Hermes.Application.Options;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Scheduling;
 using Hermes.Application.Services.Security;
-using Hermes.Application.Services;
+using Hermes.Application.Services.Users;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Microsoft.Extensions.Options;

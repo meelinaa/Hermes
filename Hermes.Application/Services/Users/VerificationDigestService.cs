@@ -12,7 +12,7 @@ using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Security;
 using Hermes.Domain.Entities;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Services.Users;
 
 /// <summary>
 /// Generates cryptographically secure 6-digit OTP verification codes, persists active verification challenges (optionally hashed),

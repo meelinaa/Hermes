@@ -4,7 +4,7 @@ using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Enums;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Services.Newsletter;
 
 /// <summary>
 /// Evaluates newsletter dispatch schedules against system time slots to identify pending digest tasks for background worker polling.

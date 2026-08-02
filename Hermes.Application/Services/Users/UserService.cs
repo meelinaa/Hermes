@@ -3,7 +3,7 @@ using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Services.Users;
 
 /// <summary>
 /// Service implementation for querying user profiles and executing user account deletion operations.

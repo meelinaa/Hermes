@@ -5,7 +5,7 @@ using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Security;
-using Hermes.Application.Services;
+using Hermes.Application.Services.Users;
 using Hermes.Domain.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

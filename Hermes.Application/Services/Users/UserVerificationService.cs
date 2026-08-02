@@ -4,14 +4,14 @@ using System.Text;
 using Hermes.Application.Options;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Scheduling;
+using Hermes.Application.Services.Newsletter;
 using Hermes.Application.Services.Security;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;
 using Microsoft.Extensions.Options;
 
-namespace Hermes.Application.Services;
+namespace Hermes.Application.Services.Users;
 
 /// <summary>
 /// Service implementation for managing two-factor email verification challenges and validating verification OTP codes.
