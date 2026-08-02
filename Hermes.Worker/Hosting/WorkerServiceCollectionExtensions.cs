@@ -12,7 +12,8 @@ using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 using Hermes.Notifications.Receiving.Models;
 using Hermes.Notifications.Sending;
 using Hermes.Notifications.Sending.HtmlLayout;
-using Hermes.Worker.Scheduling;
+using Hermes.Worker.Filters.Hangfire;
+using Hermes.Worker.Services.Scheduling;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Worker.Hosting;
@@ -61,7 +62,7 @@ public static class WorkerServiceCollectionExtensions
             {
                 TablesPrefix = "Hangfire"
             }))
-            .UseFilter(new Hermes.Worker.Hangfire.CorrelationIdServerFilter()));
+            .UseFilter(new CorrelationIdServerFilter()));
 
         builder.Services.AddHangfireServer();
     }

@@ -2,7 +2,7 @@ using Hangfire;
 using Hangfire.Common;
 using Hangfire.Server;
 using Hangfire.Storage;
-using Hermes.Worker.Hangfire;
+using Hermes.Worker.Filters.Hangfire;
 using Moq;
 using Xunit;
 

@@ -1,19 +1,19 @@
 using Hangfire;
-using Hermes.Application.DTOs.Email;
 using Hermes.Application.Jobs;
 using Hermes.Application.Options;
-using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Scheduling;
-using Hermes.Application.Services;
 using Hermes.Notifications.Receiving.Models;
-using Hermes.Worker.MailHog;
+using Hermes.Worker.Services.MailHog;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Hermes.Worker.Scheduling;
+namespace Hermes.Worker.Services.Scheduling;
 
-/// <summary>Hangfire minutely tick: resolve due newsletter subscriptions (UTC slot wall clock) and enqueue one digest job per row.</summary>
+/// <summary>
+/// Hangfire minutely tick service: resolves due newsletter subscriptions (UTC slot wall clock) and enqueues one digest job per row.
+/// </summary>
 public sealed class NewsletterSchedulerWorkerService(
     INewsletterScheduleService newsletterScheduleService,
     IBackgroundJobClient backgroundJobClient,
@@ -26,6 +26,11 @@ public sealed class NewsletterSchedulerWorkerService(
     private readonly TimeZoneInfo _newsletterTimeZone =
         NewsletterSchedulingProvider.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
 
+    /// <summary>
+    /// Executes the minutely scheduling loop to resolve due newsletter items and enqueue Hangfire notification jobs.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous execution.</returns>
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         DateTime wallNow = NewsletterSchedulingProvider.GetWallClockNow(_newsletterTimeZone);
