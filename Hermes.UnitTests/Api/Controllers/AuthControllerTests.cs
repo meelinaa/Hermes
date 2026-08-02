@@ -41,10 +41,10 @@ public sealed class AuthControllerTests
         }, "TestAuthType"));
     }
 
+    // [R]IGHT: Valid user credentials return HTTP 200 OK with issued JWT tokens
     [Fact]
     public async Task Login_Should_ReturnOkWithTokens_When_CredentialsAreValid()
     {
-        // [R]IGHT: Valid user credentials return HTTP 200 OK with issued JWT tokens
         // Arrange
         Mock<IUserAuthenticationService> authServiceMock = new();
         authServiceMock.Setup(x => x.LoginAsync("valid@test.com", "Password123", It.IsAny<CancellationToken>()))
@@ -69,10 +69,10 @@ public sealed class AuthControllerTests
         Assert.Equal("access-token", response.AccessToken);
     }
 
+    // [E]RROR: Invalid user credentials return HTTP 401 Unauthorized problem details
     [Fact]
     public async Task Login_Should_ReturnUnauthorizedProblem_When_LoginFails()
     {
-        // [E]RROR: Invalid user credentials return HTTP 401 Unauthorized problem details
         // Arrange
         Mock<IUserAuthenticationService> authServiceMock = new();
         authServiceMock.Setup(x => x.LoginAsync("invalid@test.com", "WrongPassword", It.IsAny<CancellationToken>()))
@@ -90,10 +90,10 @@ public sealed class AuthControllerTests
         Assert.Equal(StatusCodes.Status401Unauthorized, objResult.StatusCode);
     }
 
+    // [R]IGHT: Valid refresh token returns rotated JWT access/refresh token pair
     [Fact]
     public async Task Refresh_Should_ReturnOkWithNewTokens_When_RefreshTokenIsValid()
     {
-        // [R]IGHT: Valid refresh token returns rotated JWT access/refresh token pair
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
         authTokenServiceMock.Setup(x => x.RotateAsync("valid-refresh-token", It.IsAny<CancellationToken>()))
@@ -114,10 +114,10 @@ public sealed class AuthControllerTests
         Assert.Equal("new-access-token", response.AccessToken);
     }
 
+    // [E]RROR: Invalid or expired refresh token returns HTTP 401 Unauthorized problem details
     [Fact]
     public async Task Refresh_Should_ReturnUnauthorizedProblem_When_RefreshTokenIsInvalid()
     {
-        // [E]RROR: Invalid or expired refresh token returns HTTP 401 Unauthorized problem details
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
         authTokenServiceMock.Setup(x => x.RotateAsync("invalid-refresh-token", It.IsAny<CancellationToken>()))
@@ -135,10 +135,10 @@ public sealed class AuthControllerTests
         Assert.Equal(StatusCodes.Status401Unauthorized, objResult.StatusCode);
     }
 
+    // [E]RROR: Unauthenticated logout request returns HTTP 401 Unauthorized problem details
     [Fact]
     public async Task Logout_Should_ReturnUnauthorizedProblem_When_UserIdentityIsMissing()
     {
-        // [E]RROR: Unauthenticated logout request returns HTTP 401 Unauthorized problem details
         // Arrange
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>()); // No user claims
 
@@ -151,10 +151,10 @@ public sealed class AuthControllerTests
         Assert.Equal(StatusCodes.Status401Unauthorized, objResult.StatusCode);
     }
 
+    // [R]IGHT: Revoking a specific valid refresh token returns HTTP 204 No Content
     [Fact]
     public async Task Logout_Should_ReturnNoContent_When_SpecificTokenIsRevoked()
     {
-        // [R]IGHT: Revoking a specific valid refresh token returns HTTP 204 No Content
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
         authTokenServiceMock.Setup(x => x.TryRevokeRefreshForUserAsync("valid-refresh-token", 1, It.IsAny<CancellationToken>()))
@@ -169,10 +169,10 @@ public sealed class AuthControllerTests
         Assert.IsType<NoContentResult>(result);
     }
 
+    // [B]OUNDARY: Null refresh token in logout revokes all active tokens for user
     [Fact]
     public async Task Logout_Should_ReturnNoContent_When_AllTokensRevokedForUser()
     {
-        // [B]OUNDARY: Null refresh token in logout revokes all active tokens for user
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
         authTokenServiceMock.Setup(x => x.RevokeAllForUserAsync(1, It.IsAny<CancellationToken>()))
@@ -188,10 +188,10 @@ public sealed class AuthControllerTests
         authTokenServiceMock.Verify(x => x.RevokeAllForUserAsync(1, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // [E]RROR: Revoking invalid refresh token returns HTTP 401 Unauthorized problem details
     [Fact]
     public async Task Logout_Should_ReturnUnauthorizedProblem_When_RevokeFails()
     {
-        // [E]RROR: Revoking invalid refresh token returns HTTP 401 Unauthorized problem details
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
         authTokenServiceMock.Setup(x => x.TryRevokeRefreshForUserAsync("invalid-refresh-token", 1, It.IsAny<CancellationToken>()))

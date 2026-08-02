@@ -9,6 +9,7 @@ public sealed class RegisterUserRequestValidatorTests
 {
     private readonly RegisterUserRequestValidator _sut = new();
 
+    // [R]IGHT: Valid user registration request passes validation
     [Fact]
     public void Should_NotHaveError_When_RequestIsValid()
     {
@@ -22,6 +23,7 @@ public sealed class RegisterUserRequestValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    // [B]OUNDARY: Null, empty, or whitespace Name produces validation error
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -39,6 +41,7 @@ public sealed class RegisterUserRequestValidatorTests
             .WithErrorMessage("Name is required.");
     }
 
+    // [B]OUNDARY: Null, empty, or whitespace Password produces validation error
     [Theory]
     [InlineData(null)]
     [InlineData("")]
