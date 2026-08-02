@@ -1,38 +1,66 @@
-<img width="1920" height="436" alt="Hermes" src="https://github.com/user-attachments/assets/f29cfdb8-0b8b-4607-9979-e94c57d7fbb5" />
+<div align="center">
+  <img width="100%" alt="Hermes Banner" src="https://github.com/user-attachments/assets/f29cfdb8-0b8b-4607-9979-e94c57d7fbb5" />
 
-# Hermes
+  # Hermes
+  
+  **A performant, personalized news digest service for tailored news updates.**
 
-[![CI/CD Pipeline](https://github.com/meelinaa/Hermes/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/meelinaa/Hermes/actions/workflows/ci-cd.yml)
+  [![Build Status](https://github.com/meelinaa/Hermes/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/meelinaa/Hermes/actions/workflows/ci-cd.yml)
+  ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
+  ![Blazor](https://img.shields.io/badge/Blazor-WASM-512BD4?logo=blazor)
+  ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)
+  ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+  ![License](https://img.shields.io/badge/License-MIT-green.svg)
+</div>
 
-Hermes is a **personal news digest service**: configure **who you are** and **what news you care about** in a **Blazor** front end; **`Hermes.Api`** persists profiles; **`Hermes.Worker`** (Hangfire on **MySQL**) runs on your schedule, fetches headlines from **[NewsData.io](https://newsdata.io/)** via **`Hermes.Infrastructure`**, renders HTML via **`Hermes.Notifications`**, and delivers mail over **SMTP**.
+<br />
 
-The codebase uses a **hexagonal (ports-and-adapters)** shape: **`Hermes.Domain`** and **`Hermes.Application`** define the core; adapters include REST (**`Hermes.Api`**), EF Core (**`Hermes.Infrastructure`** → **MySQL**), **`NewsDataIoClient`**, and **`Hermes.Notifications`**. Automated tests live in **`Hermes.UnitTests`** and **`Hermes.IntegrationTests`** (Docker/Testcontainers MySQL).
+Hermes solves the problem of daily information overload: Using a modern **Blazor Web-Frontend**, you precisely configure **which** news you care about (keywords, countries, languages) and **when** you want to receive them. 
 
-**Deployment:** The usual setup is **`docker compose`** in **`Docker/`**: it builds **MySQL**, runs **EF migrations**, then brings up **API**, **worker**, and **MailHog** (SMTP capture). **`Hermes.WebFrontend` stays outside Compose** (`dotnet run` under `Hermes.WebFrontend/Hermes.WebFrontend`) with **`ApiBaseUrl`** pointing at the published API (**`http://localhost:5165/`** when using the compose port map) and the API **`Cors:AllowedOrigins`** including the Blazor dev URL.
+Behind the scenes, a robust **.NET 10 Hexagonal Architecture** takes care of the rest: A dedicated worker fetches the relevant articles right on time via *NewsData.io*, generates a clean HTML email, and reliably delivers it to your inbox via SMTP.
 
 ---
 
-## Product overview
+## ✨ Features at a Glance
 
-1. **Web UI**: Sign in (**JWT**, refresh rotation), manage account (**password**, **e-mail**) with **security** features including **e-mail verification** (codes sent over SMTP; confirm via API/UI), manage **news profiles** (keywords, categories, languages, countries, send days, send times), and browse an authenticated **home** (`/home`).
-2. **API + database**: The UI drives **`Hermes.Api`** (`/api/v1/…`). Settings are validated and stored as **`News`** and related structured rows.
-3. **Scheduled delivery**: **`Hermes.Worker`** wakes on a recurring Hangfire slot (minute-granularity by default), detects due profiles via application services, enqueues digest jobs per profile row, pulls **NewsData.io**, composes **`NewsletterHtmlComposer`** output, SMTP-sends outcomes, writes **notification logs**, and optionally shares Hangfire tables with the API so profile changes can nudge scheduling.
+- **Personalized Feeds:** Subscribe to unlimited topics (e.g. "Tech News in English", "Economy in Austria") and tailor your news feed exactly to your interests.
+- **Precise Timing:** You decide exactly on which days of the week and at what exact time your digest should arrive.
+- **Secure Account Management:** Full control over your profile with secure login (JWT), password hashing (BCrypt), and email verification flows.
+- **Beautiful Emails:** No walls of text. Your news arrives as neatly formatted, responsive HTML newsletters (via SMTP) in your inbox.
+- **Traceability:** Built-in logs and a clean dashboard show you exactly what was sent and when.
 
 ---
 
-## Repository layout and responsibilities
+## 🏗️ Architecture & Design
 
-| Project | Responsibility |
-|---------|----------------|
-| **Hermes.Domain** | **Entities**, **DTOs** (e.g. **`UserScope`**, **`isEmailVerified`**), **`HermesProblemTypes`**, enums, exceptions, repositories-as-interfaces consumed by **`Hermes.Application`**. |
-| **Hermes.Application** | Use-case **services**: users/auth, **`News`** configuration, newsletters, hashing/verification behaviours; depends on persistence abstractions, not EF types. |
-| **Hermes.Infrastructure** | **`HermesDbContext`**, EF Core + **MySQL**, repository implementations **`NewsDataIoClient`** / **`INewsArticleProvider`**, Polly (where wired). |
-| **Hermes.Api** | **`/api/v1/` path versioning**, controllers, JWT, FluentValidation, global exception mapper → RFC 7807 **Problem Details**, health (`/health/live`, `/health/ready`), CORS/OpenAPI/Serilog/OpenTelemetry knobs. **`GET /openapi/v1.json`**. |
-| **Hermes.Notifications** | **`IEmailSender`**, **`NewsletterHtmlComposer`**, **`VerificationHtmlComposer`** and embedded Razor/static HTML snippets. |
-| **Hermes.UnitTests** | xUnit/Moq coverage for services, JWT/refresh hashing, validators, **`NewsDataIoUrlBuilder`**, weekday mappers, newsletter scheduler pipeline, **`HermesDbContext`** helpers (often **EF InMemory**). |
-| **Hermes.IntegrationTests** | Testcontainers-backed **`WebApplicationFactory`** probes (auth rotations, JWT failures, **`/users/*/news`** CRUD, verification routes, **`/notification-logs`**, probes when DB stops). Tagged **`Integration=Docker`**. |
-| **Hermes.Worker** | Hangfire **MySqlStorage**, **`NewsletterScheduler`**, enqueue **`NotificationJobs`**, binds same application/infrastructure/email stack without serving public HTTP controllers. |
-| **Hermes.WebFrontend** / **`Hermes.WebFrontend.Client`** | Blazor WASM shell: guarded routes (`GlobalAuthGuard`), **`AuthMessageHandler`, `AuthTokenStore`**, **`NewsSettingsPanel`/`NewsSubscriptionCard`**, **`/user-settings`**, **`/news-settings`** flows. |
+Hermes is designed to be lightweight, yet robust and scalable.
+
+```mermaid
+flowchart TD
+    User(["User"]) -->|"HTTP / Blazor WASM"| Web["Hermes.WebFrontend"]
+    Web -->|"REST / JWT"| API["Hermes.Api"]
+    
+    API -->|"Reads/Writes"| DB[("MySQL 8.0")]
+    Worker["Hermes.Worker / Hangfire"] -->|"Polls Due Jobs"| DB
+    
+    Worker -->|"Fetch Articles"| API_Ext["NewsData.io API"]
+    Worker -->|"Render HTML"| Notif["Hermes.Notifications"]
+    Notif -->|"Send Mail (SMTP)"| MailHog["MailHog / Mail-Server"]
+```
+
+### Key Architectural Decisions
+- **Hexagonal Architecture (Ports & Adapters):** The domain and business logic (`.Domain`, `.Application`) are strictly separated from infrastructure. This allows easily swapping out databases or third-party APIs without touching the core logic.
+- **Hangfire for Scheduling:** Instead of relying on OS cron jobs, Hangfire is used, which runs directly on the MySQL database. This ensures persistence and fault tolerance (retry mechanisms) for all email dispatches.
+- **Decoupled Frontend:** The Blazor WebAssembly frontend runs completely client-side in the browser and communicates exclusively via the secured REST API.
+- **Observability Built-in:** Default integration of structured logs (Serilog) and OpenTelemetry support (metrics, tracing) to make operations fully transparent.
+
+### Folder Structure
+- **`Hermes.Domain` & `Hermes.Application`:** The core. Contains entities, DTOs, exceptions, and pure business services (Use Cases).
+- **`Hermes.Infrastructure`:** Implements the adapters. This is where the EF Core `DbContext` (MySQL), the *NewsData.io* client logic, and resilience policies (Polly) reside.
+- **`Hermes.Api`:** The publicly visible web service. Houses controllers, JWT auth, request validation (FluentValidation), and OpenAPI specifications.
+- **`Hermes.Worker`:** A dedicated background service without public endpoints that solely takes care of processing the Hangfire queues.
+- **`Hermes.Notifications`:** Encapsulates the rendering of HTML emails (Razor/Snippets) and SMTP delivery.
+- **`Hermes.WebFrontend`:** The Blazor WASM UI project.
 
 ---
 
@@ -142,37 +170,97 @@ Hermes emits **structured Serilog**, optional OTLP exporters, and publishes **Op
 
 ---
 
-## Testing
+## 🚀 Quick Start (Getting Started)
 
-```bash
-dotnet test Hermes.slnx                           # Runs unit tests + IntegrationTests spin-up
-dotnet test Hermes.slnx --filter "Integration=Docker"
-dotnet build Hermes.slnx -warnaserror              # Mirrors CI Roslyn posture without tests
-```
+Want to run Hermes locally? The project is designed for a smooth start using Docker.
 
-**Integration** suite requires **Docker** (pulls **`mysql:8.4`**). **Unit tests** stay offline except where they purposely spin InMemory **`HermesDbContext`**.
+### Prerequisites
+Make sure the following tools are installed on your system:
+- **[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)**
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (or a compatible Docker daemon)
+- A free API key from **[NewsData.io](https://newsdata.io/)**
+
+### Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/meelinaa/Hermes.git
+   cd Hermes
+   ```
+
+2. **Configure environment variables**
+   Copy the template and fill in your missing values (e.g., the NewsData API key and JWT secret):
+   ```bash
+   cd Docker
+   cp .env.example .env
+   # Open .env in an editor and fill in the required fields
+   ```
+
+3. **Start backend & database via Docker**
+   This command builds the API and Worker, runs all database migrations, and starts MySQL along with MailHog:
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. **Start the Web Frontend (Blazor)**
+   Open a new terminal in the root directory:
+   ```bash
+   cd Hermes.WebFrontend/Hermes.WebFrontend
+   dotnet run
+   ```
+
+**Done!** You can access the Web UI at the provided HTTPS URL (usually `https://localhost:7016`). The API (including Swagger) runs at `http://localhost:5165/` and your local emails can be found in MailHog at `http://localhost:8025/`.
 
 ---
 
-## Building and running
+## 🛠️ Troubleshooting & FAQ
 
-**Backend (recommended):**
+- **API/Worker fails to start (Exit Code 1)**
+  *Reason:* Missing environment variables. Check the `Docker/.env` file and make sure all required variables (like `JWT_SIGNING_KEY`) are filled.
+- **Port 3308 or 8025 is already in use**
+  *Reason:* You probably already have a local MySQL server or MailHog instance running. Stop your local services or adjust the ports in the `docker-compose.yml`.
+- **Database migrations fail**
+  *Reason:* The `hermes-migrate` container requires a running database. On slower systems, timeouts can occur. Running `docker compose restart hermes-migrate` usually solves the problem.
+- **Unauthorized errors during login/registration**
+  *Reason:* If the `JWT_SIGNING_KEY` in the `.env` is too short (at least 32 characters required), JWT creation will crash on the server side.
 
+---
+
+## ⚙️ Configuration & Environment Variables
+
+Hermes can be configured primarily via environment variables (`.env` in Docker) or the `appsettings.json`. 
+
+### Key Configuration Parameters
+
+| JSON-Key / Env-Variable | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `ConnectionStrings__DefaultConnection` | String | `""` | **[Required]** | Connection string for the MySQL database (via `Docker/.env`). |
+| `Jwt__SigningKey` | String | `""` | **[Required]** | Secret key of at least 32 characters for secure JWT generation. |
+| `NewsDataIo__Key` | String | `""` | **[Required]** | API key from NewsData.io for fetching news articles. |
+| `Email__Host` | String | `"localhost"` | Optional | Hostname for SMTP (Default: MailHog for local testing). |
+| `Email__Port` | Integer | `1025` | Optional | SMTP port. |
+| `OpenApi__DocumentationApiKey` | String | `""` | Optional | API key to protect the Swagger UI in production. |
+| `Pagination__DefaultPageSize` | Integer | `20` | Optional | Default number of items for list pagination. |
+
+### Local Secrets Setup (without Docker)
+If you run the project natively via Visual Studio or Rider (without `docker compose`), you shouldn't write sensitive data into `appsettings.json`. Instead, use the [.NET Secret Manager](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets):
 ```bash
-cd Docker
-docker compose up -d --build
+dotnet user-secrets set "Jwt:SigningKey" "my_32_character_long_secret_key_123" --project Hermes.Api
+dotnet user-secrets set "NewsDataIo:Key" "my_news_api_key" --project Hermes.Worker
 ```
 
-That **builds** the API/worker images, starts **MySQL** and **MailHog**, applies **database migrations** via **`hermes-migrate`** (once per `up`; API/worker start only after it completes), then starts **Hermes.Api** (**`localhost:5165`**) and **Hermes.Worker**. Configure **`Docker/.env`** first (JWT, DB credentials, **`NEWS_DATA_IO_KEY`**, etc.).
+---
 
-**Frontend (always separate from this compose file):**
+## 🧪 Testing & Quality Assurance
 
+The solution includes unit tests (`Hermes.UnitTests`) as well as comprehensive integration tests (`Hermes.IntegrationTests`). 
+
+**Run tests:**
 ```bash
-dotnet run --project Hermes.WebFrontend/Hermes.WebFrontend/Hermes.WebFrontend.csproj
+# Runs all tests in the solution
+dotnet test Hermes.slnx
 ```
 
-Point the client **`ApiBaseUrl`** at the API (e.g. **`http://localhost:5165/`**) and ensure the API **`Cors:AllowedOrigins`** includes your Blazor origin (see **`Properties/launchSettings.json`** for the HTTPS/HTTP ports you use locally).
-
-OpenAPI (**`/openapi/v1.json`**) behaves as described under **Observability & OpenAPI** (Production key gate when configured).
-
-Optional: **`dotnet`** runs of API/worker/MySQL remain possible without Compose—then supply connection strings, migrations, JWT, SMTP, and **`NewsDataIo:Key`** yourself as for any local ASP.NET host.
+**Test Strategy:**
+- **Unit Tests:** Verify isolated business logic and services (using mocking and an in-memory database).
+- **Integration Tests:** Validate the complete HTTP routes and auth flows all the way from the API down to the actual database. *Note:* Docker must be running in the background for integration tests, as they use [Testcontainers](https://dotnet.testcontainers.org/) to automatically spin up a temporary MySQL instance for the test run.
