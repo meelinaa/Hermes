@@ -32,8 +32,17 @@ using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 
 namespace Hermes.Api.Hosting;
 
+/// <summary>
+/// Extension methods for registering database context, repositories, application services, FluentValidation, and infrastructure components in DI.
+/// </summary>
 public static class ApiServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers core API services including Entity Framework DbContext, repositories, application service implementations, and FluentValidation validators.
+    /// </summary>
+    /// <param name="services">The service collection instance.</param>
+    /// <param name="configuration">Application configuration root.</param>
+    /// <param name="environment">Hosting environment context.</param>
     public static void AddHermesApiServices(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         string? connectionString = configuration.GetConnectionString("DefaultConnection")
@@ -240,6 +249,11 @@ public static class ApiServiceCollectionExtensions
             });
     }
 
+    /// <summary>
+    /// Constructs a MySQL-backed Hangfire JobStorage instance for scheduling background tasks.
+    /// </summary>
+    /// <param name="configuration">The application configuration instance.</param>
+    /// <returns>A configured <see cref="JobStorage"/> instance.</returns>
     private static JobStorage CreateHangfireJobStorage(IConfiguration configuration)
     {
         string connectionString = configuration.GetConnectionString("DefaultConnection")
@@ -255,6 +269,10 @@ public static class ApiServiceCollectionExtensions
         });
     }
 
+    /// <summary>
+    /// Configures Serilog structured logging for the host builder using configuration settings and correlation span enrichers.
+    /// </summary>
+    /// <param name="hostBuilder">The host builder instance.</param>
     public static void UseHermesSerilog(this IHostBuilder hostBuilder)
     {
         hostBuilder.UseSerilog((context, _, configuration) => configuration

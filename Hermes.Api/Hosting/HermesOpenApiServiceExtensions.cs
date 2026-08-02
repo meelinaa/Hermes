@@ -13,8 +13,17 @@ using Hermes.Application.Options.Common;
 
 namespace Hermes.Api.Hosting;
 
+/// <summary>
+/// Extension methods for registering OpenAPI document generators, operation transformers, and schema examples.
+/// </summary>
 public static class HermesOpenApiServiceExtensions
 {
+    /// <summary>
+    /// Registers OpenAPI documentation generation services and custom document/operation transformers.
+    /// </summary>
+    /// <param name="services">The service collection instance.</param>
+    /// <param name="configuration">The application configuration root.</param>
+    /// <returns>The updated service collection instance.</returns>
     public static IServiceCollection AddHermesOpenApiDocument(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<HermesOpenApiOptions>(configuration.GetSection(HermesOpenApiOptions.SECTION_NAME));
@@ -33,6 +42,9 @@ public static class HermesOpenApiServiceExtensions
         return services;
     }
 
+    /// <summary>
+    /// Applies global document metadata, API title, description, and security schemes to the OpenAPI document.
+    /// </summary>
     private static async Task ApplyDocumentAsync(
         OpenApiDocument document,
         OpenApiDocumentTransformerContext context,
