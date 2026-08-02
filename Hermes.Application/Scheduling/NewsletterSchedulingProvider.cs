@@ -25,6 +25,7 @@ public static class NewsletterSchedulingProvider
 
     /// <summary>
     /// Gets the current date and time converted to the specified time zone.
+    /// Used for determining local wall-clock execution times.
     /// </summary>
     /// <param name="zone">The target time zone.</param>
     /// <returns>The current wall-clock date and time in the given zone.</returns>
@@ -32,6 +33,7 @@ public static class NewsletterSchedulingProvider
     public static DateTime GetWallClockNow(TimeZoneInfo zone)
     {
         ArgumentNullException.ThrowIfNull(zone);
+
         DateTimeOffset utcNow = DateTimeOffset.UtcNow;
         DateTimeOffset zoned = TimeZoneInfo.ConvertTime(utcNow, zone);
         return zoned.DateTime;
@@ -39,26 +41,29 @@ public static class NewsletterSchedulingProvider
 
     /// <summary>
     /// Gets the current date and time converted to the specified time zone, truncated to the start of the current minute.
+    /// Used for aligning newsletter scheduling slots to minute boundaries.
     /// </summary>
     /// <param name="zone">The target time zone.</param>
     /// <returns>The current wall-clock date and time truncated to the minute.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="zone"/> is null.</exception>
     public static DateTime GetWallClockMinuteStart(TimeZoneInfo zone)
     {
-        DateTime w = GetWallClockNow(zone);
-        return new DateTime(w.Year, w.Month, w.Day, w.Hour, w.Minute, 0, DateTimeKind.Unspecified);
+        DateTime wallClockNow = GetWallClockNow(zone);
+        return new DateTime(wallClockNow.Year, wallClockNow.Month, wallClockNow.Day, wallClockNow.Hour, wallClockNow.Minute, 0, DateTimeKind.Unspecified);
     }
 
     /// <summary>
     /// Converts a given wall-clock time in a specified time zone back to Coordinated Universal Time (UTC).
+    /// Used for scheduling jobs in UTC while maintaining local wall-clock precision.
     /// </summary>
     /// <param name="wallMinuteStart">The local wall-clock time to convert.</param>
     /// <param name="zone">The time zone of the provided wall-clock time.</param>
     /// <returns>The equivalent UTC date and time.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="zone"/> is null.</exception>
-    public static DateTime WallMinuteStartToUtc(DateTime wallMinuteStart, TimeZoneInfo zone)
+    public static DateTime ConvertWallMinuteStartToUtc(DateTime wallMinuteStart, TimeZoneInfo zone)
     {
         ArgumentNullException.ThrowIfNull(zone);
+
         return TimeZoneInfo.ConvertTimeToUtc(wallMinuteStart, zone);
     }
 }

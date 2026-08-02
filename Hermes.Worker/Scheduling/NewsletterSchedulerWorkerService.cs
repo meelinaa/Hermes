@@ -30,7 +30,7 @@ public sealed class NewsletterSchedulerWorkerService(
     {
         DateTime wallNow = NewsletterSchedulingProvider.GetWallClockNow(_newsletterTimeZone);
         DateTime slotStartWall = NewsletterSchedulingProvider.GetWallClockMinuteStart(_newsletterTimeZone);
-        DateTime slotStartUtc = NewsletterSchedulingProvider.WallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
+        DateTime slotStartUtc = NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
         DateTimeOffset wallStamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _newsletterTimeZone);
 
         logger.LogInformation(
