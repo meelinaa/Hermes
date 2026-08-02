@@ -1,4 +1,5 @@
 using Hangfire;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Scheduling;
 using Microsoft.Extensions.Logging;
 

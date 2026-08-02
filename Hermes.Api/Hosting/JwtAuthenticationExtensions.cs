@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using Hermes.Api.Authorization;
 using Hermes.Application.Options;
+using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
