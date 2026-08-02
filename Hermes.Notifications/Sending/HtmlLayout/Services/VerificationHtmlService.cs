@@ -1,9 +1,9 @@
 using System.Globalization;
-using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Notifications.Sending.HtmlLayout.Models;
+using Hermes.Notifications.Sending.HtmlLayout.Builders;
+using Hermes.Notifications.Sending.HtmlLayout.DTOs;
 
-namespace Hermes.Notifications.Sending.HtmlLayout;
+namespace Hermes.Notifications.Sending.HtmlLayout.Services;
 
 /// <summary>
 /// Produces verification HTML by mapping Application-layer render requests
@@ -18,6 +18,9 @@ public sealed class VerificationHtmlService : IVerificationHtmlService
     /// Renders a complete verification HTML body from the supplied request data
     /// by delegating to <see cref="VerificationHtmlBuilder"/>.
     /// </summary>
+    /// <param name="request">The verification render request DTO.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The rendered verification HTML string.</returns>
     public async Task<string> RenderVerificationAsync(
         VerificationRenderRequest request,
         CancellationToken cancellationToken = default)

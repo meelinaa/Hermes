@@ -1,12 +1,19 @@
 using System.Globalization;
 using System.Text.Json;
 using Hermes.Notifications.Receiving.DTOs;
-using Hermes.Notifications.Receiving.Models;
 
-namespace Hermes.Notifications.Receiving.MailHog;
+namespace Hermes.Notifications.Receiving.MailHog.Mappers;
 
+/// <summary>
+/// Internal mapper that maps MailHog API DTO objects to domain EmailResultDto objects.
+/// </summary>
 internal sealed class MailHogMessageMapper
 {
+    /// <summary>
+    /// Maps a raw MailHog message DTO to an EmailResultDto object.
+    /// </summary>
+    /// <param name="dto">The MailHog message DTO.</param>
+    /// <returns>The mapped EmailResultDto.</returns>
     public EmailResultDto MapToEmailResult(MailHogMessageDto dto)
     {
         string id = dto.Id ?? string.Empty;

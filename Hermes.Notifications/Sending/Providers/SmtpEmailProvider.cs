@@ -3,17 +3,22 @@ using System.Net.Mail;
 using System.Text;
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.Options;
-using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
 
-namespace Hermes.Notifications.Sending;
+namespace Hermes.Notifications.Sending.Providers;
 
 /// <summary>
 /// Sends e-mail via <see cref="SmtpClient"/> using <see cref="EmailOptions"/>.
 /// </summary>
+/// <param name="settings">The configured email options.</param>
 public sealed class SmtpEmailProvider(EmailOptions settings) : IEmailProvider
 {
-    /// <summary>Sends an e-mail message via SMTP using configured sender defaults.</summary>
+    /// <summary>
+    /// Sends an e-mail message via SMTP using configured sender defaults.
+    /// </summary>
+    /// <param name="message">The email message DTO containing recipient, subject, body, and attachments.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous send operation.</returns>
     public async Task SendAsync(EmailMessageDto message, CancellationToken cancellationToken = default)
     {
         using SmtpClient smtp = CreateSmtpClient();
@@ -21,7 +26,10 @@ public sealed class SmtpEmailProvider(EmailOptions settings) : IEmailProvider
         await smtp.SendMailAsync(mail, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Creates and configures an SMTP client instance from configured settings.</summary>
+    /// <summary>
+    /// Creates and configures an SMTP client instance from configured settings.
+    /// </summary>
+    /// <returns>A configured SmtpClient instance.</returns>
     private SmtpClient CreateSmtpClient()
     {
         SmtpClient client = new(settings.Host, settings.Port)
@@ -35,7 +43,11 @@ public sealed class SmtpEmailProvider(EmailOptions settings) : IEmailProvider
         return client;
     }
 
-    /// <summary>Builds a mail message with headers, reply-to, and optional attachments.</summary>
+    /// <summary>
+    /// Builds a mail message with headers, reply-to, and optional attachments.
+    /// </summary>
+    /// <param name="message">The email message DTO.</param>
+    /// <returns>A populated MailMessage object.</returns>
     private MailMessage CreateMailMessage(EmailMessageDto message)
     {
         MailAddress from = new(settings.DefaultFromAddress, settings.DefaultFromName);

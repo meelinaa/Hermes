@@ -1,12 +1,24 @@
 using System.Net;
 using System.Reflection;
 using System.Text;
-using Hermes.Notifications.Sending.HtmlLayout.Models;
+using Hermes.Notifications.Sending.HtmlLayout.DTOs;
+using Hermes.Notifications.Sending.HtmlLayout.Providers;
 
-namespace Hermes.Notifications.Sending.HtmlLayout;
+namespace Hermes.Notifications.Sending.HtmlLayout.Builders;
 
+/// <summary>
+/// Internal builder class for assembling newsletter HTML bodies from header, item, and footer components.
+/// </summary>
 public sealed class NewsletterHtmlBuilder
 {
+    /// <summary>
+    /// Assembles full HTML content by substituting DTO values into embedded HTML templates.
+    /// </summary>
+    /// <param name="header">The header content DTO.</param>
+    /// <param name="items">The collection of article item content DTOs.</param>
+    /// <param name="footer">The footer content DTO.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The complete rendered newsletter HTML string.</returns>
     public static async Task<string> BuildAsync(
         NewsletterHeaderContentDto header,
         IEnumerable<NewsletterItemContentDto> items,

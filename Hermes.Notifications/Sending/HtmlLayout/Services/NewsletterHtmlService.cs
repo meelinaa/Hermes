@@ -1,9 +1,9 @@
 using System.Globalization;
-using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Notifications.Sending.HtmlLayout.Models;
+using Hermes.Notifications.Sending.HtmlLayout.Builders;
+using Hermes.Notifications.Sending.HtmlLayout.DTOs;
 
-namespace Hermes.Notifications.Sending.HtmlLayout;
+namespace Hermes.Notifications.Sending.HtmlLayout.Services;
 
 /// <summary>
 /// Produces newsletter HTML by mapping Application-layer render requests
@@ -19,6 +19,9 @@ public sealed class NewsletterHtmlService : INewsletterHtmlService
     /// Renders a complete newsletter HTML body from the supplied request data
     /// by delegating to <see cref="NewsletterHtmlBuilder"/>.
     /// </summary>
+    /// <param name="request">The newsletter render request DTO.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The rendered newsletter HTML string.</returns>
     public async Task<string> RenderNewsletterAsync(
         NewsletterRenderRequestDto request,
         CancellationToken cancellationToken = default)

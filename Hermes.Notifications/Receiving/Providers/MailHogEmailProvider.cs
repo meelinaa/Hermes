@@ -1,11 +1,16 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Hermes.Notifications.Receiving.DTOs;
+using Hermes.Notifications.Receiving.Interfaces;
 using Hermes.Notifications.Receiving.MailHog;
-using Hermes.Notifications.Receiving.Models;
+using Hermes.Notifications.Receiving.MailHog.Mappers;
+using Hermes.Notifications.Receiving.Options;
 
-namespace Hermes.Notifications.Receiving;
+namespace Hermes.Notifications.Receiving.Providers;
 
+/// <summary>
+/// MailHog email provider for inspecting and retrieving dev emails via the MailHog HTTP REST API.
+/// </summary>
 public sealed class MailHogEmailProvider : IEmailProvider, IDisposable
 {
     private const int PAGE_SIZE = 250;
@@ -16,6 +21,10 @@ public sealed class MailHogEmailProvider : IEmailProvider, IDisposable
     private readonly MailHogMessageMapper _messageMapper;
     private bool _disposed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MailHogEmailProvider"/> class with the specified MailHog options.
+    /// </summary>
+    /// <param name="settings">The MailHog configuration settings.</param>
     public MailHogEmailProvider(MailHogOptions settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -34,6 +43,11 @@ public sealed class MailHogEmailProvider : IEmailProvider, IDisposable
         _messageMapper = new();
     }
 
+    /// <summary>
+    /// Retrieves the most recently received email from MailHog.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The latest email result DTO.</returns>
     public async Task<EmailResultDto> GetLatestAsync(CancellationToken cancellationToken = default)
     {
         HttpResponseMessage response = await _httpClient.GetAsync(
@@ -54,6 +68,11 @@ public sealed class MailHogEmailProvider : IEmailProvider, IDisposable
         return _messageMapper.MapToEmailResult(items[0]);
     }
 
+    /// <summary>
+    /// Retrieves all received emails from MailHog using paginated HTTP requests.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A collection of email result DTOs.</returns>
     public async Task<IEnumerable<EmailResultDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         List<EmailResultDto> results = [];
@@ -92,6 +111,12 @@ public sealed class MailHogEmailProvider : IEmailProvider, IDisposable
         return results;
     }
 
+    /// <summary>
+    /// Retrieves emails whose subject line contains the specified substring.
+    /// </summary>
+    /// <param name="subject">The subject substring to filter by.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A collection of matching email result DTOs.</returns>
     public async Task<IEnumerable<EmailResultDto>> GetBySubjectAsync(string subject, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(subject);
@@ -101,6 +126,9 @@ public sealed class MailHogEmailProvider : IEmailProvider, IDisposable
             emailResult.Subject.Contains(subject, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
+    /// <summary>
+    /// Disposes the underlying HTTP client.
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)

@@ -1,11 +1,21 @@
 using System.Net;
 using System.Reflection;
-using Hermes.Notifications.Sending.HtmlLayout.Models;
+using Hermes.Notifications.Sending.HtmlLayout.DTOs;
+using Hermes.Notifications.Sending.HtmlLayout.Providers;
 
-namespace Hermes.Notifications.Sending.HtmlLayout;
+namespace Hermes.Notifications.Sending.HtmlLayout.Builders;
 
+/// <summary>
+/// Internal builder class for assembling account verification HTML emails.
+/// </summary>
 public class VerificationHtmlBuilder
 {
+    /// <summary>
+    /// Assembles verification HTML content by substituting DTO values into the embedded Verification.html template.
+    /// </summary>
+    /// <param name="verificationContent">The verification content DTO.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The complete rendered verification HTML string.</returns>
     public static async Task<string> BuildAsync(
         VerificationContentDto verificationContent,
         CancellationToken cancellationToken = default)

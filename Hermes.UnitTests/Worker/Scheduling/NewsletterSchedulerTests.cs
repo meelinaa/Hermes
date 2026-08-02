@@ -4,7 +4,7 @@ using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services;
-using Hermes.Notifications.Receiving.Models;
+using Hermes.Notifications.Receiving.Options;
 using Hermes.Worker.Services.Scheduling;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
