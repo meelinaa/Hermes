@@ -1,4 +1,4 @@
-using Hermes.Application.Security;
+using Hermes.Application.Services.Security;
 using Xunit;
 
 namespace Hermes.UnitTests.Security;

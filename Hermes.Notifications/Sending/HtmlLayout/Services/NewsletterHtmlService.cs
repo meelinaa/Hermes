@@ -1,4 +1,5 @@
 using System.Globalization;
+using Hermes.Application.DTOs.Email;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Notifications.Sending.HtmlLayout.Builders;
 using Hermes.Notifications.Sending.HtmlLayout.DTOs;

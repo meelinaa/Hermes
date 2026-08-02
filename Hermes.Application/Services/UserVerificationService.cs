@@ -5,7 +5,7 @@ using Hermes.Application.Options;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Scheduling;
-using Hermes.Application.Security;
+using Hermes.Application.Services.Security;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;

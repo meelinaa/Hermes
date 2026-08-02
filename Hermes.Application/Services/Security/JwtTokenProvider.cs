@@ -8,10 +8,20 @@ using Hermes.Application.Ports.Outbound;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Hermes.Application.Security;
+namespace Hermes.Application.Services.Security;
 
+/// <summary>
+/// Issues JWT access tokens signed with the configured HMAC-SHA256 key.
+/// </summary>
 public sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtTokenProvider
 {
+    /// <summary>
+    /// Issues a signed JWT access token for the specified user and returns its expiry time.
+    /// </summary>
+    /// <param name="userId">The unique user identifier to embed in the token.</param>
+    /// <param name="email">Optional email claim.</param>
+    /// <param name="name">Optional display name claim.</param>
+    /// <returns>A DTO containing the signed token and its UTC expiry.</returns>
     public JwtAccessTokenResultDto Issue(int userId, string? email, string? name)
     {
         if (userId <= 0)

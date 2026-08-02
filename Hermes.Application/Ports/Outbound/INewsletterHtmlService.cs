@@ -1,3 +1,5 @@
+using Hermes.Application.DTOs.Email;
+
 namespace Hermes.Application.Ports.Outbound;
 
 /// <summary>
@@ -16,18 +18,3 @@ public interface INewsletterHtmlService
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Data needed by the renderer to produce a complete newsletter HTML body.
-/// Defined in Application so the interface stays infrastructure-agnostic.
-/// </summary>
-public sealed record NewsletterRenderRequestDto(
-    string? UserDisplayName,
-    IReadOnlyList<NewsletterArticleItemDto> Articles);
-
-/// <summary>Single article to be rendered inside a newsletter digest.</summary>
-public sealed record NewsletterArticleItemDto(
-    string Category,
-    string Title,
-    string Content,
-    string Url,
-    string ImageUrl);

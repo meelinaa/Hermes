@@ -2,7 +2,7 @@ using Hermes.Application.DTOs.Security;
 using Hermes.Application.Options;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Security;
+using Hermes.Application.Services.Security;
 using Hermes.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

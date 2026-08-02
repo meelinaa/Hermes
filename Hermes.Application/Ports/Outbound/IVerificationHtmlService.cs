@@ -1,3 +1,5 @@
+using Hermes.Application.DTOs.Email;
+
 namespace Hermes.Application.Ports.Outbound;
 
 /// <summary>
@@ -16,14 +18,3 @@ public interface IVerificationHtmlService
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Data needed by the renderer to produce a complete verification HTML body.
-/// Defined in Application so the interface stays infrastructure-agnostic.
-/// </summary>
-public sealed record VerificationRenderRequest(
-    string? UserDisplayName,
-    string RecipientEmail,
-    string VerificationCode,
-    string SupportEmail,
-    string UnsubscribeUrl,
-    string SettingsUrl);

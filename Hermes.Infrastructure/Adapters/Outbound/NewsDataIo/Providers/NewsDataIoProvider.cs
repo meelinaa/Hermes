@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Hermes.Application.DTOs.NewsArticle;
-using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Builders;
 using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.DTOs;

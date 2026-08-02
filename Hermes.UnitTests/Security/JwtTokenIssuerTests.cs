@@ -4,7 +4,7 @@ using System.Security.Claims;
 using System.Text;
 using Hermes.Application.DTOs.Security;
 using Hermes.Application.Options;
-using Hermes.Application.Security;
+using Hermes.Application.Services.Security;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;

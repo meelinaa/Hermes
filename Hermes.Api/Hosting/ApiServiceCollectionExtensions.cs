@@ -21,7 +21,7 @@ using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Scheduling;
-using Hermes.Application.Security;
+using Hermes.Application.Services.Security;
 using Hermes.Application.Services;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;

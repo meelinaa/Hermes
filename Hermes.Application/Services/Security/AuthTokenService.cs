@@ -8,8 +8,11 @@ using Hermes.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Hermes.Application.Security;
+namespace Hermes.Application.Services.Security;
 
+/// <summary>
+/// Handles issuance, rotation and revocation of JWT access tokens and refresh tokens.
+/// </summary>
 public sealed class AuthTokenService(
     IRefreshTokenRepository db,
     IJwtTokenProvider jwt,
@@ -18,6 +21,9 @@ public sealed class AuthTokenService(
 {
     private readonly JwtOptions _o = options.Value;
 
+    /// <summary>
+    /// Issues a new JWT access token and a persisted refresh token for the given user.
+    /// </summary>
     public async Task<AuthTokensResultDto> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -40,6 +46,10 @@ public sealed class AuthTokenService(
             new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero));
     }
 
+    /// <summary>
+    /// Rotates an existing refresh token, issuing a new pair and revoking the old one.
+    /// Returns null when the token is invalid, expired or a replay attack is detected.
+    /// </summary>
     public async Task<AuthTokensResultDto?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
@@ -78,6 +88,10 @@ public sealed class AuthTokenService(
             new DateTimeOffset(newRow.ExpiresAt, TimeSpan.Zero));
     }
 
+    /// <summary>
+    /// Attempts to revoke a specific refresh token belonging to the given user.
+    /// Returns false when the token is not found or does not belong to the user.
+    /// </summary>
     public async Task<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, int userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
@@ -92,6 +106,9 @@ public sealed class AuthTokenService(
         return true;
     }
 
+    /// <summary>
+    /// Revokes all refresh tokens for the given user.
+    /// </summary>
     public Task RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default) =>
         db.RevokeAllRefreshTokensForUserAsync(userId, cancellationToken);
 

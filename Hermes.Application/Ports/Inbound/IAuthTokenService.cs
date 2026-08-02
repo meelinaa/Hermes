@@ -1,7 +1,7 @@
 namespace Hermes.Application.Ports.Inbound;
 
 using Hermes.Application.DTOs.Security;
-using Hermes.Application.Security;
+using Hermes.Application.Services.Security;
 /// <summary>Plain refresh returned once per issue/rotate; persistence is hash-only.</summary>
 public interface IAuthTokenService
 {
