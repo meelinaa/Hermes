@@ -1,4 +1,9 @@
-using Hermes.Api.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+
+using Hermes.Api.Constants;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Application.DTOs.NewsletterSubscription;
@@ -9,10 +14,6 @@ using Hermes.Application.Scheduling;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Options;
 
 namespace Hermes.Api.Controllers;
 

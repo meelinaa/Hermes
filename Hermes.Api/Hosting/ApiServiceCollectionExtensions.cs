@@ -1,8 +1,19 @@
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+
 using FluentValidation;
 using Hangfire;
 using Hangfire.MySql;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http.Timeouts;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Enrichers.Span;
+
+using Hermes.Api.Filters;
 using Hermes.Api.Hangfire;
 using Hermes.Api.Validation;
 using Hermes.Application.Options;
@@ -14,14 +25,6 @@ using Hermes.Application.Security;
 using Hermes.Application.Services;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.Http.Timeouts;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Hosting;
-using Serilog;
-using Serilog.Enrichers.Span;
 
 namespace Hermes.Api.Hosting;
 

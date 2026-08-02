@@ -1,7 +1,5 @@
 using System.Text.Json;
-using Hermes.Api.Middleware;
-using Hermes.Domain;
-using Hermes.Domain.Exceptions;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -12,6 +10,11 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Serilog;
+
+using Hermes.Api.Middleware;
+using Hermes.Api.Options;
+using Hermes.Domain;
+using Hermes.Domain.Exceptions;
 
 namespace Hermes.Api.Hosting;
 

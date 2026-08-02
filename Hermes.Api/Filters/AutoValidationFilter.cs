@@ -2,7 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace Hermes.Api.Validation;
+namespace Hermes.Api.Filters;
 
 /// <summary>
 /// Global action filter that automatically performs validation using FluentValidation

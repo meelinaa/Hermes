@@ -1,7 +1,9 @@
 using Hangfire;
+using Microsoft.Extensions.Logging;
+
+using Hermes.Application.Constants;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Scheduling;
-using Microsoft.Extensions.Logging;
 
 namespace Hermes.Api.Hangfire;
 

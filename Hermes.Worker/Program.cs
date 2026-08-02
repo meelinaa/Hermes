@@ -1,10 +1,12 @@
 using Hangfire;
+using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+
+using Hermes.Application.Constants;
 using Hermes.Application.Options;
 using Hermes.Application.Scheduling;
 using Hermes.Worker.Hosting;
 using Hermes.Worker.Scheduling;
-using Microsoft.Extensions.DependencyInjection;
-using Serilog;
 
 WorkerSerilogBootstrapService.InitializeBootstrapLogger();
 

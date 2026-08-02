@@ -1,6 +1,12 @@
 using FluentValidation;
 using FluentValidation.Results;
-using Hermes.Api.Authorization;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+
+using Hermes.Api.Constants;
+using Hermes.Api.Extensions;
 using Hermes.Api.Http;
 using Hermes.Api.Mapping;
 using Hermes.Api.Validation;
@@ -8,9 +14,6 @@ using Hermes.Application.DTOs.NotificationLogs;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services;
 using Hermes.Domain.Entities;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace Hermes.Api.Controllers;
 
