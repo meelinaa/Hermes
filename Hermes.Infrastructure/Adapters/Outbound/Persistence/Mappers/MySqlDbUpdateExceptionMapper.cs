@@ -2,7 +2,7 @@ using Hermes.Domain.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 
-namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
+namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Mappers;
 
 /// <summary>
 /// Maps common MySQL error numbers from EF <see cref="DbUpdateException"/> into domain failures.
@@ -10,8 +10,10 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 internal static class MySqlDbUpdateExceptionMapper
 {
     /// <summary>
-    /// When the inner failure is a known MySQL code, throws a domain exception; otherwise rethrows <paramref name="ex"/>.
+    /// Transforms known MySQL exception codes into domain exceptions; otherwise rethrows <paramref name="ex"/>.
     /// </summary>
+    /// <param name="ex">The DbUpdateException to transform.</param>
+    /// <returns>The mapped domain exception or the original exception.</returns>
     public static Exception Transform(DbUpdateException ex)
     {
         if (ex.InnerException is MySqlException mysql)

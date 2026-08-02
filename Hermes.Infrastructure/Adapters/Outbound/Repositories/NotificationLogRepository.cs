@@ -3,6 +3,7 @@ using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Validators;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;

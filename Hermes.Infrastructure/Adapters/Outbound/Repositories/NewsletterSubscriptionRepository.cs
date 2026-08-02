@@ -6,6 +6,7 @@ using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Domain.Exceptions;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Validators;
 using Hermes.Infrastructure.Adapters.Outbound.Scheduling;
 using Microsoft.EntityFrameworkCore;
 

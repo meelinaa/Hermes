@@ -9,7 +9,11 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 /// </summary>
 public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesDbContext>
 {
-    /// <summary>Creates a configured <see cref="HermesDbContext"/> for design-time tooling.</summary>
+    /// <summary>
+    /// Creates a configured <see cref="HermesDbContext"/> for design-time tooling.
+    /// </summary>
+    /// <param name="args">Arguments passed by the design-time tool.</param>
+    /// <returns>A new <see cref="HermesDbContext"/> instance.</returns>
     public HermesDbContext CreateDbContext(string[] args)
     {
         string connectionString = ResolveConnectionString();
@@ -21,7 +25,10 @@ public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesD
         return new HermesDbContext(optionsBuilder.Options);
     }
 
-    /// <summary>Resolves the design-time connection string from environment variables or appsettings files.</summary>
+    /// <summary>
+    /// Resolves the design-time connection string from environment variables or appsettings files.
+    /// </summary>
+    /// <returns>The resolved connection string.</returns>
     private static string ResolveConnectionString()
     {
         string? fromEnv = Environment.GetEnvironmentVariable("HERMES_CONNECTION_STRING")
@@ -55,7 +62,10 @@ public sealed class HermesDbContextFactory : IDesignTimeDbContextFactory<HermesD
             "or add ConnectionStrings:DefaultConnection to Hermes/appsettings.json.");
     }
 
-    /// <summary>Enumerates likely appsettings file locations for design-time connection string discovery.</summary>
+    /// <summary>
+    /// Enumerates likely appsettings file locations for design-time connection string discovery.
+    /// </summary>
+    /// <returns>An enumerable of candidate file paths.</returns>
     private static IEnumerable<string> EnumerateAppsettingsPaths()
     {
         string cwd = Directory.GetCurrentDirectory();

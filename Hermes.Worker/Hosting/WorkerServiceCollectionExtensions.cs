@@ -6,7 +6,7 @@ using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services;
-using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
+using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Providers;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 using Hermes.Notifications.Receiving.Options;

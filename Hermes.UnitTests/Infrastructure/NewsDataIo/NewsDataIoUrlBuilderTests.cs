@@ -1,4 +1,5 @@
-using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo;
+using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Builders;
+using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.DTOs;
 using Xunit;
 
 namespace Hermes.UnitTests.Infrastructure.NewsDataIo;

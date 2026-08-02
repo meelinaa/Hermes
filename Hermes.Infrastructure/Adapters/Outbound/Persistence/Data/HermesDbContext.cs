@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Mappers;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
