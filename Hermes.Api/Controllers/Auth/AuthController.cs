@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace Hermes.Api.Controllers;
+namespace Hermes.Api.Controllers.Auth;
 
 /// <summary>
 /// Handles authentication endpoints such as login, refresh tokens, and logout.

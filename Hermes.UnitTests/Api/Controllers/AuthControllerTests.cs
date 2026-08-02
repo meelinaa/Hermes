@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Hermes.Api.Controllers;
+using Hermes.Api.Controllers.Auth;
 using Hermes.Application.DTOs.Login;
 using Hermes.Application.DTOs.Security;
 using Hermes.Application.Ports.Inbound;

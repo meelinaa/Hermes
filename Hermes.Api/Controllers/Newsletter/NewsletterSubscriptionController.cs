@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 
 using Hermes.Api.Constants;
 using Hermes.Api.Http;
-using Hermes.Api.Mapping;
+using Hermes.Api.Mapping.Newsletter;
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Application.Options.Common;
 using Hermes.Application.Options.Newsletter;
@@ -15,7 +15,7 @@ using Hermes.Application.Services.Newsletter;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 
-namespace Hermes.Api.Controllers;
+namespace Hermes.Api.Controllers.Newsletter;
 
 /// <summary>
 /// Controller for managing newsletter subscription profiles and schedules.

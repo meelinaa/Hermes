@@ -6,12 +6,12 @@ using Microsoft.AspNetCore.RateLimiting;
 
 using Hermes.Api.Constants;
 using Hermes.Api.Http;
-using Hermes.Api.Mapping;
+using Hermes.Api.Mapping.Users;
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;
 
-namespace Hermes.Api.Controllers;
+namespace Hermes.Api.Controllers.Users;
 
 /// <summary>
 /// Controller for managing user profiles, registrations, and account verification actions.
