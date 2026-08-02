@@ -11,7 +11,7 @@ namespace Hermes.Notifications.Receiving.Providers;
 /// <summary>
 /// MailHog email provider for inspecting and retrieving dev emails via the MailHog HTTP REST API.
 /// </summary>
-public sealed class MailHogEmailProvider : IEmailProvider, IDisposable
+public sealed class MailHogEmailProvider : IMailHogEmailReader, IDisposable
 {
     private const int PAGE_SIZE = 250;
 

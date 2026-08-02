@@ -4,8 +4,9 @@ namespace Hermes.Notifications.Receiving.Interfaces;
 
 /// <summary>
 /// Interface for reading and querying emails received by a test mail sink (e.g. MailHog).
+/// Renamed to avoid name collision with outbound <see cref="Hermes.Application.Ports.Outbound.IEmailProvider"/>.
 /// </summary>
-public interface IEmailProvider
+public interface IMailHogEmailReader
 {
     /// <summary>
     /// Retrieves the most recently received email from the mail sink.
