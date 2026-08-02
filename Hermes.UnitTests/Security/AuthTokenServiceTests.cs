@@ -1,5 +1,5 @@
 using Hermes.Application.DTOs.Security;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Security;

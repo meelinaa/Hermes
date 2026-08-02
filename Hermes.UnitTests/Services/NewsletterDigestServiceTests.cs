@@ -1,6 +1,7 @@
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.DTOs.NewsArticle;
-using Hermes.Application.Options;
+using Hermes.Application.Options.External;
+using Hermes.Application.Options.Newsletter;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;

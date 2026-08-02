@@ -1,5 +1,5 @@
 using Hermes.Application.DTOs.NewsletterSubscription;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Newsletter;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;

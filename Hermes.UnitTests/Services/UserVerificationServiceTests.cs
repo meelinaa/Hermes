@@ -1,4 +1,4 @@
-using Hermes.Application.Options;
+using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Security;
 using Hermes.Application.Services.Users;

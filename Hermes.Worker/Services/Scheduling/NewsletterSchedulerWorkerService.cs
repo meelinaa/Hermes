@@ -1,5 +1,6 @@
 using Hangfire;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Email;
+using Hermes.Application.Options.Newsletter;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Newsletter;

@@ -2,7 +2,7 @@ using Hangfire;
 using Serilog;
 
 using Hermes.Application.Constants;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Newsletter;
 using Hermes.Application.Services.Newsletter;
 using Hermes.Worker.Hosting;
 using Hermes.Worker.Services.Scheduling;

@@ -1,5 +1,5 @@
 using Hermes.Application.DTOs.Email;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Email;
 using Hermes.Application.Ports.Outbound;
 using Microsoft.Extensions.Logging;
 

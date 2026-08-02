@@ -5,7 +5,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Hermes.Application.DTOs.Email;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Auth;
+using Hermes.Application.Options.External;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;

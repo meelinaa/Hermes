@@ -1,5 +1,8 @@
-namespace Hermes.Application.Options;
+namespace Hermes.Application.Options.Email;
 
+/// <summary>
+/// Configuration options for outbound email SMTP delivery.
+/// </summary>
 public sealed record EmailOptions(
     string Host,
     int Port,

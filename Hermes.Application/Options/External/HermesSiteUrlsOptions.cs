@@ -1,5 +1,8 @@
-namespace Hermes.Application.Options;
+namespace Hermes.Application.Options.External;
 
+/// <summary>
+/// Configuration options for public site URLs and support contact endpoints used in email template links.
+/// </summary>
 public sealed class HermesSiteUrlsOptions
 {
     public const string SECTION_NAME = "Hermes";

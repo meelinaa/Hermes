@@ -1,5 +1,8 @@
-namespace Hermes.Application.Options;
+namespace Hermes.Application.Options.Auth;
 
+/// <summary>
+/// Configuration options for application security and verification challenge hashing behavior.
+/// </summary>
 public sealed class SecurityOptions
 {
     public const string SECTION_NAME = "Security";

@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using Hermes.Application.DTOs.Security;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;

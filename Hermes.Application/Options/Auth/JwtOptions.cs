@@ -1,5 +1,8 @@
-namespace Hermes.Application.Options;
+namespace Hermes.Application.Options.Auth;
 
+/// <summary>
+/// Configuration options for JSON Web Token (JWT) issuance and validation.
+/// </summary>
 public sealed class JwtOptions
 {
     public const string SECTION_NAME = "Jwt";

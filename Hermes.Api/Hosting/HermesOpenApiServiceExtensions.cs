@@ -8,7 +8,8 @@ using Microsoft.OpenApi;
 
 using Hermes.Api.Options;
 using Hermes.Application.DTOs.Login;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Auth;
+using Hermes.Application.Options.Common;
 
 namespace Hermes.Api.Hosting;
 

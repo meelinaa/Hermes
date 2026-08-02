@@ -3,7 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Hermes.Application.DTOs.Security;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports.Outbound;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;

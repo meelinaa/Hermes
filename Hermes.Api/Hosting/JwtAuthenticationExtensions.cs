@@ -7,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 
 using Hermes.Api.Authorization;
 using Hermes.Api.Constants;
-using Hermes.Application.Options;
+using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Security;
 
