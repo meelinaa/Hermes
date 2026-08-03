@@ -10,7 +10,7 @@
 @using Hermes.WebFrontend.Client.Services.User
 @inject HttpClient Http
 @inject AuthTokenStore AuthTokens
-@inject NewsSubscriptionListCache NewsListCache
+@inject NewsSubscriptionListStore NewsListCache
 
 <div class="news-settings-panel">
     @if (!showForm)
@@ -41,7 +41,7 @@
                     <option value="">Alle</option>
                     @foreach (NewsCategory c in Enum.GetValues<NewsCategory>())
                     {
-                        <option value="@((int)c)">@NewsEnumGermanDisplay.CategoryDe(c)</option>
+                        <option value="@((int)c)">@NewsEnumGermanDisplayConstants.CategoryDe(c)</option>
                     }
                 </select>
             </label>
@@ -246,7 +246,7 @@
         loading = true;
         loadError = null;
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = AuthTokens.AccessToken.TryGetUserId();
         if (userId is null)
         {
             loadError = "Bitte erneut anmelden.";
@@ -321,7 +321,7 @@
             return;
 
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = AuthTokens.AccessToken.TryGetUserId();
         if (userId is null)
         {
             loadError = "Bitte erneut anmelden.";
@@ -345,7 +345,7 @@
                 IsEnabled = targetEnabled,
             };
 
-            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", payload, HermesNewsJson.Options).ConfigureAwait(false);
+            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", payload, HermesNewsJsonMapper.Options).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 NewsListCache.Invalidate();
@@ -364,7 +364,7 @@
     private async Task DeleteAsync(NewsSubscriptionDto n)
     {
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = AuthTokens.AccessToken.TryGetUserId();
         if (userId is null)
             return;
 
@@ -395,17 +395,17 @@
 
     private static string FormatCategories(NewsSubscriptionDto n) =>
         n.Category is { Count: > 0 }
-            ? string.Join(", ", n.Category.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplay.CategoryDe(c)))
+            ? string.Join(", ", n.Category.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplayConstants.CategoryDe(c)))
             : "—";
 
     private static string FormatLanguages(NewsSubscriptionDto n) =>
         n.Languages is { Count: > 0 }
-            ? string.Join(", ", n.Languages.OrderBy(l => l.ToString()).Select(l => NewsEnumGermanDisplay.LanguageDe(l)))
+            ? string.Join(", ", n.Languages.OrderBy(l => l.ToString()).Select(l => NewsEnumGermanDisplayConstants.LanguageDe(l)))
             : "—";
 
     private static string FormatCountries(NewsSubscriptionDto n) =>
         n.Countries is { Count: > 0 }
-            ? string.Join(", ", n.Countries.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplay.CountryDe(c)))
+            ? string.Join(", ", n.Countries.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplayConstants.CountryDe(c)))
             : "—";
 
     private static string FormatWeekdays(NewsSubscriptionDto n) =>

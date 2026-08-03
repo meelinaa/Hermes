@@ -18,7 +18,7 @@ public sealed class ReadinessProbeFailureIntegrationTests : IAsyncLifetime
             .Build();
 
         await _mysql.StartAsync().ConfigureAwait(false);
-        await HermesDatabaseMigrator.MigrateAsync(_mysql.GetConnectionString()).ConfigureAwait(false);
+        await HermesDatabaseMigrationService.MigrateAsync(_mysql.GetConnectionString()).ConfigureAwait(false);
     }
 
     public async Task DisposeAsync()

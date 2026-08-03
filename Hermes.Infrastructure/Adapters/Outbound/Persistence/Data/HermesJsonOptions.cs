@@ -1,0 +1,17 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
+
+/// <summary>
+/// Shared JSON options for storing complex properties in MySQL string columns.
+/// </summary>
+internal static class HermesJsonOptions
+{
+    internal static readonly JsonSerializerOptions _forEnums = new()
+    {
+        PropertyNamingPolicy = null,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter() },
+    };
+}

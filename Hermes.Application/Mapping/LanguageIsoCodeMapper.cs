@@ -1,5 +1,6 @@
 using System.Reflection;
 using Hermes.Domain.Enums;
+using Hermes.Domain.Enums.Attributes;
 
 namespace Hermes.Application.Mapping;
 
@@ -12,7 +13,7 @@ public static class LanguageIsoCodeMapper
     {
         if (!_toCode.TryGetValue(language, out string? code))
             throw new InvalidOperationException($"No ISO 639-1 code defined for {language}.");
-        
+
         return code;
     }
 
@@ -29,7 +30,7 @@ public static class LanguageIsoCodeMapper
     {
         if (TryGetLanguage(iso639Code, out Language language))
             return language;
-        
+
         throw new ArgumentException($"Unknown ISO 639-1 code: {iso639Code}", nameof(iso639Code));
     }
 
@@ -42,7 +43,7 @@ public static class LanguageIsoCodeMapper
             LanguageIsoCodeAttribute? attr = field?.GetCustomAttribute<LanguageIsoCodeAttribute>();
             if (attr is null)
                 throw new InvalidOperationException($"Language.{value} is missing [{nameof(LanguageIsoCodeAttribute)}].");
-            
+
             map[value] = attr.Code;
         }
 

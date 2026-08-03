@@ -1,6 +1,5 @@
-using Hermes.Api.Middleware;
-using Hermes.Domain;
-using Hermes.Domain.Exceptions;
+using System.Text.Json;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -11,7 +10,11 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Serilog;
-using System.Text.Json;
+
+using Hermes.Api.Middleware;
+using Hermes.Api.Options;
+using Hermes.Domain.Constants;
+using Hermes.Domain.Exceptions;
 
 namespace Hermes.Api.Hosting;
 
@@ -108,7 +111,7 @@ public static class ApiApplicationPipelineExtensions
                         HttpContext = context,
                         ProblemDetails = new ProblemDetails
                         {
-                            Type = HermesProblemTypes.WRONG_CURRENT_PASSWORD,
+                            Type = HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD,
                             Title = "Aktuelles Passwort ungültig",
                             Detail = wcp.Message,
                             Status = StatusCodes.Status400BadRequest

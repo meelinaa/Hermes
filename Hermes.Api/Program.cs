@@ -1,7 +1,9 @@
-using Hermes.Api.Hosting;
 using Serilog;
 
-SerilogBootstrap.InitializeGlobalLogger();
+using Hermes.Api.Hosting;
+using Hermes.Api.Services;
+
+SerilogBootstrapService.InitializeGlobalLogger();
 
 try
 {

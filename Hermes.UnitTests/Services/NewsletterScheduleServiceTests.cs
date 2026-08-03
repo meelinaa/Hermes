@@ -1,5 +1,7 @@
 using Hermes.Application.Ports;
-using Hermes.Application.Services;
+using Hermes.Application.Ports.Inbound;
+using Hermes.Application.Ports.Outbound;
+using Hermes.Application.Services.Newsletter;
 using Hermes.Domain.Enums;
 using Moq;
 using Xunit;
@@ -17,53 +19,61 @@ public sealed class NewsletterScheduleServiceTests
     private static DateTime MondayAt(int hour, int minute) =>
         new(2026, 1, 5, hour, minute, 0, DateTimeKind.Local);
 
-    private static readonly DateTime SampleSlotStartUtc = new(2026, 6, 10, 7, 30, 0, DateTimeKind.Utc);
+    private static readonly DateTime _sampleSlotStartUtc = new(2026, 6, 10, 7, 30, 0, DateTimeKind.Utc);
 
-    private static readonly DateTime SampleSlotEndUtc = SampleSlotStartUtc.AddMinutes(1);
+    private static readonly DateTime _sampleSlotEndUtc = _sampleSlotStartUtc.AddMinutes(1);
 
     /// <summary>
     /// Verifies that GetDueItemsAsync returns an empty list if the store has no matching due subscriptions.
     /// </summary>
+    // [B]OUNDARY: Empty result set when no items are scheduled for the slot
     [Fact]
     public async Task GetDueItemsAsync_Should_ReturnEmpty_WhenStoreHasNoDueRowsForSlot()
     {
-        Mock<INewsletterSubscriptionStore> store = new();
+        // Arrange
+        Mock<INewsletterSubscriptionRepository> store = new();
         store.Setup(dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 Weekdays.Monday,
                 9,
                 30,
-                SampleSlotStartUtc,
-                SampleSlotEndUtc,
+                _sampleSlotStartUtc,
+                _sampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         NewsletterScheduleService sut = new(store.Object);
 
+        // Act
         IReadOnlyList<(int NewsId, int UserId)> result =
-            await sut.GetDueItemsAsync(MondayAt(9, 30), SampleSlotStartUtc, SampleSlotEndUtc);
+            await sut.GetDueItemsAsync(MondayAt(9, 30), _sampleSlotStartUtc, _sampleSlotEndUtc);
 
+        // Assert
         Assert.Empty(result);
     }
 
     /// <summary>
     /// Verifies that GetDueItemsAsync returns the due subscription pairs fetched from the store.
     /// </summary>
+    // [R]IGHT: Returns matching due items correctly
     [Fact]
     public async Task GetDueItemsAsync_Should_ReturnPairs_FromStore()
     {
-        Mock<INewsletterSubscriptionStore> store = new();
+        // Arrange
+        Mock<INewsletterSubscriptionRepository> store = new();
         store.Setup(dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 Weekdays.Monday,
                 9,
                 30,
-                SampleSlotStartUtc,
-                SampleSlotEndUtc,
+                _sampleSlotStartUtc,
+                _sampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([(42, 7), (43, 7)]);
         NewsletterScheduleService sut = new(store.Object);
 
+        // Act
         IReadOnlyList<(int NewsId, int UserId)> result =
-            await sut.GetDueItemsAsync(MondayAt(9, 30), SampleSlotStartUtc, SampleSlotEndUtc);
+            await sut.GetDueItemsAsync(MondayAt(9, 30), _sampleSlotStartUtc, _sampleSlotEndUtc);
 
+        // Assert
         Assert.Equal(2, result.Count);
         Assert.Contains((42, 7), result);
         Assert.Contains((43, 7), result);
@@ -72,38 +82,44 @@ public sealed class NewsletterScheduleServiceTests
     /// <summary>
     /// Verifies that GetDueItemsAsync maps the input local time and weekdays correctly to the store slot parameters.
     /// </summary>
+    // [R]IGHT: Maps local clock time to store slot query parameters correctly
     [Fact]
     public async Task GetDueItemsAsync_Should_MapLocalClock_ToSlotParameters()
     {
+        // Arrange
         DateTime slot = new(2026, 1, 6, 14, 5, 0, DateTimeKind.Local);
-        Mock<INewsletterSubscriptionStore> store = new();
+        Mock<INewsletterSubscriptionRepository> store = new();
         store.Setup(dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 Weekdays.Tuesday,
                 14,
                 5,
-                SampleSlotStartUtc,
-                SampleSlotEndUtc,
+                _sampleSlotStartUtc,
+                _sampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([(1, 2)]);
         NewsletterScheduleService sut = new(store.Object);
 
+        // Act
         IReadOnlyList<(int NewsId, int UserId)> result =
-            await sut.GetDueItemsAsync(slot, SampleSlotStartUtc, SampleSlotEndUtc);
+            await sut.GetDueItemsAsync(slot, _sampleSlotStartUtc, _sampleSlotEndUtc);
 
+        // Assert
         Assert.Single(result);
         store.Verify(
             dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
-                Weekdays.Tuesday, 14, 5, SampleSlotStartUtc, SampleSlotEndUtc, It.IsAny<CancellationToken>()),
+                Weekdays.Tuesday, 14, 5, _sampleSlotStartUtc, _sampleSlotEndUtc, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     /// <summary>
     /// Verifies that GetDueItemsAsync correctly forwards the cancellation token to the store queries.
     /// </summary>
+    // [E]RROR: Forwards cancellation token to repository query
     [Fact]
     public async Task GetDueItemsAsync_Should_ForwardCancellation_ToDueSlotQuery()
     {
-        Mock<INewsletterSubscriptionStore> store = new();
+        // Arrange
+        Mock<INewsletterSubscriptionRepository> store = new();
         store.Setup(dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 It.IsAny<Weekdays>(),
                 It.IsAny<int>(),
@@ -115,15 +131,17 @@ public sealed class NewsletterScheduleServiceTests
         NewsletterScheduleService sut = new(store.Object);
         using CancellationTokenSource cts = new();
 
-        await sut.GetDueItemsAsync(MondayAt(9, 30), SampleSlotStartUtc, SampleSlotEndUtc, cts.Token);
+        // Act
+        await sut.GetDueItemsAsync(MondayAt(9, 30), _sampleSlotStartUtc, _sampleSlotEndUtc, cts.Token);
 
+        // Assert
         store.Verify(
             dataStore => dataStore.GetDueNewsScheduleForSlotAsync(
                 Weekdays.Monday,
                 9,
                 30,
-                SampleSlotStartUtc,
-                SampleSlotEndUtc,
+                _sampleSlotStartUtc,
+                _sampleSlotEndUtc,
                 cts.Token),
             Times.Once);
     }

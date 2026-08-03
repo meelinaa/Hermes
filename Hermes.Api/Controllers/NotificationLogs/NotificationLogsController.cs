@@ -1,0 +1,66 @@
+using FluentValidation;
+using FluentValidation.Results;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+
+using Hermes.Api.Constants;
+using Hermes.Api.Extensions;
+using Hermes.Api.Http;
+using Hermes.Api.Mapping.NotificationLogs;
+using Hermes.Api.Validators.NotificationLogs;
+using Hermes.Application.DTOs.NotificationLogs;
+using Hermes.Application.Ports.Inbound;
+using Hermes.Domain.Entities;
+
+namespace Hermes.Api.Controllers.NotificationLogs;
+
+/// <summary>
+/// Controller for managing and creating user notification delivery logs.
+/// </summary>
+[Authorize]
+[ApiController]
+[Route("api/v1/users/{userId:int}/notification-logs")]
+public class NotificationLogsController(INotificationLogService notificationLogService) : ControllerBase
+{
+    /// <summary>
+    /// Creates a new notification log entry for the specified user.
+    /// </summary>
+    /// <param name="userId">The ID of the user owning the log entry.</param>
+    /// <param name="request">The notification log payload.</param>
+    /// <param name="validator">The FluentValidation validator instance.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The created notification log response.</returns>
+    /// <remarks>
+    /// <code>
+    /// {
+    ///   "newsId": null,
+    ///   "sentAt": "2026-03-29T13:00:00Z",
+    ///   "status": "Pending",
+    ///   "channel": "Email",
+    ///   "errorMessage": null,
+    ///   "retryCount": 0,
+    ///   "nextRetryAt": null
+    /// }
+    /// </code>
+    /// <c>status</c>: Pending | Sent | Failed; <c>channel</c>: Email | Telegram.
+    /// </remarks>
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
+    [EnableRateLimiting("SensitiveWritePolicy")]
+    [HttpPost]
+    public async Task<ActionResult<NotificationLogResponseDto>> Post(
+        int userId,
+        [FromBody] CreateNotificationLogRequestDto request,
+        [FromServices] IValidator<CreateNotificationLogRequestDto> validator,
+        CancellationToken cancellationToken)
+    {
+        ValidationResult fv = await validator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!fv.IsValid)
+            return fv.ToValidationProblem(this);
+
+        NotificationLog entity = request.ToEntity(userId);
+        await notificationLogService.SetNotificationLogAsync(entity, cancellationToken).ConfigureAwait(false);
+        return Ok(entity.ToResponse());
+    }
+}

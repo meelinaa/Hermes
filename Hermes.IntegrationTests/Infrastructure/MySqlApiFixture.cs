@@ -21,7 +21,7 @@ public sealed class MySqlApiFixture : IAsyncLifetime
 
         await _container.StartAsync().ConfigureAwait(false);
 
-        await HermesDatabaseMigrator.MigrateAsync(_container.GetConnectionString()).ConfigureAwait(false);
+        await HermesDatabaseMigrationService.MigrateAsync(_container.GetConnectionString()).ConfigureAwait(false);
 
         Factory = new HermesApiWebApplicationFactory(_container.GetConnectionString());
     }

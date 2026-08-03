@@ -3,6 +3,8 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
+using Hermes.Api.Options;
+
 namespace Hermes.Api.Hosting;
 
 public static class OpenTelemetryWebApplicationBuilderExtensions

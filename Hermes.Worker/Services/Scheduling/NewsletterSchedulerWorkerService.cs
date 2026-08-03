@@ -1,0 +1,98 @@
+using Hangfire;
+using Hermes.Application.Options.Email;
+using Hermes.Application.Options.Newsletter;
+using Hermes.Application.Ports.Inbound;
+using Hermes.Application.Ports.Outbound;
+using Hermes.Application.Services.Newsletter;
+using Hermes.Application.Services.NotificationLogs;
+using Hermes.Notifications.Receiving.Options;
+using Hermes.Worker.Services.MailHog;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Hermes.Worker.Services.Scheduling;
+
+/// <summary>
+/// Hangfire minutely tick service: resolves due newsletter subscriptions (UTC slot wall clock) and enqueues one digest job per row.
+/// </summary>
+public sealed class NewsletterSchedulerWorkerService(
+    INewsletterScheduleService newsletterScheduleService,
+    IBackgroundJobClient backgroundJobClient,
+    ILogger<NewsletterSchedulerWorkerService> logger,
+    IEmailProvider emailSender,
+    EmailOptions EmailOptions,
+    IOptions<MailHogOptions> mailHogOptions,
+    IOptions<NewsletterOptions> newsletterOptions)
+{
+    private readonly TimeZoneInfo _newsletterTimeZone =
+        NewsletterSchedulingProvider.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
+
+    /// <summary>
+    /// Executes the minutely scheduling loop to resolve due newsletter items and enqueue Hangfire notification jobs.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous execution.</returns>
+    public async Task RunAsync(CancellationToken cancellationToken = default)
+    {
+        DateTime wallNow = NewsletterSchedulingProvider.GetWallClockNow(_newsletterTimeZone);
+        DateTime slotStartWall = NewsletterSchedulingProvider.GetWallClockMinuteStart(_newsletterTimeZone);
+        DateTime slotStartUtc = NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
+        DateTimeOffset wallStamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _newsletterTimeZone);
+
+        logger.LogInformation(
+            "[NewsletterSchedulerWorkerService] === Run START === wall-now (newsletter TZ={TzId})={Wall:o} | minute start wall={SlotWall:o} | slotUtc={SlotUtc:o} | source=UtcNow→TZ",
+            _newsletterTimeZone.Id,
+            wallNow,
+            slotStartWall,
+            slotStartUtc);
+
+        DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
+
+        IReadOnlyList<(int NewsId, int UserId)> due = await newsletterScheduleService
+            .GetDueItemsAsync(wallNow, slotStartUtc, slotEndUtc, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (due.Count > 0)
+        {
+            logger.LogInformation(
+                "[NewsletterSchedulerWorkerService] Found {Count} due newsletter subscription items. Enqueuing jobs for SubscriptionIds: {SubscriptionIds}",
+                due.Count,
+                string.Join(", ", due.Select(d => d.NewsId)));
+        }
+
+        foreach ((int newsId, int userId) in due)
+        {
+            string? jobId = backgroundJobClient.Enqueue<NotificationJobService>(notificationJobs =>
+                notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
+            logger.LogDebug(
+                "[NewsletterSchedulerWorkerService] Enqueued NotificationJobService newsId={NewsId} userId={UserId}, Hangfire job id={JobId}.",
+                newsId,
+                userId,
+                jobId);
+        }
+
+        logger.LogInformation("[NewsletterSchedulerWorkerService] === Run END === slotUtc={Slot:o} | due jobs={DueCount}", slotStartUtc, due.Count);
+
+        if (mailHogOptions.Value.SendSchedulerTestMailEachMinute)
+        {
+            try
+            {
+                await MailHogSchedulerTestMailService.SendAsync(
+                        emailSender,
+                        EmailOptions,
+                        wallStamp,
+                        logger,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogInformation("[NewsletterSchedulerWorkerService] Testmail-Versand aufgrund von Cancellation abgebrochen.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "[NewsletterSchedulerWorkerService] MailHog-Scheduler-Testmail fehlgeschlagen.");
+            }
+        }
+    }
+}

@@ -22,6 +22,6 @@ public sealed class WeekdayConverterTests
     [MemberData(nameof(KnownMappings))]
     public void ToHermesWeekday_MapsLocalCalendarDay(DateTime local, Weekdays expected)
     {
-        Assert.Equal(expected, WeekdayConverter.ToHermesWeekday(local));
+        Assert.Equal(expected, WeekdayMapper.ToHermesWeekday(local));
     }
 }

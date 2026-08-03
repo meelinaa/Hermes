@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Hermes.Domain;
+using Hermes.Domain.Constants;
 using Hermes.IntegrationTests.Infrastructure;
 
 
@@ -149,7 +149,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using JsonDocument doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         JsonElement root = doc.RootElement;
-        Assert.Equal(HermesProblemTypes.WRONG_CURRENT_PASSWORD, root.GetProperty("type").GetString());
+        Assert.Equal(HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD, root.GetProperty("type").GetString());
         Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
     }
 

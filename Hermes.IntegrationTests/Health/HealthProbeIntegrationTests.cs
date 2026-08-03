@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using Hermes.Infrastructure.Data;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.IntegrationTests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 

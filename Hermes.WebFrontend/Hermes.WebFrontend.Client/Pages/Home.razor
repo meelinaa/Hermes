@@ -10,7 +10,7 @@
 @implements IDisposable
 @inject AuthTokenStore AuthTokens
 @inject HttpClient Http
-@inject UserProfileRefreshNotifier ProfileRefresh
+@inject UserProfileRefreshService ProfileRefresh
 
 <PageTitle>Home — Hermes</PageTitle>
 
@@ -73,7 +73,7 @@
     private async Task LoadWelcomeAsync()
     {
         await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = JwtPayloadDisplayName.TryGetUserId(AuthTokens.AccessToken);
+        int? userId = AuthTokens.AccessToken.TryGetUserId();
         if (userId is null)
         {
             welcomeLine = ApplyWelcomeFromJwt();
@@ -102,7 +102,7 @@
 
     private string? ApplyWelcomeFromJwt()
     {
-        string? name = JwtPayloadDisplayName.TryGet(AuthTokens.AccessToken);
+        string? name = AuthTokens.AccessToken.TryGetDisplayName();
         return string.IsNullOrWhiteSpace(name) ? null : $"Willkommen {name.Trim()}.";
     }
 

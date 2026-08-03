@@ -1,9 +1,12 @@
 using System.Text.RegularExpressions;
-using Hermes.Application.Models.Email;
-using Hermes.Application.Options;
+using Hermes.Application.DTOs.Email;
+using Hermes.Application.Options.Auth;
+using Hermes.Application.Options.External;
 using Hermes.Application.Ports;
-using Hermes.Application.Security;
-using Hermes.Application.Services;
+using Hermes.Application.Ports.Inbound;
+using Hermes.Application.Ports.Outbound;
+using Hermes.Application.Services.Security;
+using Hermes.Application.Services.Users;
 using Hermes.Domain.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -15,14 +18,14 @@ namespace Hermes.UnitTests.Services;
 public sealed class VerificationDigestServiceTests
 {
     private static VerificationDigestService CreateSut(
-        IUserStore db,
-        IEmailSender? emailSender = null,
-        IVerificationRenderer? verificationRenderer = null,
+        IUserRepository db,
+        IEmailProvider? emailSender = null,
+        IVerificationHtmlService? verificationRenderer = null,
         bool hashEmailVerificationCodes = true)
     {
         if (verificationRenderer is null)
         {
-            Mock<IVerificationRenderer> rendererMock = new();
+            Mock<IVerificationHtmlService> rendererMock = new();
             rendererMock
                 .Setup(r => r.RenderVerificationAsync(It.IsAny<VerificationRenderRequest>(), It.IsAny<CancellationToken>()))
                 .Returns<VerificationRenderRequest, CancellationToken>((req, _) =>
@@ -41,74 +44,87 @@ public sealed class VerificationDigestServiceTests
         });
         return new VerificationDigestService(
             db,
-            emailSender ?? Mock.Of<IEmailSender>(),
+            emailSender ?? Mock.Of<IEmailProvider>(),
             verificationRenderer,
             site,
             security,
             NullLogger<VerificationDigestService>.Instance);
     }
 
+    // [B]OUNDARY: Rejects non-positive user ID input parameter
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public async Task SendAsync_Should_RejectNonPositiveUserId(int invalidId)
     {
-        VerificationDigestService sut = CreateSut(Mock.Of<IUserStore>());
+        // Arrange
+        VerificationDigestService sut = CreateSut(Mock.Of<IUserRepository>());
 
+        // Act & Assert
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SendAsync(invalidId));
     }
 
+    // [B]OUNDARY: Aborts early without sending email or setting challenge when user is missing
     [Fact]
     public async Task SendAsync_Should_ReturnWithoutMail_WhenUserMissing()
     {
-        Mock<IUserStore> db = new();
+        // Arrange
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
-        Mock<IEmailSender> mail = new();
+        Mock<IEmailProvider> mail = new();
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);
 
+        // Act
         await sut.SendAsync(3);
 
+        // Assert
         mail.Verify(
-            emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
+            emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
         db.Verify(
             dataStore => dataStore.SetUserEmailVerificationChallengeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
+    // [B]OUNDARY: Aborts early without sending email when target user has blank email address
     [Fact]
     public async Task SendAsync_Should_ReturnWithoutMail_WhenUserHasNoEmail()
     {
-        Mock<IUserStore> db = new();
+        // Arrange
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(3, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 3, Name = "N", Email = "  " });
 
-        Mock<IEmailSender> mail = new();
+        Mock<IEmailProvider> mail = new();
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);
 
+        // Act
         await sut.SendAsync(3);
 
+        // Assert
         mail.Verify(
-            emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
+            emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
+    // [R]IGHT: Generates 6-digit OTP code, persists hashed challenge, and dispatches verification email
     [Fact]
     public async Task SendAsync_Should_PersistChallenge_AndSendMail_WhenUserValid()
     {
+        // Arrange
         User user = new() { Id = 10, Name = "Pat", Email = "pat@test.dev" };
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(10, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         string? capturedCode = null;
         db.Setup(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(10, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Callback<int, string, DateTime, CancellationToken>((_, code, _, _) => capturedCode = code)
             .Returns(Task.CompletedTask);
 
-        Mock<IEmailSender> mail = new();
-        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        Mock<IEmailProvider> mail = new();
+        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask)
-            .Callback<EmailMessage, CancellationToken>((msg, _) =>
+            .Callback<EmailMessageDto, CancellationToken>((msg, _) =>
             {
                 Assert.Equal("Hermes — Konto-Verifizierung", msg.Subject);
                 Assert.Contains("pat@test.dev", msg.Body, StringComparison.OrdinalIgnoreCase);
@@ -116,8 +132,10 @@ public sealed class VerificationDigestServiceTests
 
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);
 
+        // Act
         await sut.SendAsync(10);
 
+        // Assert
         Assert.NotNull(capturedCode);
         Assert.Matches("^[0-9A-F]{64}$", capturedCode!);
         db.Verify(
@@ -125,50 +143,57 @@ public sealed class VerificationDigestServiceTests
             Times.Once);
         mail.Verify(
             emailSender => emailSender.SendAsync(
-                It.Is<EmailMessage>(m => Regex.IsMatch(m.Body, @"\b\d{6}\b")),
+                It.Is<EmailMessageDto>(m => Regex.IsMatch(m.Body, @"\b\d{6}\b")),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
+    // [R]IGHT: Persists plain 6-digit challenge code when code hashing option is disabled
     [Fact]
     public async Task SendAsync_Should_PersistPlainSixDigitCode_WhenHashingDisabled()
     {
+        // Arrange
         User user = new() { Id = 11, Name = "Pat", Email = "pat@test.dev" };
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(11, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         string? capturedCode = null;
         db.Setup(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(11, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Callback<int, string, DateTime, CancellationToken>((_, code, _, _) => capturedCode = code)
             .Returns(Task.CompletedTask);
 
-        Mock<IEmailSender> mail = new();
-        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        Mock<IEmailProvider> mail = new();
+        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         VerificationDigestService sut = CreateSut(db.Object, mail.Object, hashEmailVerificationCodes: false);
 
+        // Act
         await sut.SendAsync(11);
 
+        // Assert
         Assert.NotNull(capturedCode);
         Assert.Equal(6, capturedCode!.Length);
         Assert.True(capturedCode.All(char.IsDigit));
     }
 
+    // [E]RROR: Propagates exception when underlying email provider fails to send
     [Fact]
     public async Task SendAsync_Should_Propagate_WhenSmtpFails()
     {
+        // Arrange
         User user = new() { Id = 1, Email = "e@test.dev", Name = "E" };
-        Mock<IUserStore> db = new();
+        Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         db.Setup(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(1, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        Mock<IEmailSender> mail = new();
-        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+        Mock<IEmailProvider> mail = new();
+        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SMTP down"));
 
         VerificationDigestService sut = CreateSut(db.Object, mail.Object);
 
+        // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SendAsync(1));
     }
 }

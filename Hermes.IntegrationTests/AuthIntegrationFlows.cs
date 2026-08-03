@@ -25,7 +25,7 @@ public static class AuthIntegrationFlows
             twoFactorExpiry = (DateTime?)null,
         };
 
-        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, _jsonWeb); 
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, _jsonWeb);
         response.EnsureSuccessStatusCode();
 
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -33,7 +33,7 @@ public static class AuthIntegrationFlows
         return (userId, email);
     }
 
-    public static Task<HttpResponseMessage> LoginResponseAsync(HttpClient client, string email, string password) => 
+    public static Task<HttpResponseMessage> LoginResponseAsync(HttpClient client, string email, string password) =>
         client.PostAsJsonAsync(
             "/api/v1/auth/login",
             new { nameOrEmail = email, password },

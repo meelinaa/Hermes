@@ -2,8 +2,9 @@ using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Hermes.Application.Options;
-using Hermes.Application.Security;
+using Hermes.Application.DTOs.Security;
+using Hermes.Application.Options.Auth;
+using Hermes.Application.Services.Security;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
@@ -43,9 +44,9 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_Embed_SubClaim_WithUserIdString_AndAllowValidation()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenIssuer issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o));
 
-        JwtAccessTokenResult result = issuer.Issue(42, "user@site.test", "  Name  ");
+        JwtAccessTokenResultDto result = issuer.Issue(42, "user@site.test", "  Name  ");
 
         JwtSecurityTokenHandler handler = new();
         ClaimsPrincipal principal = handler.ValidateToken(result.Token, CreateValidation(o, handler), out SecurityToken validatedToken);
@@ -66,9 +67,9 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_OmitOptionalClaims_WhenEmailAndNameMissingOrWhitespace()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenIssuer issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o));
 
-        JwtAccessTokenResult result = issuer.Issue(1, null, "   ");
+        JwtAccessTokenResultDto result = issuer.Issue(1, null, "   ");
 
         JwtSecurityTokenHandler handler = new();
         ClaimsPrincipal principal = handler.ValidateToken(result.Token, CreateValidation(o, handler), out _);
@@ -82,10 +83,10 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_GenerateDistinctCompactTokens_PerIssuance()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenIssuer issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o));
 
-        JwtAccessTokenResult a = issuer.Issue(1, "a@test", "A");
-        JwtAccessTokenResult b = issuer.Issue(1, "a@test", "A");
+        JwtAccessTokenResultDto a = issuer.Issue(1, "a@test", "A");
+        JwtAccessTokenResultDto b = issuer.Issue(1, "a@test", "A");
 
         Assert.NotEqual(a.Token, b.Token);
     }
@@ -95,10 +96,10 @@ public sealed class JwtTokenIssuerTests
     {
         JwtOptions o = CreateValidOptions();
         o.AccessTokenMinutes = 5;
-        JwtTokenIssuer issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o));
         DateTime before = DateTime.UtcNow;
 
-        JwtAccessTokenResult result = issuer.Issue(1, null, null);
+        JwtAccessTokenResultDto result = issuer.Issue(1, null, null);
 
         JwtSecurityTokenHandler handler = new();
         JwtSecurityToken jwt = handler.ReadJwtToken(result.Token);
@@ -112,7 +113,7 @@ public sealed class JwtTokenIssuerTests
     [InlineData(-1)]
     public void Issue_Should_RejectNonPositiveUserIdentifier(int invalidUserId)
     {
-        JwtTokenIssuer issuer = new(Options.Create(CreateValidOptions()));
+        JwtTokenProvider issuer = new(Options.Create(CreateValidOptions()));
 
         Assert.Throws<ArgumentOutOfRangeException>(() => issuer.Issue(invalidUserId, null, null));
     }

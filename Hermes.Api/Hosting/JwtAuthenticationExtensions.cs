@@ -1,11 +1,15 @@
 using System.Security.Claims;
 using System.Text;
-using Hermes.Api.Authorization;
-using Hermes.Application.Options;
-using Hermes.Application.Security;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+
+using Hermes.Api.Authorization;
+using Hermes.Api.Constants;
+using Hermes.Application.Options.Auth;
+using Hermes.Application.Ports.Outbound;
+using Hermes.Application.Services.Security;
 
 namespace Hermes.Api.Hosting;
 
@@ -31,7 +35,7 @@ public static class JwtAuthenticationExtensions
                 $"{JwtOptions.SECTION_NAME}:Issuer and Audience must be set.");
         }
 
-        services.AddSingleton<IJwtTokenIssuer, JwtTokenIssuer>();
+        services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
 
         services.AddSingleton<IAuthorizationHandler, RouteUserMatchesClaimHandler>();
 
@@ -54,15 +58,15 @@ public static class JwtAuthenticationExtensions
 
         services.AddAuthorization(options =>
         {
-            options.AddPolicy(HermesAuthorizationPolicies.OWN_USER_ROUTE_USER_ID, policy =>
+            options.AddPolicy(HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID, policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.AddRequirements(new RouteUserMatchesClaimRequirement("userId"));
+                policy.AddRequirements(new RouteUserMatchesClaimPolicy("userId"));
             });
-            options.AddPolicy(HermesAuthorizationPolicies.OWN_USER_ROUTE_ID, policy =>
+            options.AddPolicy(HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID, policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.AddRequirements(new RouteUserMatchesClaimRequirement("id"));
+                policy.AddRequirements(new RouteUserMatchesClaimPolicy("id"));
             });
         });
         return services;

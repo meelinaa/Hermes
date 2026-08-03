@@ -1,6 +1,6 @@
 namespace Hermes.Domain.Exceptions;
 
-/// <summary>Profile password change rejected → map to HTTP 400 with <see cref="Hermes.Domain.HermesProblemTypes.WRONG_CURRENT_PASSWORD"/>.</summary>
+/// <summary>Profile password change rejected → map to HTTP 400 with <see cref="Hermes.Domain.Constants.HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD"/>.</summary>
 public sealed class WrongCurrentPasswordException : Exception
 {
     public WrongCurrentPasswordException()

@@ -149,7 +149,7 @@
                 return;
             }
 
-            AuthLoginResponse? authBody = await loginResponse.Content.ReadFromJsonAsync<AuthLoginResponse>(JsonSerializerOptions.Web).ConfigureAwait(false);
+            LoginResponseDto? authBody = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>(JsonSerializerOptions.Web).ConfigureAwait(false);
             if (authBody is null || string.IsNullOrEmpty(authBody.AccessToken) || string.IsNullOrEmpty(authBody.RefreshToken))
             {
                 registerError = "Konto angelegt; unerwartete Antwort beim Anmelden.";

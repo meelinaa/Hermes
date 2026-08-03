@@ -1,0 +1,39 @@
+# Prevent git from automatically converting line endings.
+# All text files are stored in the repository with LF (Unix-style) line endings.
+# This matches the end_of_line = lf setting in .editorconfig and ensures
+# that dotnet format --verify-no-changes passes on CI (Linux runners).
+
+* text=auto eol=lf
+
+# Force LF for all source and config files
+*.cs       text eol=lf
+*.csx      text eol=lf
+*.razor    text eol=lf
+*.cshtml   text eol=lf
+*.csproj   text eol=lf
+*.slnx     text eol=lf
+*.sln      text eol=lf
+*.props    text eol=lf
+*.targets  text eol=lf
+*.json     text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.xml      text eol=lf
+*.md       text eol=lf
+*.txt      text eol=lf
+*.sh       text eol=lf
+*.editorconfig text eol=lf
+.gitattributes text eol=lf
+.gitignore     text eol=lf
+
+# Binary files - do not touch line endings
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.ico      binary
+*.pdf      binary
+*.zip      binary
+*.tar.gz   binary
+*.dll      binary
+*.exe      binary

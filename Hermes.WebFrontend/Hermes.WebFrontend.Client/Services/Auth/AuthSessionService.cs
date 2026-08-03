@@ -1,8 +1,8 @@
-using Hermes.WebFrontend.Client.Model;
-using Hermes.WebFrontend.Client.Services.User;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Hermes.WebFrontend.Client.Model;
+using Hermes.WebFrontend.Client.Services.User;
 
 namespace Hermes.WebFrontend.Client.Services.Auth;
 
@@ -73,7 +73,7 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
     /// <summary>Checks whether the access token is still valid considering a small clock-skew safety window.</summary>
     private static bool IsAccessTokenAlive(string? accessToken)
     {
-        DateTimeOffset? exp = JwtPayloadDisplayName.TryGetExpiresAtUtc(accessToken);
+        DateTimeOffset? exp = accessToken.TryGetExpiresAtUtc();
         if (!exp.HasValue)
             return false;
         return exp.Value > DateTimeOffset.UtcNow.Add(_expirationClockSkew);
@@ -104,7 +104,7 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
             if (!response.IsSuccessStatusCode)
                 return false;
 
-            AuthLoginResponse? body = await response.Content.ReadFromJsonAsync<AuthLoginResponse>(_jsonWeb, cancellationToken).ConfigureAwait(false);
+            LoginResponseDto? body = await response.Content.ReadFromJsonAsync<LoginResponseDto>(_jsonWeb, cancellationToken).ConfigureAwait(false);
             if (body is null || string.IsNullOrEmpty(body.AccessToken) || string.IsNullOrEmpty(body.RefreshToken))
                 return false;
 

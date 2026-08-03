@@ -1,6 +1,6 @@
 using FluentValidation.TestHelper;
-using Hermes.Api.Validation;
-using Hermes.Application.Models.NewsletterSubscription;
+using Hermes.Api.Validators.Newsletter;
+using Hermes.Application.DTOs.NewsletterSubscription;
 using Xunit;
 
 namespace Hermes.UnitTests.Api.Validation;
@@ -20,9 +20,9 @@ public sealed class UpdateNewsletterSubscriptionRequestValidatorTests
     [InlineData(-1)]
     public void ShouldInvalidate_WhenIdNotPositive(int invalidId)
     {
-        UpdateNewsletterSubscriptionRequest request = new() { Id = invalidId };
+        UpdateNewsletterSubscriptionRequestDto request = new() { Id = invalidId };
 
-        TestValidationResult<UpdateNewsletterSubscriptionRequest> result = _validator.TestValidate(request);
+        TestValidationResult<UpdateNewsletterSubscriptionRequestDto> result = _validator.TestValidate(request);
 
         result.ShouldHaveValidationErrorFor(r => r.Id);
     }
@@ -33,9 +33,9 @@ public sealed class UpdateNewsletterSubscriptionRequestValidatorTests
     [Fact]
     public void ShouldValidate_WhenIdPositive()
     {
-        UpdateNewsletterSubscriptionRequest request = new() { Id = 1 };
+        UpdateNewsletterSubscriptionRequestDto request = new() { Id = 1 };
 
-        TestValidationResult<UpdateNewsletterSubscriptionRequest> result = _validator.TestValidate(request);
+        TestValidationResult<UpdateNewsletterSubscriptionRequestDto> result = _validator.TestValidate(request);
 
         result.ShouldNotHaveValidationErrorFor(r => r.Id);
     }

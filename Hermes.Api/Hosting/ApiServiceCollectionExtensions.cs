@@ -1,25 +1,34 @@
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+
 using FluentValidation;
 using Hangfire;
 using Hangfire.MySql;
-using Hermes.Api.Hangfire;
-using Hermes.Api.Validation;
-using Hermes.Application.Options;
-using Hermes.Application.Scheduling;
-using Hermes.Application.Security;
-using Hermes.Application.Services;
-using Hermes.Application.Ports;
-using Hermes.Infrastructure.Data;
-using Hermes.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
-using Serilog.Enrichers.Span;
 using Serilog;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
+using Serilog.Enrichers.Span;
+
+using Hermes.Api.Filters;
+using Hermes.Infrastructure.Adapters.Outbound.Hangfire;
+using Hermes.Api.Validators.Auth;
+using Hermes.Application.Options.Auth;
+using Hermes.Application.Options.Common;
+using Hermes.Application.Options.External;
+using Hermes.Application.Options.Newsletter;
+using Hermes.Application.Ports;
+using Hermes.Application.Ports.Inbound;
+using Hermes.Application.Ports.Outbound;
+using Hermes.Application.Services.Newsletter;
+using Hermes.Application.Services.NotificationLogs;
+using Hermes.Application.Services.Security;
+using Hermes.Application.Services.Users;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
+using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 
 namespace Hermes.Api.Hosting;
 
@@ -32,31 +41,37 @@ public static class ApiServiceCollectionExtensions
             ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection or CONNECTION_STRING.");
 
         ServerVersion serverVersion = string.Equals(environment.EnvironmentName, "Testing", StringComparison.OrdinalIgnoreCase)
-            ? HermesMySqlServerVersions.PinnedMysql84
+            ? HermesMySqlServerVersionConstants.PinnedMysql84
             : ServerVersion.AutoDetect(connectionString);
 
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, serverVersion));
-        services.AddScoped<IUserStore, UserStore>();
-        services.AddScoped<INewsletterSubscriptionStore, NewsletterSubscriptionStore>();
-        services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
-        services.AddScoped<INotificationLogStore, NotificationLogStore>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
         Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
 
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IUserAuthenticationService, UserAuthenticationService>();
+        services.AddScoped<IUserVerificationService, UserVerificationService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsletterSubscriptionService, NewsletterSubscriptionService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
         services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
         services.Configure<PaginationOptions>(configuration.GetSection(PaginationOptions.SECTION_NAME));
-        services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SectionName));
+        services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SECTION_NAME));
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
         services.AddHttpContextAccessor();
-        services.AddSingleton<IVerificationMailJobTrigger, HangfireVerificationMailJobTrigger>();
+        services.AddSingleton<IVerificationMailJobService, VerificationMailJobService>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");
 
-        services.AddSingleton(_ => CreateHangfireJobStorage(configuration));
-        services.AddSingleton<INewsletterSchedulerRunTrigger, HangfireNewsletterSchedulerRunTrigger>();
+        services.AddHangfire((sp, config) => config
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UseStorage(CreateHangfireJobStorage(configuration))
+            .UseFilter(new CorrelationIdClientFilter(sp.GetRequiredService<IHttpContextAccessor>())));
+        services.AddSingleton<INewsletterSchedulerJobService, NewsletterSchedulerJobService>();
         Log.Information("Registered Hangfire JobStorage (MySQL) for newsletter scheduler triggers (same DB as Hermes.Worker).");
 
         services.AddControllers(options =>

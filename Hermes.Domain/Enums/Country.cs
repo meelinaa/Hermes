@@ -1,4 +1,4 @@
-using Hermes.Domain.Enums.Attribute;
+using Hermes.Domain.Enums.Attributes;
 
 namespace Hermes.Domain.Enums;
 

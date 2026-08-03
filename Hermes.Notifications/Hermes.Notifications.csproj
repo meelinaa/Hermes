@@ -8,10 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Sending\HtmlLayout\NewsletterHeader.html" />
-    <EmbeddedResource Include="Sending\HtmlLayout\NewsletterItem.html" />
-    <EmbeddedResource Include="Sending\HtmlLayout\NewsletterFooter.html" />
-    <EmbeddedResource Include="Sending\HtmlLayout\Verification.html" />
+    <EmbeddedResource Include="Sending\HtmlLayout\Templates\NewsletterHeader.html" />
+    <EmbeddedResource Include="Sending\HtmlLayout\Templates\NewsletterItem.html" />
+    <EmbeddedResource Include="Sending\HtmlLayout\Templates\NewsletterFooter.html" />
+    <EmbeddedResource Include="Sending\HtmlLayout\Templates\Verification.html" />
   </ItemGroup>
 
   <ItemGroup>
