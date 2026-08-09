@@ -176,7 +176,7 @@ public sealed class AuthControllerTests
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
         authTokenServiceMock.Setup(x => x.RevokeAllForUserAsync(1, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>(), CreatePrincipalWithId(1));
 

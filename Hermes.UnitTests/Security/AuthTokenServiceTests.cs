@@ -34,7 +34,7 @@ public sealed class AuthTokenServiceTests
         RefreshToken? captured = null;
         db.Setup(dataStore => dataStore.AddRefreshTokenAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
             .Callback<RefreshToken, CancellationToken>((row, _) => captured = row)
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         AuthTokenService sut = CreateSut(db, jwt);
         AuthTokensResultDto result = await sut.IssueTokensAsync(3, "a@test.example", "Alice");
@@ -54,8 +54,8 @@ public sealed class AuthTokenServiceTests
     {
         AuthTokenService sut = CreateSut(new Mock<IRefreshTokenRepository>(), new Mock<IJwtTokenProvider>());
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            sut.IssueTokensAsync(invalidUserId, "a@test.dev", "X"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
+            await sut.IssueTokensAsync(invalidUserId, "a@test.dev", "X"));
     }
 
     /// <summary>Blank refresh must not hit the store (timing side-channel).</summary>
@@ -298,7 +298,7 @@ public sealed class AuthTokenServiceTests
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(row);
-        db.Setup(dataStore => dataStore.RevokeRefreshTokenAsync(row, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.RevokeRefreshTokenAsync(row, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
         Assert.True(await sut.TryRevokeRefreshForUserAsync(plain, 12));
@@ -309,7 +309,7 @@ public sealed class AuthTokenServiceTests
     public async Task RevokeAllForUserAsync_Should_DelegateToStore()
     {
         Mock<IRefreshTokenRepository> db = new();
-        db.Setup(dataStore => dataStore.RevokeAllRefreshTokensForUserAsync(44, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.RevokeAllRefreshTokensForUserAsync(44, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
         await sut.RevokeAllForUserAsync(44);

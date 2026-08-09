@@ -4,12 +4,12 @@ namespace Hermes.Application.Ports.Outbound;
 
 public interface IRefreshTokenRepository
 {
-    Task AddRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default);
-    Task<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
-    Task<RefreshToken?> GetRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
+    ValueTask AddRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default);
+    ValueTask<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
+    ValueTask<RefreshToken?> GetRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
     /// <summary>Atomic rotate: false if concurrent revoke won the race (insert rolled back).</summary>
-    Task<bool> CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default);
-    Task RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default);
-    Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default);
-    Task RevokeTokenFamilyAsync(RefreshToken compromisedToken, CancellationToken cancellationToken = default);
+    ValueTask<bool> CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default);
+    ValueTask RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default);
+    ValueTask RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default);
+    ValueTask RevokeTokenFamilyAsync(RefreshToken compromisedToken, CancellationToken cancellationToken = default);
 }

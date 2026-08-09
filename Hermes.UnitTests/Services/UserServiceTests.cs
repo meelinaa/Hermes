@@ -35,7 +35,7 @@ public sealed class UserServiceTests
         UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByNameAsync("  "));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.GetUserByNameAsync("  "));
     }
 
     // [R]IGHT: Retrieves matching user scope by unique identifier
@@ -82,7 +82,7 @@ public sealed class UserServiceTests
         UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByIdAsync(invalidId));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.GetUserByIdAsync(invalidId));
     }
 
     // [B]OUNDARY: Rejects empty or whitespace-only email input
@@ -93,7 +93,7 @@ public sealed class UserServiceTests
         UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByEmailAsync("  "));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.GetUserByEmailAsync("  "));
     }
 
     // [R]IGHT: Delegates user deletion operation to underlying repository store
@@ -103,7 +103,7 @@ public sealed class UserServiceTests
         // Arrange
         Mock<IUserRepository> db = new();
         UserScopeDto scope = new() { UserId = 1, Email = "a@b", Name = "A" };
-        db.Setup(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
         UserService sut = CreateUserService(db.Object);
 
         // Act

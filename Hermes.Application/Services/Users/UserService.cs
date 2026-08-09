@@ -16,7 +16,7 @@ public sealed class UserService(IUserRepository db) : IUserService
     /// <param name="user">The user scope DTO identifying the user to delete.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="user"/> is null.</exception>
-    public async Task DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
+    public async ValueTask DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         await db.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
@@ -29,7 +29,7 @@ public sealed class UserService(IUserRepository db) : IUserService
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
     /// <returns>A <see cref="UserScopeDto"/> if found; otherwise, <c>null</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
-    public async Task<UserScopeDto?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
+    public async ValueTask<UserScopeDto?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be null or whitespace.", nameof(name));
@@ -43,7 +43,7 @@ public sealed class UserService(IUserRepository db) : IUserService
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
     /// <returns>A <see cref="UserScopeDto"/> if found; otherwise, <c>null</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is non-positive.</exception>
-    public async Task<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             throw new ArgumentException("Id must be greater than zero.", nameof(id));
@@ -57,7 +57,7 @@ public sealed class UserService(IUserRepository db) : IUserService
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
     /// <returns>A <see cref="UserScopeDto"/> if found; otherwise, <c>null</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="email"/> is null or whitespace.</exception>
-    public async Task<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public async ValueTask<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));

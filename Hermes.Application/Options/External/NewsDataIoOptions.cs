@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Hermes.Application.Options.External;
 
 /// <summary>
@@ -5,5 +7,6 @@ namespace Hermes.Application.Options.External;
 /// </summary>
 public sealed class NewsDataIoOptions
 {
-    public string Key { get; set; } = string.Empty;
+    [Required]
+    public string Key { get; set; } = null!;
 }

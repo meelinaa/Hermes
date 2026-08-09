@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Hermes.Application.Options.Common;
 
 /// <summary>
@@ -7,7 +9,9 @@ public sealed class PaginationOptions
 {
     public const string SECTION_NAME = "Pagination";
 
-    public int DefaultPageSize { get; set; } = 20;
+    [Range(1, 1000)]
+    public int DefaultPageSize { get; set; }
 
-    public int MaxPageSize { get; set; } = 100;
+    [Range(1, 10000)]
+    public int MaxPageSize { get; set; }
 }

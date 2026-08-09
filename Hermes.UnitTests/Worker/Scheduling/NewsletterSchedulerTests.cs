@@ -17,17 +17,19 @@ namespace Hermes.UnitTests.Worker.Scheduling;
 public sealed class NewsletterSchedulerTests
 {
     private static EmailOptions CreateEmailOptions() =>
-        new(
-            Host: "localhost",
-            Port: 1025,
-            EnableSsl: false,
-            Username: null,
-            Password: null,
-            DefaultFromAddress: "from@test.local",
-            DefaultFromName: "Hermes",
-            DefaultReplyToAddress: "reply@test.local",
-            DefaultReplyToName: "Reply",
-            XMailer: "Hermes.UnitTests");
+        new()
+        {
+            Host = "localhost",
+            Port = 1025,
+            EnableSsl = false,
+            Username = null,
+            Password = null,
+            DefaultFromAddress = "from@test.local",
+            DefaultFromName = "Hermes",
+            DefaultReplyToAddress = "reply@test.local",
+            DefaultReplyToName = "Reply",
+            XMailer = "Hermes.UnitTests"
+        };
 
     [Fact]
     public async Task RunAsync_Should_QueryDueProfilesOnce_AndSkipMail_WhenNothingDue_AndMailHogDisabled()

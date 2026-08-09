@@ -20,7 +20,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Persists a new newsletter subscription in the database.
     /// </summary>
-    public async Task SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         if (news.Id != 0)
@@ -34,7 +34,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Updates an existing newsletter subscription in the database.
     /// </summary>
-    public async Task UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         if (news.UserId <= 0)
@@ -58,7 +58,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Deletes a specific newsletter subscription from the database.
     /// </summary>
-    public async Task DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         if (news.Id <= 0)
@@ -79,7 +79,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Retrieves a paged list of newsletter subscriptions matching the query parameters.
     /// </summary>
-    public async Task<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         if (query.UserId <= 0)
@@ -139,7 +139,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// Retrieves newsletter subscription schedules that are due for delivery in the specified slot.
     /// Uses database SQL queries for complex JSON searches (MySQL specific).
     /// </summary>
-    public async Task<List<(int NewsId, int UserId)>> GetDueNewsScheduleForSlotAsync(
+    public async ValueTask<List<(int NewsId, int UserId)>> GetDueNewsScheduleForSlotAsync(
         Weekdays weekday,
         int hour,
         int minute,
@@ -218,7 +218,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Calculates and advances the next digest run slot for a newsletter subscription.
     /// </summary>
-    public async Task AdvanceNextDigestSlotAsync(
+    public async ValueTask AdvanceNextDigestSlotAsync(
         int newsId,
         int userId,
         TimeZoneInfo newsletterTimeZone,
@@ -251,7 +251,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Retrieves a newsletter subscription by ID for a specific user. Throws exception if not found.
     /// </summary>
-    public async Task<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
@@ -267,7 +267,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Finds a newsletter subscription by its ID. Returns null if not found.
     /// </summary>
-    public async Task<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             throw new ArgumentOutOfRangeException(nameof(id), id, "News id must be greater than zero.");
@@ -280,7 +280,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Deletes all newsletter subscriptions belonging to a user.
     /// </summary>
-    public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User id must be greater than zero.");

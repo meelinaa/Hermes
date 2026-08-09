@@ -10,7 +10,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;
 public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRepository
 {
     /// <inheritdoc />
-    public async Task<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
+    public async ValueTask<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(tokenHash))
             return null;
@@ -24,7 +24,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
     }
 
     /// <inheritdoc />
-    public async Task<RefreshToken?> GetRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
+    public async ValueTask<RefreshToken?> GetRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(tokenHash))
             return null;
@@ -37,7 +37,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
     }
 
     /// <inheritdoc />
-    public async Task<bool> CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> CompleteRefreshRotationAsync(RefreshToken trackedOld, RefreshToken newToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(trackedOld);
         ArgumentNullException.ThrowIfNull(newToken);
@@ -90,7 +90,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
     }
 
     /// <inheritdoc />
-    public async Task RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default)
+    public async ValueTask RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(trackedToken);
         trackedToken.RevokedAt = DateTime.UtcNow;
@@ -98,7 +98,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
     }
 
     /// <inheritdoc />
-    public async Task AddRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default)
+    public async ValueTask AddRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(token);
         await db.RefreshTokens.AddAsync(token, cancellationToken).ConfigureAwait(false);
@@ -106,7 +106,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
     }
 
     /// <inheritdoc />
-    public async Task RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         DateTime utc = DateTime.UtcNow;
         List<RefreshToken> active = await db.RefreshTokens
@@ -120,7 +120,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
     }
 
     /// <inheritdoc />
-    public async Task RevokeTokenFamilyAsync(RefreshToken compromisedToken, CancellationToken cancellationToken = default)
+    public async ValueTask RevokeTokenFamilyAsync(RefreshToken compromisedToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(compromisedToken);
         if (db.Database.IsRelational())

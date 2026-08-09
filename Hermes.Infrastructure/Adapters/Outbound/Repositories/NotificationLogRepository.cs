@@ -12,7 +12,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;
 public sealed class NotificationLogRepository(HermesDbContext db) : INotificationLogRepository
 {
     /// <inheritdoc />
-    public async Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
+    public async ValueTask SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(log);
         if (log.Id != 0)
@@ -24,7 +24,7 @@ public sealed class NotificationLogRepository(HermesDbContext db) : INotificatio
     }
 
     /// <inheritdoc />
-    public async Task<NotificationLog?> GetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
+    public async ValueTask<NotificationLog?> GetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(log);
         if (log.Id <= 0)
@@ -36,7 +36,7 @@ public sealed class NotificationLogRepository(HermesDbContext db) : INotificatio
     }
 
     /// <inheritdoc />
-    public async Task<bool> ExistsSentNotificationInWindowAsync(
+    public async ValueTask<bool> ExistsSentNotificationInWindowAsync(
         int userId,
         int newsId,
         DateTime windowStartUtc,

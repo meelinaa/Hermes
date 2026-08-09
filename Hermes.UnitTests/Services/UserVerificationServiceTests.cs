@@ -54,7 +54,7 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UserNotFoundException>(() => sut.SendVerificationMailAsync("ghost@test.dev", CancellationToken.None));
+        await Assert.ThrowsAsync<UserNotFoundException>(async () => await sut.SendVerificationMailAsync("ghost@test.dev", CancellationToken.None));
     }
 
     // [B]OUNDARY: Rejects empty or whitespace email address input
@@ -65,7 +65,7 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.SendVerificationMailAsync("  ", CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.SendVerificationMailAsync("  ", CancellationToken.None));
     }
 
     // [B]OUNDARY: Rejects numeric verification code outside valid 6-digit range (0 - 999,999)
@@ -78,7 +78,7 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.CheckVerificationCodeAsync(1, invalidCode));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await sut.CheckVerificationCodeAsync(1, invalidCode));
     }
 
     // [B]OUNDARY: Rejects non-positive user ID inputs
@@ -91,7 +91,7 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.CheckVerificationCodeAsync(invalidUserId, 123456));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await sut.CheckVerificationCodeAsync(invalidUserId, 123456));
     }
 
     // [E]RROR: Throws UserNotFoundException when user record is missing during code verification
@@ -106,7 +106,7 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UserNotFoundException>(() => sut.CheckVerificationCodeAsync(5, 123456));
+        await Assert.ThrowsAsync<UserNotFoundException>(async () => await sut.CheckVerificationCodeAsync(5, 123456));
     }
 
     // [E]RROR: Throws VerificationCodeMismatchException when user has no active verification challenge stored
@@ -121,7 +121,7 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(1, 123456));
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(async () => await sut.CheckVerificationCodeAsync(1, 123456));
     }
 
     // [E]RROR: Throws VerificationCodeMismatchException when stored challenge has expired
@@ -141,7 +141,7 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(1, 123456));
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(async () => await sut.CheckVerificationCodeAsync(1, 123456));
     }
 
     // [E]RROR: Throws VerificationCodeMismatchException when provided code does not match stored challenge
@@ -161,7 +161,7 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(1, 123456));
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(async () => await sut.CheckVerificationCodeAsync(1, 123456));
     }
 
     // [R]IGHT: Completes email verification when code matches hashed challenge and is not expired
@@ -177,7 +177,7 @@ public sealed class UserVerificationServiceTests
                 TwoFactorCode = RefreshTokenHashService.Hash("123456"),
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
             });
-        db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(8, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(8, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserVerificationService sut = CreateService(db.Object);
 
@@ -201,7 +201,7 @@ public sealed class UserVerificationServiceTests
                 TwoFactorCode = "123456",
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
             });
-        db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(2, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(2, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserVerificationService sut = CreateService(db.Object, trigger: null, hashEmailVerificationCodes: true);
 
@@ -225,7 +225,7 @@ public sealed class UserVerificationServiceTests
                 TwoFactorCode = "654321",
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
             });
-        db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(3, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(3, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserVerificationService sut = CreateService(db.Object, trigger: null, hashEmailVerificationCodes: false);
 

@@ -13,7 +13,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;
 public sealed class UserRepository(HermesDbContext db) : IUserRepository
 {
     /// <inheritdoc />
-    public async Task SetUserAsync(User user, CancellationToken cancellationToken = default)
+    public async ValueTask SetUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         if (user.Id != 0)
@@ -35,7 +35,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<UserScopeDto?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
+    public async ValueTask<UserScopeDto?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty.", nameof(name));
@@ -48,7 +48,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public async ValueTask<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be empty.", nameof(email));
@@ -62,7 +62,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
@@ -74,7 +74,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<User?> GetUserEntityForAuthenticationByNameAsync(string name, CancellationToken cancellationToken = default)
+    public async ValueTask<User?> GetUserEntityForAuthenticationByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             return null;
@@ -85,7 +85,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<User?> GetUserEntityForAuthenticationByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public async ValueTask<User?> GetUserEntityForAuthenticationByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
             return null;
@@ -100,7 +100,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<User?> GetUserEntityForAuthenticationByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<User?> GetUserEntityForAuthenticationByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
@@ -113,7 +113,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task<User?> GetUserEntityByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<User?> GetUserEntityByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return null;
@@ -123,7 +123,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task UpdateUserAsync(User user, CancellationToken cancellationToken = default)
+    public async ValueTask UpdateUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         if (user.Id <= 0)
@@ -143,7 +143,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
+    public async ValueTask DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
         if (user.UserId <= 0)
@@ -161,7 +161,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task SetUserEmailVerificationChallengeAsync(
+    public async ValueTask SetUserEmailVerificationChallengeAsync(
         int userId,
         string verificationCode,
         DateTime expiresAtUtc,
@@ -183,7 +183,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async Task CompleteUserEmailVerificationAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask CompleteUserEmailVerificationAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");

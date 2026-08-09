@@ -67,10 +67,10 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsletterSubscriptionService, NewsletterSubscriptionService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
-        services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
-        services.Configure<PaginationOptions>(configuration.GetSection(PaginationOptions.SECTION_NAME));
-        services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SECTION_NAME));
-        services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
+        services.AddOptions<HermesSiteUrlsOptions>().BindConfiguration(HermesSiteUrlsOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<PaginationOptions>().BindConfiguration(PaginationOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<NewsletterOptions>().BindConfiguration(NewsletterOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<SecurityOptions>().BindConfiguration(SecurityOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         services.AddHttpContextAccessor();
         services.AddSingleton<IVerificationMailJobService, VerificationMailJobService>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");

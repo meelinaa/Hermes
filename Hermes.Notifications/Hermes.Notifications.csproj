@@ -18,5 +18,9 @@
     <ProjectReference Include="..\Hermes.Application\Hermes.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Polly.Core" Version="8.7.0" />
+  </ItemGroup>
+
 </Project>
 

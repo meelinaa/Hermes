@@ -4,7 +4,7 @@ namespace Hermes.Application.Ports.Outbound;
 
 public interface INotificationLogRepository
 {
-    Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default);
-    Task<NotificationLog?> GetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default);
-    Task<bool> ExistsSentNotificationInWindowAsync(int userId, int newsId, DateTime windowStartUtc, DateTime windowEndUtc, CancellationToken cancellationToken = default);
+    ValueTask SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default);
+    ValueTask<NotificationLog?> GetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default);
+    ValueTask<bool> ExistsSentNotificationInWindowAsync(int userId, int newsId, DateTime windowStartUtc, DateTime windowEndUtc, CancellationToken cancellationToken = default);
 }

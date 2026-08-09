@@ -25,7 +25,7 @@ public sealed class AuthTokenService(
     /// <summary>
     /// Issues a new JWT access token and a persisted refresh token for the given user.
     /// </summary>
-    public async Task<AuthTokensResultDto> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
+    public async ValueTask<AuthTokensResultDto> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
@@ -51,7 +51,7 @@ public sealed class AuthTokenService(
     /// Rotates an existing refresh token, issuing a new pair and revoking the old one.
     /// Returns null when the token is invalid, expired or a replay attack is detected.
     /// </summary>
-    public async Task<AuthTokensResultDto?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
+    public async ValueTask<AuthTokensResultDto?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return null;
@@ -93,7 +93,7 @@ public sealed class AuthTokenService(
     /// Attempts to revoke a specific refresh token belonging to the given user.
     /// Returns false when the token is not found or does not belong to the user.
     /// </summary>
-    public async Task<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, int userId, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, int userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return false;
@@ -110,7 +110,7 @@ public sealed class AuthTokenService(
     /// <summary>
     /// Revokes all refresh tokens for the given user.
     /// </summary>
-    public Task RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default) =>
+    public ValueTask RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default) =>
         db.RevokeAllRefreshTokensForUserAsync(userId, cancellationToken);
 
     /// <summary>64 bytes cryptographically random, Base64 — opaque high-entropy refresh material.</summary>

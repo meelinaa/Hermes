@@ -21,7 +21,7 @@ public sealed class UserAuthenticationServiceTests
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((u, _) => u.Id = 100)
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
         RegisterUserRequestDto user = new()
@@ -50,13 +50,13 @@ public sealed class UserAuthenticationServiceTests
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((u, _) => u.Id = 5)
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
         RegisterUserRequestDto user = new() { Name = "   ", Email = "ok@test.dev", Password = "pw" };
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sut.RegisterUserAsync(user));
         db.Verify(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -66,13 +66,13 @@ public sealed class UserAuthenticationServiceTests
     {
         // Arrange
         Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
         RegisterUserRequestDto user = new() { Name = "A", Email = "a@b.c", Password = "x" };
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RegisterUserAsync(user));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sut.RegisterUserAsync(user));
     }
 
     // [B]OUNDARY: Fails authentication when username/email identifier is blank
@@ -229,7 +229,7 @@ public sealed class UserAuthenticationServiceTests
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(5, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 5, Email = "x@y.z", Name = "X", PasswordHash = existingHash });
-        db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
         User patch = new() { Id = 5, Email = "x@y.z", Name = "X", PasswordHash = "new-secret" };
@@ -312,7 +312,7 @@ public sealed class UserAuthenticationServiceTests
     {
         // Arrange
         Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
         User patch = new() { Id = 2, Email = "u@x.y", Name = "OnlyName", PasswordHash = null };

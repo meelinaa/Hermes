@@ -26,7 +26,7 @@ public sealed class RefreshTokenHasherTests
     [Fact]
     public void Hash_Should_UseUtf8Bytes_NotAsciiSubstitution()
     {
-        string umlaut = "straße";
+        string umlaut = "straÃŸe";
         Assert.NotEqual(RefreshTokenHashService.Hash("strasse"), RefreshTokenHashService.Hash(umlaut));
     }
 

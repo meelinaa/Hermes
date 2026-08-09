@@ -4,6 +4,8 @@ using System.Text;
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.Options.Email;
 using Hermes.Application.Ports.Outbound;
+using Polly;
+using Polly.Retry;
 
 namespace Hermes.Notifications.Sending.Providers;
 
@@ -13,12 +15,25 @@ namespace Hermes.Notifications.Sending.Providers;
 /// <param name="settings">The configured email options.</param>
 public sealed class SmtpEmailProvider(EmailOptions settings) : IEmailProvider
 {
+    private readonly ResiliencePipeline _pipeline = new ResiliencePipelineBuilder()
+        .AddRetry(new RetryStrategyOptions
+        {
+            ShouldHandle = new PredicateBuilder().Handle<SmtpException>().Handle<IOException>(),
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromSeconds(2),
+            BackoffType = DelayBackoffType.Exponential
+        })
+        .Build();
+
     /// <inheritdoc />
     public async Task SendAsync(EmailMessageDto message, CancellationToken cancellationToken = default)
     {
-        using SmtpClient smtp = CreateSmtpClient();
-        using MailMessage mail = CreateMailMessage(message);
-        await smtp.SendMailAsync(mail, cancellationToken).ConfigureAwait(false);
+        await _pipeline.ExecuteAsync(async ct =>
+        {
+            using SmtpClient smtp = CreateSmtpClient();
+            using MailMessage mail = CreateMailMessage(message);
+            await smtp.SendMailAsync(mail, ct).ConfigureAwait(false);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

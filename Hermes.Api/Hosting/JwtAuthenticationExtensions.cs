@@ -27,7 +27,7 @@ public static class JwtAuthenticationExtensions
     public static IServiceCollection AddHermesJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         IConfigurationSection jwtSection = configuration.GetSection(JwtOptions.SECTION_NAME);
-        services.Configure<JwtOptions>(jwtSection);
+        services.AddOptions<JwtOptions>().BindConfiguration(JwtOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
 
         JwtOptions jwt = jwtSection.Get<JwtOptions>()
             ?? throw new InvalidOperationException($"Missing configuration section '{JwtOptions.SECTION_NAME}'.");

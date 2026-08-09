@@ -24,7 +24,7 @@ public sealed class NewsletterSubscriptionService(
     /// <returns>The unique database identifier assigned to the created subscription.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="news"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the owning user ID is less than or equal to zero.</exception>
-    public async Task<int> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask<int> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         if (news.UserId <= 0)
@@ -42,7 +42,7 @@ public sealed class NewsletterSubscriptionService(
     /// <param name="news">The updated subscription entity to persist.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="news"/> is <c>null</c>.</exception>
-    public async Task UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
@@ -56,7 +56,7 @@ public sealed class NewsletterSubscriptionService(
     /// </summary>
     /// <param name="news">The subscription profile containing ID and user information.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    private async Task AdvanceDigestSlotAfterMutationAsync(NewsletterSubscription news, CancellationToken cancellationToken)
+    private async ValueTask AdvanceDigestSlotAfterMutationAsync(NewsletterSubscription news, CancellationToken cancellationToken)
     {
         TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
         await db.AdvanceNextDigestSlotAsync(news.Id, news.UserId, zone, DateTime.UtcNow, cancellationToken)
@@ -69,7 +69,7 @@ public sealed class NewsletterSubscriptionService(
     /// <param name="news">The subscription entity to remove.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="news"/> is <c>null</c>.</exception>
-    public async Task DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
         await db.DeleteNewsAsync(news, cancellationToken).ConfigureAwait(false);
@@ -83,7 +83,7 @@ public sealed class NewsletterSubscriptionService(
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>The matching <see cref="NewsletterSubscription"/> if found; otherwise <c>null</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="userId"/> or <paramref name="id"/> is less than or equal to zero.</exception>
-    public async Task<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
             throw new ArgumentException("User id must be greater than zero.", nameof(userId));
@@ -99,7 +99,7 @@ public sealed class NewsletterSubscriptionService(
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>The matching <see cref="NewsletterSubscription"/> if found; otherwise <c>null</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is less than or equal to zero.</exception>
-    public async Task<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             throw new ArgumentException("News id must be greater than zero.", nameof(id));
@@ -114,7 +114,7 @@ public sealed class NewsletterSubscriptionService(
     /// <returns>A <see cref="NewsletterSubscriptionListResultDto"/> containing matching items and pagination metadata.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="query"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentException">Thrown when query parameter constraints (such as positive user ID or valid cursor pagination) are violated.</exception>
-    public async Task<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         if (query.UserId <= 0)
@@ -140,7 +140,7 @@ public sealed class NewsletterSubscriptionService(
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>The total number of subscription records deleted.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="userId"/> is less than or equal to zero.</exception>
-    public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
             throw new ArgumentException("User id must be greater than zero.", nameof(userId));

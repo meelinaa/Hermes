@@ -31,7 +31,7 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<TimeZoneInfo>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
     }
 
     /// <summary>
@@ -46,7 +46,7 @@ public sealed class NewsletterDigestServiceTests
                 It.IsAny<TimeZoneInfo>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
         return mock.Object;
     }
 
@@ -460,7 +460,7 @@ public sealed class NewsletterDigestServiceTests
 
         logs.Setup(s => s.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationLog, CancellationToken>((log, _) => capturedLog = log)
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object, email.Object);
 
@@ -525,7 +525,7 @@ public sealed class NewsletterDigestServiceTests
         NotificationLog? capturedFailed = null;
         logs.Setup(s => s.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
             .Callback<NotificationLog, CancellationToken>((log, _) => capturedFailed = log)
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object, email.Object);
 

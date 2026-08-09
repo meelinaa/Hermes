@@ -43,14 +43,16 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
         builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
-        builder.Services.AddSingleton(builder.Configuration.BindEmailOptions());
+        builder.Services.AddOptions<EmailOptions>().BindConfiguration(EmailOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value);
         builder.Services.AddSingleton<IEmailProvider, SmtpEmailProvider>();
-        builder.Services.Configure<MailHogOptions>(builder.Configuration.GetSection("MailHog"));
-        builder.Services.Configure<NewsDataIoOptions>(builder.Configuration.GetSection("NewsDataIo"));
-        builder.Services.Configure<HermesSiteUrlsOptions>(builder.Configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
-        builder.Services.Configure<NewsletterOptions>(builder.Configuration.GetSection(NewsletterOptions.SECTION_NAME));
-        builder.Services.Configure<SecurityOptions>(builder.Configuration.GetSection(SecurityOptions.SECTION_NAME));
-        builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoProvider>();
+        builder.Services.AddOptions<MailHogOptions>().BindConfiguration("MailHog").ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddOptions<NewsDataIoOptions>().BindConfiguration("NewsDataIo").ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddOptions<HermesSiteUrlsOptions>().BindConfiguration(HermesSiteUrlsOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddOptions<NewsletterOptions>().BindConfiguration(NewsletterOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddOptions<SecurityOptions>().BindConfiguration(SecurityOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoProvider>()
+            .AddStandardResilienceHandler();
         builder.Services.AddSingleton<INewsletterHtmlService, NewsletterHtmlService>();
         builder.Services.AddSingleton<IVerificationHtmlService, VerificationHtmlService>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
@@ -69,27 +71,6 @@ public static class WorkerServiceCollectionExtensions
             .UseFilter(new CorrelationIdServerFilter()));
 
         builder.Services.AddHangfireServer();
-    }
-
-    internal static EmailOptions BindEmailOptions(this IConfiguration configuration)
-    {
-        IConfigurationSection section = configuration.GetSection("Email");
-        string host = section["Host"]
-            ?? throw new InvalidOperationException("Configure Email:Host (SMTP server).");
-        string from = section["DefaultFromAddress"]
-            ?? throw new InvalidOperationException("Configure Email:DefaultFromAddress.");
-        string replyTo = section["DefaultReplyToAddress"] ?? from;
-        return new EmailOptions(
-            host,
-            section.GetValue("Port", 25),
-            section.GetValue("EnableSsl", false),
-            string.IsNullOrWhiteSpace(section["Username"]) ? null : section["Username"],
-            string.IsNullOrWhiteSpace(section["Password"]) ? null : section["Password"],
-            from,
-            section["DefaultFromName"] ?? "Hermes",
-            replyTo,
-            section["DefaultReplyToName"] ?? section["DefaultFromName"] ?? "Hermes",
-            section["XMailer"] ?? "Hermes.Worker");
     }
 
     public static void LogMailHogDevHints(this IHost host)

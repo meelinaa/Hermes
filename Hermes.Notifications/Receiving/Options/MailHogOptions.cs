@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Hermes.Notifications.Receiving.Options;
 
 /// <summary>
@@ -8,6 +10,8 @@ public sealed class MailHogOptions
     /// <summary>
     /// Gets or sets the base URL of the MailHog Web UI / API endpoint (e.g. http://localhost:8025).
     /// </summary>
+    [Required]
+    [Url]
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>

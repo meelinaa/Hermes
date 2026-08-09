@@ -30,7 +30,7 @@ public sealed class NewsletterSubscriptionServiceTests
         NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetNewsAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(async () => await sut.SetNewsAsync(null!));
     }
 
     // [B]OUNDARY: Non-positive owning user IDs are rejected
@@ -47,7 +47,7 @@ public sealed class NewsletterSubscriptionServiceTests
         NewsletterSubscription news = new() { Id = 0, UserId = invalidUserId };
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SetNewsAsync(news));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await sut.SetNewsAsync(news));
     }
 
     // [R]IGHT: Persists subscription entity and returns generated ID
@@ -62,11 +62,11 @@ public sealed class NewsletterSubscriptionServiceTests
         Mock<INewsletterSubscriptionRepository> db = new();
         db.Setup(repository => repository.SetNewsAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()))
             .Callback<NewsletterSubscription, CancellationToken>((n, _) => n.Id = 55)
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
         db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<TimeZoneInfo>(), It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts);
 
@@ -100,7 +100,7 @@ public sealed class NewsletterSubscriptionServiceTests
         NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsByIdAsync(userId, newsId));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.GetNewsByIdAsync(userId, newsId));
     }
 
     // [R]IGHT: Deletes subscription from store without advancing digest slot
@@ -119,7 +119,7 @@ public sealed class NewsletterSubscriptionServiceTests
             SendOnWeekdays = [Weekdays.Tuesday],
             SendAtTimes = [new TimeOnly(8, 0)],
         };
-        db.Setup(dataStore => dataStore.DeleteNewsAsync(news, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        db.Setup(dataStore => dataStore.DeleteNewsAsync(news, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts);
 
@@ -149,14 +149,14 @@ public sealed class NewsletterSubscriptionServiceTests
         NewsletterSubscription news = new() { Id = 1, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
         Mock<INewsletterSubscriptionRepository> db = new();
         db.Setup(dataStore => dataStore.UpdateNewsAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
         db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<TimeZoneInfo>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts);
 
@@ -186,7 +186,7 @@ public sealed class NewsletterSubscriptionServiceTests
         NewsletterSubscriptionListQueryDto query = new(invalidUserId, 1, 10, AfterId: null, SortDescending: false, Search: null, Category: null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsListAsync(query));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.GetNewsListAsync(query));
     }
 
     // [B]OUNDARY: Rejects non-positive user ID input for bulk deletion
@@ -202,7 +202,7 @@ public sealed class NewsletterSubscriptionServiceTests
         NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.DeleteAllNewsByUserAsync(invalidUserId));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.DeleteAllNewsByUserAsync(invalidUserId));
     }
 
     // [E]RROR: Throws exception when update payload is null
@@ -216,7 +216,7 @@ public sealed class NewsletterSubscriptionServiceTests
         NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.UpdateNewsAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(async () => await sut.UpdateNewsAsync(null!));
     }
 
     // [E]RROR: Throws exception when delete target is null
@@ -230,6 +230,6 @@ public sealed class NewsletterSubscriptionServiceTests
         NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.DeleteNewsAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(async () => await sut.DeleteNewsAsync(null!));
     }
 }

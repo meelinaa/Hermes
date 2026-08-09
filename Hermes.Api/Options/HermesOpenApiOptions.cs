@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Hermes.Api.Options;
 
 /// <summary>
@@ -13,11 +15,13 @@ public sealed class HermesOpenApiOptions
     /// <summary>
     /// OpenAPI document identifier name (defaults to "v1").
     /// </summary>
+    [Required]
     public string DocumentName { get; set; } = "v1";
 
     /// <summary>
     /// Route pattern template for exposing the OpenAPI JSON document.
     /// </summary>
+    [Required]
     public string RoutePattern { get; set; } = "openapi/{documentName}.json";
 
     /// <summary>
@@ -33,10 +37,12 @@ public sealed class HermesOpenApiOptions
     /// <summary>
     /// HTTP header name used for transmitting the documentation access key.
     /// </summary>
+    [Required]
     public string DocumentationApiKeyHeader { get; set; } = "X-Hermes-Documentation-Key";
 
     /// <summary>
     /// Path segment prefix for OpenAPI documentation UI routes.
     /// </summary>
+    [Required]
     public string DocumentationPathPrefix { get; set; } = "/openapi";
 }
