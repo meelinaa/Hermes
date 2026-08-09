@@ -23,10 +23,10 @@ public sealed class NewsletterScheduleServiceTests
 
     private static readonly DateTime _sampleSlotEndUtc = _sampleSlotStartUtc.AddMinutes(1);
 
+    // [B]OUNDARY: Empty result set when no items are scheduled for the slot
     /// <summary>
     /// Verifies that GetDueItemsAsync returns an empty list if the store has no matching due subscriptions.
     /// </summary>
-    // [B]OUNDARY: Empty result set when no items are scheduled for the slot
     [Fact]
     public async Task GetDueItemsAsync_Should_ReturnEmpty_WhenStoreHasNoDueRowsForSlot()
     {
@@ -50,10 +50,10 @@ public sealed class NewsletterScheduleServiceTests
         Assert.Empty(result);
     }
 
+    // [R]IGHT: Returns matching due items correctly
     /// <summary>
     /// Verifies that GetDueItemsAsync returns the due subscription pairs fetched from the store.
     /// </summary>
-    // [R]IGHT: Returns matching due items correctly
     [Fact]
     public async Task GetDueItemsAsync_Should_ReturnPairs_FromStore()
     {
@@ -79,10 +79,10 @@ public sealed class NewsletterScheduleServiceTests
         Assert.Contains((43, 7), result);
     }
 
+    // [R]IGHT: Maps local clock time to store slot query parameters correctly
     /// <summary>
     /// Verifies that GetDueItemsAsync maps the input local time and weekdays correctly to the store slot parameters.
     /// </summary>
-    // [R]IGHT: Maps local clock time to store slot query parameters correctly
     [Fact]
     public async Task GetDueItemsAsync_Should_MapLocalClock_ToSlotParameters()
     {
@@ -111,10 +111,10 @@ public sealed class NewsletterScheduleServiceTests
             Times.Once);
     }
 
+    // [E]RROR: Forwards cancellation token to repository query
     /// <summary>
     /// Verifies that GetDueItemsAsync correctly forwards the cancellation token to the store queries.
     /// </summary>
-    // [E]RROR: Forwards cancellation token to repository query
     [Fact]
     public async Task GetDueItemsAsync_Should_ForwardCancellation_ToDueSlotQuery()
     {

@@ -9,6 +9,7 @@ public sealed class UserVerificationCodeRequestValidatorTests
 {
     private readonly UserVerificationCodeRequestValidator _sut = new();
 
+    // [R]IGHT: Valid user verification code request passes validation
     [Fact]
     public void Should_NotHaveError_When_RequestIsValid()
     {
@@ -22,6 +23,7 @@ public sealed class UserVerificationCodeRequestValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    // [B]OUNDARY: Zero or negative user ID produces validation error
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
@@ -38,6 +40,7 @@ public sealed class UserVerificationCodeRequestValidatorTests
             .WithErrorMessage("A valid user id is required.");
     }
 
+    // [B]OUNDARY: Verification code outside valid range [0..999999] produces validation error
     [Theory]
     [InlineData(-1)]
     [InlineData(1_000_000)]

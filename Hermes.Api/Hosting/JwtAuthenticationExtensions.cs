@@ -13,8 +13,17 @@ using Hermes.Application.Services.Security;
 
 namespace Hermes.Api.Hosting;
 
+/// <summary>
+/// Extension methods for configuring JWT bearer authentication schemes and custom authorization policies in DI.
+/// </summary>
 public static class JwtAuthenticationExtensions
 {
+    /// <summary>
+    /// Configures JWT bearer authentication parameters, registers token issuer services, and sets up route authorization policies.
+    /// </summary>
+    /// <param name="services">The service collection instance.</param>
+    /// <param name="configuration">The application configuration root.</param>
+    /// <returns>The updated service collection instance.</returns>
     public static IServiceCollection AddHermesJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         IConfigurationSection jwtSection = configuration.GetSection(JwtOptions.SECTION_NAME);

@@ -85,10 +85,10 @@ public sealed class NewsletterDigestServiceTests
             logger ?? Mock.Of<ILogger<NewsletterDigestService>>());
     }
 
+    // [B]OUNDARY: Rejects non-positive user ID or news ID input parameters
     /// <summary>
     /// Verifies that SendAsync throws an ArgumentOutOfRangeException for non-positive IDs.
     /// </summary>
-    // [B]OUNDARY: Rejects non-positive user ID or news ID input parameters
     [Theory]
     [InlineData(0, 1)]
     [InlineData(1, 0)]
@@ -103,10 +103,10 @@ public sealed class NewsletterDigestServiceTests
             sut.SendAsync(userId, newsId, DateTime.UtcNow));
     }
 
+    // [B]OUNDARY: Throws when NewsDataIo API key configuration is missing or blank
     /// <summary>
     /// Verifies that SendAsync throws an InvalidOperationException if the API Key is empty or whitespace.
     /// </summary>
-    // [B]OUNDARY: Throws when NewsDataIo API key configuration is missing or blank
     [Fact]
     public async Task SendAsync_Should_ThrowInvalidOperation_WhenApiKeyMissingOrWhitespaceOnly()
     {
@@ -123,10 +123,10 @@ public sealed class NewsletterDigestServiceTests
             sutWs.SendAsync(1, 1, DateTime.UtcNow));
     }
 
+    // [B]OUNDARY: Aborts early when a duplicate notification was already sent in the UTC minute window
     /// <summary>
     /// Verifies that SendAsync returns early and does not load user/subscription if a duplicate log is found in the current minute window.
     /// </summary>
-    // [B]OUNDARY: Aborts early when a duplicate notification was already sent in the UTC minute window
     [Fact]
     public async Task SendAsync_Should_NotLoadUserOrNews_WhenDuplicateAlreadySentInWindow()
     {
@@ -193,10 +193,10 @@ public sealed class NewsletterDigestServiceTests
         emailSender.Verify(e => e.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // [R]IGHT: Normalizes digest slot UTC timestamp to top of minute for duplicate check window
     /// <summary>
     /// Verifies that the duplicate check uses a normalized minute slice.
     /// </summary>
-    // [R]IGHT: Normalizes digest slot UTC timestamp to top of minute for duplicate check window
     [Fact]
     public async Task SendAsync_Should_CheckDuplicateWindow_WithNormalizedUtcMinuteSlice()
     {
@@ -224,10 +224,10 @@ public sealed class NewsletterDigestServiceTests
             Times.Once);
     }
 
+    // [B]OUNDARY: Aborts execution silently when requested user record is missing
     /// <summary>
     /// Verifies that SendAsync aborts silently if the target user is not found.
     /// </summary>
-    // [B]OUNDARY: Aborts execution silently when requested user record is missing
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenUserMissing()
     {
@@ -257,10 +257,10 @@ public sealed class NewsletterDigestServiceTests
             Times.Never);
     }
 
+    // [B]OUNDARY: Aborts execution silently when target user email is blank
     /// <summary>
     /// Verifies that SendAsync aborts silently if the target user email address is empty.
     /// </summary>
-    // [B]OUNDARY: Aborts execution silently when target user email is blank
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenUserHasNoDeliverableEmail()
     {
@@ -289,10 +289,10 @@ public sealed class NewsletterDigestServiceTests
             Times.Never);
     }
 
+    // [B]OUNDARY: Aborts execution silently when newsletter subscription profile does not exist
     /// <summary>
     /// Verifies that SendAsync aborts silently if the subscription configuration is not found.
     /// </summary>
-    // [B]OUNDARY: Aborts execution silently when newsletter subscription profile does not exist
     [Fact]
     public async Task SendAsync_Should_AbortSilently_WhenNewsProfileMissing()
     {
@@ -325,10 +325,10 @@ public sealed class NewsletterDigestServiceTests
             Times.Never);
     }
 
+    // [B]OUNDARY: Advances slot without sending email when newsletter subscription is disabled
     /// <summary>
     /// Verifies that SendAsync skips article query logic and advances scheduling slots if the subscription is disabled.
     /// </summary>
-    // [B]OUNDARY: Advances slot without sending email when newsletter subscription is disabled
     [Fact]
     public async Task SendAsync_Should_SkipSend_AndAdvanceSlot_WhenNewsDisabled()
     {
@@ -369,10 +369,10 @@ public sealed class NewsletterDigestServiceTests
             Times.Once);
     }
 
+    // [B]OUNDARY: Skips API fetch when filter criteria result in an empty query object
     /// <summary>
     /// Verifies that SendAsync does not call the news API provider if the subscription produces an empty query payload.
     /// </summary>
-    // [B]OUNDARY: Skips API fetch when filter criteria result in an empty query object
     [Fact]
     public async Task SendAsync_Should_NotCallNewsApi_WhenFiltersProduceNoQuery()
     {
@@ -414,10 +414,10 @@ public sealed class NewsletterDigestServiceTests
             Times.Never);
     }
 
+    // [R]IGHT: Standard success pipeline renders template, sends email, writes audit log, and advances slot
     /// <summary>
     /// Verifies that SendAsync sends a rendered digest, saves a successful log, and advances scheduling slots under normal operation.
     /// </summary>
-    // [R]IGHT: Standard success pipeline renders template, sends email, writes audit log, and advances slot
     [Fact]
     public async Task SendAsync_Should_SendMail_WriteSentLog_WhenPipelineSucceeds()
     {
@@ -487,10 +487,10 @@ public sealed class NewsletterDigestServiceTests
             Times.Once);
     }
 
+    // [E]RROR: Logs failed delivery attempt and rethrows exception when SMTP provider fails
     /// <summary>
     /// Verifies that SendAsync logs delivery failures and propagates exceptions to Hangfire when the email sender fails.
     /// </summary>
-    // [E]RROR: Logs failed delivery attempt and rethrows exception when SMTP provider fails
     [Fact]
     public async Task SendAsync_Should_WriteFailedLog_AndPropagate_WhenSmtpFails()
     {

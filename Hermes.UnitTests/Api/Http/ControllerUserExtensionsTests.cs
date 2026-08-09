@@ -18,83 +18,117 @@ public sealed class ControllerUserExtensionsTests
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = user ?? new ClaimsPrincipal() } },
         };
 
+    // [E]RROR: Unauthenticated claims identity returns false and zero user ID
     [Fact]
     public void TryGetUserId_ShouldFail_WhenIdentityMissing()
     {
+        // Arrange
         ClaimsPrincipal principal = new(new ClaimsIdentity());
 
+        // Act & Assert
         Assert.False(principal.TryGetUserId(out int id));
         Assert.Equal(0, id);
     }
 
+    // [B]OUNDARY: Non-numeric claim value cannot be parsed to an integer user ID
     [Fact]
     public void TryGetUserId_ShouldFail_WhenClaimNotInteger()
     {
+        // Arrange
         ClaimsPrincipal principal = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "abc")]));
 
+        // Act & Assert
         Assert.False(principal.TryGetUserId(out _));
     }
 
+    // [B]OUNDARY: Boundary claim values (zero, negative, integer overflow) fail user ID parsing
     [Fact]
     public void TryGetUserId_ShouldFail_WhenClaimZeroOrNegativeOrOverflow()
     {
+        // Arrange
         ClaimsPrincipal zero = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "0")]));
-        Assert.False(zero.TryGetUserId(out _));
-
         ClaimsPrincipal negative = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "-3")]));
-        Assert.False(negative.TryGetUserId(out _));
-
         ClaimsPrincipal overflow = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "2147483648")]));
+
+        // Act & Assert
+        Assert.False(zero.TryGetUserId(out _));
+        Assert.False(negative.TryGetUserId(out _));
         Assert.False(overflow.TryGetUserId(out _));
     }
 
+    // [R]IGHT: Valid positive integer claim parses user ID successfully
     [Fact]
     public void TryGetUserId_Should_Succeed_WhenPositiveIntegerClaim()
     {
+        // Arrange
         ClaimsPrincipal principal = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "404")]));
 
-        Assert.True(principal.TryGetUserId(out int id));
+        // Act
+        bool success = principal.TryGetUserId(out int id);
+
+        // Assert
+        Assert.True(success);
         Assert.Equal(404, id);
     }
 
+    // [R]IGHT: Reads authenticated user ID from controller HttpContext principal
     [Fact]
     public void TryGetCurrentUserId_Should_Read_FromControllerPrincipal()
     {
+        // Arrange
         ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, "11")], authenticationType: "test");
-        TestController c = CreateController(new ClaimsPrincipal(identity));
+        TestController controller = CreateController(new ClaimsPrincipal(identity));
 
-        Assert.True(c.TryGetCurrentUserId(out int uid));
+        // Act
+        bool success = controller.TryGetCurrentUserId(out int uid);
+
+        // Assert
+        Assert.True(success);
         Assert.Equal(11, uid);
     }
 
+    // [R]IGHT: Access allowed when requested user ID matches authenticated caller
     [Fact]
     public void WhenCannotAccessUser_Should_Allow_WhenResourceMatchesCaller()
     {
+        // Arrange
         ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, "5")], "test");
-        TestController c = CreateController(new ClaimsPrincipal(identity));
+        TestController controller = CreateController(new ClaimsPrincipal(identity));
 
-        Assert.Null(c.WhenCannotAccessUser(5));
+        // Act
+        ActionResult? result = controller.WhenCannotAccessUser(5);
+
+        // Assert
+        Assert.Null(result);
     }
 
+    // [E]RROR: Returns 401 Unauthorized when caller principal lacks valid user ID
     [Fact]
     public void WhenCannotAccessUser_Should_Return401_WhenPrincipalMissingUserId()
     {
-        TestController c = CreateController(new ClaimsPrincipal());
+        // Arrange
+        TestController controller = CreateController(new ClaimsPrincipal());
 
-        ActionResult? result = c.WhenCannotAccessUser(5);
+        // Act
+        ActionResult? result = controller.WhenCannotAccessUser(5);
 
+        // Assert
         ObjectResult obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status401Unauthorized, obj.StatusCode);
     }
 
+    // [E]RROR: Returns 403 Forbidden when requesting resource belonging to another user
     [Fact]
     public void WhenCannotAccessUser_Should_Return403_WhenResourceBelongsToAnotherUser()
     {
+        // Arrange
         ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, "5")], "test");
-        TestController c = CreateController(new ClaimsPrincipal(identity));
+        TestController controller = CreateController(new ClaimsPrincipal(identity));
 
-        ActionResult? result = c.WhenCannotAccessUser(999);
+        // Act
+        ActionResult? result = controller.WhenCannotAccessUser(999);
 
+        // Assert
         ObjectResult obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status403Forbidden, obj.StatusCode);
     }

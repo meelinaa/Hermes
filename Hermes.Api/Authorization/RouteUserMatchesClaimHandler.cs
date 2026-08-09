@@ -6,9 +6,18 @@ using Microsoft.AspNetCore.Routing;
 
 namespace Hermes.Api.Authorization;
 
+/// <summary>
+/// Authorization handler that validates whether the authenticated user's claim ID matches a specific route parameter ID.
+/// </summary>
 public sealed class RouteUserMatchesClaimHandler(IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<RouteUserMatchesClaimPolicy>
 {
+    /// <summary>
+    /// Evaluates the route parameter against the caller's JWT user ID claim to enforce ownership.
+    /// </summary>
+    /// <param name="context">The authorization evaluation context.</param>
+    /// <param name="requirement">The route user match policy requirement.</param>
+    /// <returns>A task representing requirement evaluation.</returns>
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         RouteUserMatchesClaimPolicy requirement)

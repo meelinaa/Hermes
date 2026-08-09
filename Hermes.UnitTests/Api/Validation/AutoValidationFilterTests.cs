@@ -35,6 +35,7 @@ public sealed class AutoValidationFilterTests
         return context;
     }
 
+    // [B]OUNDARY: Null action arguments bypass validation and proceed to next delegate
     [Fact]
     public async Task OnActionExecutionAsync_Should_CallNext_When_ArgumentIsNull()
     {
@@ -57,6 +58,7 @@ public sealed class AutoValidationFilterTests
         Assert.Null(context.Result);
     }
 
+    // [B]OUNDARY: Action argument without registered FluentValidation validator proceeds to next delegate
     [Fact]
     public async Task OnActionExecutionAsync_Should_CallNext_When_ValidatorIsNotFound()
     {
@@ -81,6 +83,7 @@ public sealed class AutoValidationFilterTests
         Assert.Null(context.Result);
     }
 
+    // [R]IGHT: Successful validation proceeds to next delegate with valid model state
     [Fact]
     public async Task OnActionExecutionAsync_Should_CallNext_When_ValidationSucceeds()
     {
@@ -90,7 +93,7 @@ public sealed class AutoValidationFilterTests
 
         Mock<IValidator<DummyDto>> validatorMock = new();
         validatorMock.Setup(x => x.ValidateAsync(It.IsAny<IValidationContext>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ValidationResult()); // valid result
+            .ReturnsAsync(new ValidationResult());
 
         Mock<IServiceProvider> serviceProviderMock = new();
         serviceProviderMock.Setup(x => x.GetService(typeof(IValidator<DummyDto>)))
@@ -113,6 +116,7 @@ public sealed class AutoValidationFilterTests
         Assert.True(context.ModelState.IsValid);
     }
 
+    // [E]RROR: Validation failure short-circuits pipeline with HTTP 400 BadRequest ValidationProblemDetails
     [Fact]
     public async Task OnActionExecutionAsync_Should_ShortCircuitWithBadRequest_When_ValidationFails()
     {

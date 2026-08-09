@@ -12,10 +12,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 public sealed class NewsletterSchedulerJobService(JobStorage jobStorage, ILogger<NewsletterSchedulerJobService> logger)
     : INewsletterSchedulerJobService
 {
-    /// <summary>
-    /// Triggers the recurring newsletter scheduler Hangfire job immediately after a newsletter subscription mutation.
-    /// This ensures that the system reacts promptly to subscription changes instead of waiting for the next scheduled tick.
-    /// </summary>
+    /// <inheritdoc />
     public void RequestRunAfterNewsMutation()
     {
         new RecurringJobManager(jobStorage).TriggerJob(RecurringJobConstants.ID);

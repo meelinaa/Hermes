@@ -9,6 +9,7 @@ public sealed class UserProfileUpdateRequestValidatorTests
 {
     private readonly UserProfileUpdateRequestValidator _sut = new();
 
+    // [R]IGHT: Valid user profile update request without password change passes validation
     [Fact]
     public void Should_NotHaveError_When_RequestIsValid_WithoutPassword()
     {
@@ -22,6 +23,7 @@ public sealed class UserProfileUpdateRequestValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    // [R]IGHT: Valid user profile update request with new and current password passes validation
     [Fact]
     public void Should_NotHaveError_When_RequestIsValid_WithPassword()
     {
@@ -42,6 +44,7 @@ public sealed class UserProfileUpdateRequestValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    // [B]OUNDARY: Zero or negative user ID produces validation error
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
@@ -58,6 +61,7 @@ public sealed class UserProfileUpdateRequestValidatorTests
             .WithErrorMessage("User Id is required for update.");
     }
 
+    // [B]OUNDARY: Null, empty, or whitespace Name produces validation error
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -75,6 +79,7 @@ public sealed class UserProfileUpdateRequestValidatorTests
             .WithErrorMessage("Name is required.");
     }
 
+    // [B]OUNDARY: Null, empty, or whitespace Email produces validation error
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -92,6 +97,7 @@ public sealed class UserProfileUpdateRequestValidatorTests
             .WithErrorMessage("Email is required.");
     }
 
+    // [E]RROR: Changing new password without supplying current password produces validation error
     [Fact]
     public void Should_HaveError_When_NewPasswordIsSet_ButCurrentPasswordIsMissing()
     {
@@ -113,6 +119,7 @@ public sealed class UserProfileUpdateRequestValidatorTests
             .WithErrorMessage("Current password is required when setting a new password.");
     }
 
+    // [R]IGHT: Current password optional when new password is not being updated
     [Fact]
     public void Should_NotHaveError_ForCurrentPassword_When_NewPasswordIsMissing()
     {
@@ -123,7 +130,7 @@ public sealed class UserProfileUpdateRequestValidatorTests
             Name = "ValidName",
             Email = "test@example.com",
             NewPassword = null,
-            CurrentPassword = null // This is valid because NewPassword is not set
+            CurrentPassword = null
         };
 
         // Act

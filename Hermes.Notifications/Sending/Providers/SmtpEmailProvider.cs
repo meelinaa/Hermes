@@ -13,12 +13,7 @@ namespace Hermes.Notifications.Sending.Providers;
 /// <param name="settings">The configured email options.</param>
 public sealed class SmtpEmailProvider(EmailOptions settings) : IEmailProvider
 {
-    /// <summary>
-    /// Sends an e-mail message via SMTP using configured sender defaults.
-    /// </summary>
-    /// <param name="message">The email message DTO containing recipient, subject, body, and attachments.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A task representing the asynchronous send operation.</returns>
+    /// <inheritdoc />
     public async Task SendAsync(EmailMessageDto message, CancellationToken cancellationToken = default)
     {
         using SmtpClient smtp = CreateSmtpClient();

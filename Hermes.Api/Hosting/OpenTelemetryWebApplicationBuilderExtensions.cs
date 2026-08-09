@@ -7,8 +7,16 @@ using Hermes.Api.Options;
 
 namespace Hermes.Api.Hosting;
 
+/// <summary>
+/// Extension methods for configuring OpenTelemetry distributed tracing and metrics on the WebApplicationBuilder host.
+/// </summary>
 public static class OpenTelemetryWebApplicationBuilderExtensions
 {
+    /// <summary>
+    /// Configures OpenTelemetry distributed tracing and runtime metrics with OTLP exporter support if enabled in configuration.
+    /// </summary>
+    /// <param name="builder">The WebApplicationBuilder instance.</param>
+    /// <returns>The modified WebApplicationBuilder instance.</returns>
     public static WebApplicationBuilder AddHermesOpenTelemetry(this WebApplicationBuilder builder)
     {
         IConfigurationSection section = builder.Configuration.GetSection(HermesTelemetryOptions.SECTION_NAME);
@@ -44,6 +52,11 @@ public static class OpenTelemetryWebApplicationBuilderExtensions
         return builder;
     }
 
+    /// <summary>
+    /// Configures OTLP exporter endpoint and HTTP header settings from telemetry options.
+    /// </summary>
+    /// <param name="exporter">The OTLP exporter options instance.</param>
+    /// <param name="options">The configured Hermes telemetry options.</param>
     private static void ConfigureOtlp(OtlpExporterOptions exporter, HermesTelemetryOptions options)
     {
         if (!string.IsNullOrWhiteSpace(options.OtlpEndpoint) && Uri.TryCreate(options.OtlpEndpoint, UriKind.Absolute, out Uri? endpoint))

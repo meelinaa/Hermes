@@ -9,6 +9,7 @@ public sealed class LoginRequestValidatorTests
 {
     private readonly LoginRequestValidator _sut = new();
 
+    // [R]IGHT: Valid login request with non-empty username/email and password passes validation
     [Fact]
     public void Should_NotHaveError_When_RequestIsValid()
     {
@@ -22,6 +23,7 @@ public sealed class LoginRequestValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    // [B]OUNDARY: Null, empty, or whitespace NameOrEmail produces validation error
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -38,6 +40,7 @@ public sealed class LoginRequestValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.NameOrEmail);
     }
 
+    // [B]OUNDARY: Null, empty, or whitespace Password produces validation error
     [Theory]
     [InlineData(null)]
     [InlineData("")]

@@ -72,6 +72,6 @@ public static class ApiProblemResultExtensions
         controller.Problem(
             detail: detail,
             statusCode: StatusCodes.Status400BadRequest,
-            title: "Aktuelles Passwort ungültig",
+            title: "Invalid current password",
             type: HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD);
 }

@@ -11,32 +11,32 @@ public sealed class HermesOpenApiOptions
     public const string SECTION_NAME = "OpenApi";
 
     /// <summary>
-    /// Gets or sets the OpenAPI document name.
+    /// OpenAPI document identifier name (defaults to "v1").
     /// </summary>
     public string DocumentName { get; set; } = "v1";
 
     /// <summary>
-    /// Gets or sets the route pattern for the OpenAPI JSON document.
+    /// Route pattern template for exposing the OpenAPI JSON document.
     /// </summary>
     public string RoutePattern { get; set; } = "openapi/{documentName}.json";
 
     /// <summary>
-    /// Gets or sets a value indicating whether OpenAPI documentation endpoints are enabled in Production.
+    /// Enables OpenAPI documentation endpoints in Production environment when set to true.
     /// </summary>
     public bool MapInProduction { get; set; }
 
     /// <summary>
-    /// Gets or sets the API key required for accessing documentation endpoints.
+    /// API secret key required to access production documentation endpoints.
     /// </summary>
     public string DocumentationApiKey { get; set; } = "";
 
     /// <summary>
-    /// Gets or sets the header name used for transmitting the documentation API key.
+    /// HTTP header name used for transmitting the documentation access key.
     /// </summary>
     public string DocumentationApiKeyHeader { get; set; } = "X-Hermes-Documentation-Key";
 
     /// <summary>
-    /// Gets or sets the path prefix for OpenAPI documentation UI endpoints.
+    /// Path segment prefix for OpenAPI documentation UI routes.
     /// </summary>
     public string DocumentationPathPrefix { get; set; } = "/openapi";
 }

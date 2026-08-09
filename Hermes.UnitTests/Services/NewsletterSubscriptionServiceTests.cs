@@ -19,10 +19,10 @@ public sealed class NewsletterSubscriptionServiceTests
 {
     private static readonly IOptions<NewsletterOptions> _defaultNewsletterOpts = Options.Create(new NewsletterOptions());
 
+    // [E]RROR: Throws exception when input subscription is null
     /// <summary>
     /// Verifies that SetNewsAsync throws an ArgumentNullException if the subscription entity is null.
     /// </summary>
-    // [E]RROR: Throws exception when input subscription is null
     [Fact]
     public async Task SetNewsAsync_Should_Throw_WhenNewsNull()
     {
@@ -33,10 +33,10 @@ public sealed class NewsletterSubscriptionServiceTests
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetNewsAsync(null!));
     }
 
+    // [B]OUNDARY: Non-positive owning user IDs are rejected
     /// <summary>
     /// Verifies that SetNewsAsync throws an ArgumentOutOfRangeException if the owning user ID is non-positive.
     /// </summary>
-    // [B]OUNDARY: Non-positive owning user IDs are rejected
     [Theory]
     [InlineData(0)]
     [InlineData(-4)]
@@ -50,10 +50,10 @@ public sealed class NewsletterSubscriptionServiceTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.SetNewsAsync(news));
     }
 
+    // [R]IGHT: Persists subscription entity and returns generated ID
     /// <summary>
     /// Verifies that SetNewsAsync correctly returns the persisted subscription ID and advances its scheduling slot.
     /// </summary>
-    // [R]IGHT: Persists subscription entity and returns generated ID
     [Fact]
     public async Task SetNewsAsync_Should_ReturnPersistedId_AfterRepositoryAssignsKey()
     {
@@ -86,10 +86,10 @@ public sealed class NewsletterSubscriptionServiceTests
             Times.Once);
     }
 
+    // [B]OUNDARY: Non-positive user ID or news ID inputs are rejected
     /// <summary>
     /// Verifies that GetNewsByIdAsync rejects non-positive user and subscription identifiers.
     /// </summary>
-    // [B]OUNDARY: Non-positive user ID or news ID inputs are rejected
     [Theory]
     [InlineData(0, 1)]
     [InlineData(1, 0)]
@@ -103,10 +103,10 @@ public sealed class NewsletterSubscriptionServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsByIdAsync(userId, newsId));
     }
 
+    // [R]IGHT: Deletes subscription from store without advancing digest slot
     /// <summary>
     /// Verifies that DeleteNewsAsync removes the subscription from the store without updating digest slots.
     /// </summary>
-    // [R]IGHT: Deletes subscription from store without advancing digest slot
     [Fact]
     public async Task DeleteNewsAsync_Should_RemoveFromStore_WithoutAdvancingDigestSlot()
     {
@@ -138,10 +138,10 @@ public sealed class NewsletterSubscriptionServiceTests
             Times.Never);
     }
 
+    // [R]IGHT: Updates subscription and advances next run slot
     /// <summary>
     /// Verifies that UpdateNewsAsync advances the next run slot after updating the subscription in the store.
     /// </summary>
-    // [R]IGHT: Updates subscription and advances next run slot
     [Fact]
     public async Task UpdateNewsAsync_Should_AdvanceDigestSlot_AfterPersist()
     {
@@ -172,10 +172,10 @@ public sealed class NewsletterSubscriptionServiceTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // [B]OUNDARY: Rejects non-positive user ID query input
     /// <summary>
     /// Verifies that GetNewsListAsync rejects queries with non-positive user ID.
     /// </summary>
-    // [B]OUNDARY: Rejects non-positive user ID query input
     [Theory]
     [InlineData(0)]
     [InlineData(-99)]
@@ -189,10 +189,10 @@ public sealed class NewsletterSubscriptionServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetNewsListAsync(query));
     }
 
+    // [B]OUNDARY: Rejects non-positive user ID input for bulk deletion
     /// <summary>
     /// Verifies that DeleteAllNewsByUserAsync rejects non-positive user ID inputs.
     /// </summary>
-    // [B]OUNDARY: Rejects non-positive user ID input for bulk deletion
     [Theory]
     [InlineData(0)]
     [InlineData(-7)]
@@ -205,10 +205,10 @@ public sealed class NewsletterSubscriptionServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.DeleteAllNewsByUserAsync(invalidUserId));
     }
 
+    // [E]RROR: Throws exception when update payload is null
     /// <summary>
     /// Verifies that UpdateNewsAsync throws an ArgumentNullException if the subscription parameter is null.
     /// </summary>
-    // [E]RROR: Throws exception when update payload is null
     [Fact]
     public async Task UpdateNewsAsync_Should_Throw_WhenNewsNull()
     {
@@ -219,10 +219,10 @@ public sealed class NewsletterSubscriptionServiceTests
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.UpdateNewsAsync(null!));
     }
 
+    // [E]RROR: Throws exception when delete target is null
     /// <summary>
     /// Verifies that DeleteNewsAsync throws an ArgumentNullException if the subscription parameter is null.
     /// </summary>
-    // [E]RROR: Throws exception when delete target is null
     [Fact]
     public async Task DeleteNewsAsync_Should_Throw_WhenNewsNull()
     {

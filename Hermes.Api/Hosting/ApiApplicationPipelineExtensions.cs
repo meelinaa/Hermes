@@ -18,8 +18,15 @@ using Hermes.Domain.Exceptions;
 
 namespace Hermes.Api.Hosting;
 
+/// <summary>
+/// Extension methods for configuring the ASP.NET Core HTTP request processing pipeline for Hermes API.
+/// </summary>
 public static class ApiApplicationPipelineExtensions
 {
+    /// <summary>
+    /// Configures the HTTP request pipeline including correlation middleware, exception handling, rate limiting, authentication, and endpoint mapping.
+    /// </summary>
+    /// <param name="app">The WebApplication host instance.</param>
     public static void UseHermesApiPipeline(this WebApplication app)
     {
         app.UseMiddleware<CorrelationIdMiddleware>();
@@ -112,7 +119,7 @@ public static class ApiApplicationPipelineExtensions
                         ProblemDetails = new ProblemDetails
                         {
                             Type = HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD,
-                            Title = "Aktuelles Passwort ungültig",
+                            Title = "Invalid current password",
                             Detail = wcp.Message,
                             Status = StatusCodes.Status400BadRequest
                         }
@@ -224,6 +231,9 @@ public static class ApiApplicationPipelineExtensions
         app.MapControllers();
     }
 
+    /// <summary>
+    /// Constructs a minimal <see cref="ProblemDetails"/> instance with specified title and status code.
+    /// </summary>
     private static ProblemDetails CreateMinimalProblem(string title, int status) => new()
     {
         Title = title,
