@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 
 using Microsoft.Extensions.Logging;
+using Hermes.Application.Logging;
 using Microsoft.Extensions.Options;
 
 using Hermes.Application.DTOs.Email;
@@ -104,12 +105,12 @@ public sealed class VerificationDigestService(
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("Verification e-mail sending for user {UserId} was canceled.", userId);
+            _logger.LogVerificationCanceled(userId);
             throw;
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Failed to send verification e-mail for user {UserId}.", userId);
+            _logger.LogVerificationFailed(exception, userId);
             throw;
         }
     }

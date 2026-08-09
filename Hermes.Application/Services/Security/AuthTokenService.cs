@@ -7,6 +7,7 @@ using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Hermes.Application.Logging;
 
 namespace Hermes.Application.Services.Security;
 
@@ -63,7 +64,7 @@ public sealed class AuthTokenService(
         if (old.RevokedAt != null || old.ExpiresAt <= DateTime.UtcNow)
         {
             string shortHash = hash.Length > 8 ? hash[..8] + "..." : hash;
-            logger.LogWarning("Replay detected: Attempt to rotate revoked or expired token. UserId: {UserId}, TokenHash: {TokenHash}", old.UserId, shortHash);
+            logger.LogReplayDetected(old.UserId, shortHash);
             await db.RevokeTokenFamilyAsync(old, cancellationToken).ConfigureAwait(false);
             return null;
         }

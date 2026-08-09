@@ -17,6 +17,7 @@ using Hermes.Notifications.Sending.HtmlLayout.Services;
 using Hermes.Notifications.Sending.Providers;
 using Hermes.Worker.Filters.Hangfire;
 using Hermes.Worker.Services.Scheduling;
+using Hermes.Worker.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Worker.Hosting;
@@ -95,15 +96,10 @@ public static class WorkerServiceCollectionExtensions
     {
         ILogger logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Hermes.Worker");
         EmailOptions smtp = host.Services.GetRequiredService<EmailOptions>();
-        logger.LogInformation(
-            "SMTP: {Host}:{Port} (SSL={Ssl}), From={From} — für lokales MailHog typisch Port 1025.",
-            smtp.Host,
-            smtp.Port,
-            smtp.EnableSsl,
-            smtp.DefaultFromAddress);
+        logger.LogSmtpInfo(smtp.Host, smtp.Port, smtp.EnableSsl, smtp.DefaultFromAddress);
 
         MailHogOptions? mailHog = host.Services.GetService<Microsoft.Extensions.Options.IOptions<MailHogOptions>>()?.Value;
         if (mailHog is not null && !string.IsNullOrWhiteSpace(mailHog.BaseUrl))
-            logger.LogInformation("MailHog-Web-UI: {BaseUrl}", mailHog.BaseUrl.TrimEnd('/'));
+            logger.LogMailHogWebUi(mailHog.BaseUrl.TrimEnd('/'));
     }
 }

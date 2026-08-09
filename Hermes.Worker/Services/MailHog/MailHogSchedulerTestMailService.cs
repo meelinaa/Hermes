@@ -1,5 +1,6 @@
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.Options.Email;
+using Hermes.Worker.Logging;
 using Hermes.Application.Ports.Outbound;
 using Microsoft.Extensions.Logging;
 
@@ -40,8 +41,6 @@ public static class MailHogSchedulerTestMailService
                 cancellationToken)
             .ConfigureAwait(false);
 
-        logger.LogInformation(
-            "[MailHog] Scheduler-Testmail gesendet an {Address} (Absender wie in Email:DefaultFromAddress).",
-            smtp.DefaultFromAddress);
+        logger.LogTestMailSent(smtp.DefaultFromAddress);
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 
 using Hermes.Application.Constants;
 using Hermes.Application.Ports.Outbound;
+using Hermes.Infrastructure.Logging;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 
@@ -16,8 +17,6 @@ public sealed class NewsletterSchedulerJobService(JobStorage jobStorage, ILogger
     public void RequestRunAfterNewsMutation()
     {
         new RecurringJobManager(jobStorage).TriggerJob(RecurringJobConstants.ID);
-        logger.LogInformation(
-            "Newsletter scheduler execution requested manually for job {JobId}",
-            RecurringJobConstants.ID);
+        logger.LogManualSchedulerExecutionRequested(RecurringJobConstants.ID);
     }
 }

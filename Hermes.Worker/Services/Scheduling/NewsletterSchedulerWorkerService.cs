@@ -9,6 +9,7 @@ using Hermes.Notifications.Receiving.Options;
 using Hermes.Worker.Services.MailHog;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Hermes.Worker.Logging;
 
 namespace Hermes.Worker.Services.Scheduling;
 
@@ -39,12 +40,7 @@ public sealed class NewsletterSchedulerWorkerService(
         DateTime slotStartUtc = NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
         DateTimeOffset wallStamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _newsletterTimeZone);
 
-        logger.LogInformation(
-            "[NewsletterSchedulerWorkerService] === Run START === wall-now (newsletter TZ={TzId})={Wall:o} | minute start wall={SlotWall:o} | slotUtc={SlotUtc:o} | source=UtcNow→TZ",
-            _newsletterTimeZone.Id,
-            wallNow,
-            slotStartWall,
-            slotStartUtc);
+        logger.LogRunStart(_newsletterTimeZone.Id, wallNow, slotStartWall, slotStartUtc);
 
         DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
 
@@ -54,24 +50,17 @@ public sealed class NewsletterSchedulerWorkerService(
 
         if (due.Count > 0)
         {
-            logger.LogInformation(
-                "[NewsletterSchedulerWorkerService] Found {Count} due newsletter subscription items. Enqueuing jobs for SubscriptionIds: {SubscriptionIds}",
-                due.Count,
-                string.Join(", ", due.Select(d => d.NewsId)));
+            logger.LogFoundDueItems(due.Count, string.Join(", ", due.Select(d => d.NewsId)));
         }
 
         foreach ((int newsId, int userId) in due)
         {
             string? jobId = backgroundJobClient.Enqueue<NotificationJobService>(notificationJobs =>
                 notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
-            logger.LogDebug(
-                "[NewsletterSchedulerWorkerService] Enqueued NotificationJobService newsId={NewsId} userId={UserId}, Hangfire job id={JobId}.",
-                newsId,
-                userId,
-                jobId);
+            logger.LogJobEnqueued(newsId, userId, jobId);
         }
 
-        logger.LogInformation("[NewsletterSchedulerWorkerService] === Run END === slotUtc={Slot:o} | due jobs={DueCount}", slotStartUtc, due.Count);
+        logger.LogRunEnd(slotStartUtc, due.Count);
 
         if (mailHogOptions.Value.SendSchedulerTestMailEachMinute)
         {
@@ -87,11 +76,11 @@ public sealed class NewsletterSchedulerWorkerService(
             }
             catch (OperationCanceledException)
             {
-                logger.LogInformation("[NewsletterSchedulerWorkerService] Testmail-Versand aufgrund von Cancellation abgebrochen.");
+                logger.LogTestMailCanceled();
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "[NewsletterSchedulerWorkerService] MailHog-Scheduler-Testmail fehlgeschlagen.");
+                logger.LogTestMailFailed(ex);
             }
         }
     }

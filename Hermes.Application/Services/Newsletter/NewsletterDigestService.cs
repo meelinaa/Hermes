@@ -10,6 +10,7 @@ using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using Hermes.Application.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hermes.Application.Services.Newsletter;
@@ -129,13 +130,13 @@ public sealed class NewsletterDigestService(
             }
             catch (OperationCanceledException)
             {
-                logger.LogWarning("Newsletter digest sending for user {UserId}, news {NewsId} was canceled.", userId, newsId);
+                logger.LogNewsletterDigestCanceled(userId, newsId);
                 advanceDigestSlot = true;
                 throw;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to send newsletter digest for user {UserId}, news {NewsId}.", userId, newsId);
+                logger.LogNewsletterDigestFailed(ex, userId, newsId);
                 await notificationLogs.SetNotificationLogAsync(
                     new NotificationLog
                     {
