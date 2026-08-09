@@ -34,7 +34,7 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Cache NuGet Packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
@@ -67,7 +67,7 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Cache NuGet Packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
