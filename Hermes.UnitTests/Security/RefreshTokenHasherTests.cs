@@ -11,25 +11,25 @@ public sealed class RefreshTokenHasherTests
     [Fact]
     public void Hash_Should_ReturnUppercaseHex64_ForDeterministicSha256()
     {
-        string hashedToken = RefreshTokenHashService.Hash("abc");
+        string hashedToken = RefreshTokenHashUtility.Hash("abc");
         Assert.Equal(64, hashedToken.Length);
         Assert.Equal(SHA_256_ABC_LOWER_HEX.ToUpperInvariant(), hashedToken);
         Assert.Matches("^[0-9A-F]{64}$", hashedToken);
     }
 
     [Fact]
-    public void Hash_Should_BeDeterministic_ForSamePlaintext() => Assert.Equal(RefreshTokenHashService.Hash(PLAIN), RefreshTokenHashService.Hash(PLAIN));
+    public void Hash_Should_BeDeterministic_ForSamePlaintext() => Assert.Equal(RefreshTokenHashUtility.Hash(PLAIN), RefreshTokenHashUtility.Hash(PLAIN));
 
     [Fact]
-    public void Hash_Should_Differ_ForDifferentPlaintext() => Assert.NotEqual(RefreshTokenHashService.Hash("a"), RefreshTokenHashService.Hash("b"));
+    public void Hash_Should_Differ_ForDifferentPlaintext() => Assert.NotEqual(RefreshTokenHashUtility.Hash("a"), RefreshTokenHashUtility.Hash("b"));
 
     [Fact]
     public void Hash_Should_UseUtf8Bytes_NotAsciiSubstitution()
     {
         string umlaut = "straÃŸe";
-        Assert.NotEqual(RefreshTokenHashService.Hash("strasse"), RefreshTokenHashService.Hash(umlaut));
+        Assert.NotEqual(RefreshTokenHashUtility.Hash("strasse"), RefreshTokenHashUtility.Hash(umlaut));
     }
 
     [Fact]
-    public void Hash_Should_ThrowArgumentNull_WhenPlainTokenNull() => Assert.Throws<ArgumentNullException>(() => RefreshTokenHashService.Hash(null!));
+    public void Hash_Should_ThrowArgumentNull_WhenPlainTokenNull() => Assert.Throws<ArgumentNullException>(() => RefreshTokenHashUtility.Hash(null!));
 }

@@ -45,13 +45,13 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
         builder.Services.AddOptions<EmailOptions>().BindConfiguration(EmailOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value);
-        builder.Services.AddSingleton<IEmailProvider, SmtpEmailProvider>();
+        builder.Services.AddSingleton<IEmailProvider, SmtpEmailClient>();
         builder.Services.AddOptions<MailHogOptions>().BindConfiguration("MailHog").ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddOptions<NewsDataIoOptions>().BindConfiguration("NewsDataIo").ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddOptions<HermesSiteUrlsOptions>().BindConfiguration(HermesSiteUrlsOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddOptions<NewsletterOptions>().BindConfiguration(NewsletterOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddOptions<SecurityOptions>().BindConfiguration(SecurityOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
-        builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoProvider>()
+        builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>()
             .AddStandardResilienceHandler();
         builder.Services.AddSingleton<INewsletterHtmlService, NewsletterHtmlService>();
         builder.Services.AddSingleton<IVerificationHtmlService, VerificationHtmlService>();

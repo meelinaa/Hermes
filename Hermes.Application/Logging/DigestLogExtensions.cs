@@ -5,7 +5,7 @@ namespace Hermes.Application.Logging;
 /// <summary>
 /// Source-generated logger methods for digest and email notifications.
 /// </summary>
-public static partial class DigestLogs
+public static partial class DigestLogExtensions
 {
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "Verification e-mail sending for user {UserId} was canceled.")]
     public static partial void LogVerificationCanceled(this ILogger logger, int userId);

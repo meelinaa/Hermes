@@ -7,7 +7,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 /// <summary>
 /// Infrastructure adapter implementation for enqueuing verification email background jobs into Hangfire.
 /// </summary>
-public sealed class VerificationMailJobService(JobStorage jobStorage)
+public sealed class VerificationMailJobWrapper(JobStorage jobStorage)
     : IVerificationMailJobService
 {
     /// <inheritdoc />

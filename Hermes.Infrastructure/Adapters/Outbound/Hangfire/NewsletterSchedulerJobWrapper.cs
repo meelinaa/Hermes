@@ -10,7 +10,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 /// <summary>
 /// Infrastructure adapter implementation for triggering recurring newsletter scheduling runs in Hangfire.
 /// </summary>
-public sealed class NewsletterSchedulerJobService(JobStorage jobStorage, ILogger<NewsletterSchedulerJobService> logger)
+public sealed class NewsletterSchedulerJobWrapper(JobStorage jobStorage, ILogger<NewsletterSchedulerJobWrapper> logger)
     : INewsletterSchedulerJobService
 {
     /// <inheritdoc />

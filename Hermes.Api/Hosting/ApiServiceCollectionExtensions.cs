@@ -72,7 +72,7 @@ public static class ApiServiceCollectionExtensions
         services.AddOptions<NewsletterOptions>().BindConfiguration(NewsletterOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<SecurityOptions>().BindConfiguration(SecurityOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         services.AddHttpContextAccessor();
-        services.AddSingleton<IVerificationMailJobService, VerificationMailJobService>();
+        services.AddSingleton<IVerificationMailJobService, VerificationMailJobWrapper>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");
 
         services.AddHangfire((sp, config) => config
@@ -80,7 +80,7 @@ public static class ApiServiceCollectionExtensions
             .UseRecommendedSerializerSettings()
             .UseStorage(CreateHangfireJobStorage(configuration))
             .UseFilter(new CorrelationIdClientFilter(sp.GetRequiredService<IHttpContextAccessor>())));
-        services.AddSingleton<INewsletterSchedulerJobService, NewsletterSchedulerJobService>();
+        services.AddSingleton<INewsletterSchedulerJobService, NewsletterSchedulerJobWrapper>();
         Log.Information("Registered Hangfire JobStorage (MySQL) for newsletter scheduler triggers (same DB as Hermes.Worker).");
 
         services.AddControllers(options =>

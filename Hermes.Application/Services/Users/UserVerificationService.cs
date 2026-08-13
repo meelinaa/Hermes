@@ -89,7 +89,7 @@ public sealed class UserVerificationService(
         bool hashingEnabled = securityOptions.Value.HashEmailVerificationCodes;
         if (hashingEnabled && LooksLikeStoredVerificationCodeHash(stored))
         {
-            string expectedHash = RefreshTokenHashService.Hash(providedSixDigit);
+            string expectedHash = RefreshTokenHashUtility.Hash(providedSixDigit);
             ReadOnlySpan<byte> a = Encoding.UTF8.GetBytes(stored);
             ReadOnlySpan<byte> b = Encoding.UTF8.GetBytes(expectedHash);
             return CryptographicOperations.FixedTimeEquals(a, b);

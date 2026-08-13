@@ -42,7 +42,7 @@ public sealed class AuthTokenServiceTests
         Assert.False(string.IsNullOrEmpty(result.RefreshToken));
         Assert.NotNull(captured);
         Assert.Equal(3, captured!.UserId);
-        Assert.Equal(RefreshTokenHashService.Hash(result.RefreshToken), captured.TokenHash);
+        Assert.Equal(RefreshTokenHashUtility.Hash(result.RefreshToken), captured.TokenHash);
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(3, "a@test.example", "Alice"), Times.Once);
         db.Verify(dataStore => dataStore.AddRefreshTokenAsync(captured, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -85,7 +85,7 @@ public sealed class AuthTokenServiceTests
     public async Task RotateAsync_Should_Abort_WhenStoredSessionHasNoUserNavigation()
     {
         string plain = "token";
-        string hash = RefreshTokenHashService.Hash(plain);
+        string hash = RefreshTokenHashUtility.Hash(plain);
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new RefreshToken { UserId = 1, TokenHash = hash, User = null });
@@ -100,7 +100,7 @@ public sealed class AuthTokenServiceTests
     public async Task RotateAsync_Should_CompleteRotation_WithNewRefreshMaterial_AndRevokeOldPlain()
     {
         string plainOld = "old-refresh-plain";
-        string hashOld = RefreshTokenHashService.Hash(plainOld);
+        string hashOld = RefreshTokenHashUtility.Hash(plainOld);
         RefreshToken oldRow = new()
         {
             Id = 10,
@@ -134,7 +134,7 @@ public sealed class AuthTokenServiceTests
         db.Verify(
             dataStore => dataStore.CompleteRefreshRotationAsync(
                 oldRow,
-                It.Is<RefreshToken>(nr => nr.UserId == 7 && nr.TokenHash == RefreshTokenHashService.Hash(result.RefreshToken)),
+                It.Is<RefreshToken>(nr => nr.UserId == 7 && nr.TokenHash == RefreshTokenHashUtility.Hash(result.RefreshToken)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -143,7 +143,7 @@ public sealed class AuthTokenServiceTests
     public async Task RotateAsync_Should_ReturnNull_WhenRotationNotClaimed()
     {
         string plainOld = "concurrent-loser";
-        string hashOld = RefreshTokenHashService.Hash(plainOld);
+        string hashOld = RefreshTokenHashUtility.Hash(plainOld);
         RefreshToken oldRow = new()
         {
             Id = 99,
@@ -175,7 +175,7 @@ public sealed class AuthTokenServiceTests
     public async Task RotateAsync_Should_RevokeFamily_WhenReplayDetected()
     {
         string plainOld = "revoked-refresh-plain";
-        string hashOld = RefreshTokenHashService.Hash(plainOld);
+        string hashOld = RefreshTokenHashUtility.Hash(plainOld);
         RefreshToken oldRow = new()
         {
             Id = 10,
@@ -207,7 +207,7 @@ public sealed class AuthTokenServiceTests
     {
         // Arrange
         string plainOld = "expired-refresh-plain";
-        string hashOld = RefreshTokenHashService.Hash(plainOld);
+        string hashOld = RefreshTokenHashUtility.Hash(plainOld);
         RefreshToken oldRow = new()
         {
             Id = 11,
@@ -278,7 +278,7 @@ public sealed class AuthTokenServiceTests
     public async Task TryRevokeRefreshForUserAsync_Should_NotRevokeForeignSession()
     {
         string plain = "secret";
-        string hash = RefreshTokenHashService.Hash(plain);
+        string hash = RefreshTokenHashUtility.Hash(plain);
         RefreshToken row = new() { UserId = 5, TokenHash = hash };
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
@@ -293,7 +293,7 @@ public sealed class AuthTokenServiceTests
     public async Task TryRevokeRefreshForUserAsync_Should_Revoke_WhenHashMatchesAuthenticatedUser()
     {
         string plain = "secret";
-        string hash = RefreshTokenHashService.Hash(plain);
+        string hash = RefreshTokenHashUtility.Hash(plain);
         RefreshToken row = new() { UserId = 12, TokenHash = hash };
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))

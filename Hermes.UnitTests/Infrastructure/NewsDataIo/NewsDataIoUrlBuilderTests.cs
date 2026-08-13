@@ -7,22 +7,22 @@ namespace Hermes.UnitTests.Infrastructure.NewsDataIo;
 public sealed class NewsDataIoUrlBuilderTests
 {
     [Fact]
-    public void Build_ThrowsArgumentNull_WhenPartsNull() => Assert.Throws<ArgumentNullException>(() => NewsDataIoUrlBuilder.Build(null!));
+    public void Build_ThrowsArgumentNull_WhenPartsNull() => Assert.Throws<ArgumentNullException>(() => NewsDataIoUrlUtility.Build(null!));
 
     [Fact]
     public void Build_Throws_WhenApiKeyMissing()
     {
         Assert.Throws<ArgumentException>(() =>
-            NewsDataIoUrlBuilder.Build(new ApiUrlPartsDto { ApiKey = "" }));
+            NewsDataIoUrlUtility.Build(new ApiUrlPartsDto { ApiKey = "" }));
 
         Assert.Throws<ArgumentException>(() =>
-            NewsDataIoUrlBuilder.Build(new ApiUrlPartsDto { ApiKey = "   " }));
+            NewsDataIoUrlUtility.Build(new ApiUrlPartsDto { ApiKey = "   " }));
     }
 
     [Fact]
     public void Build_StartsWithBaseAndEscapedApiKey()
     {
-        string url = NewsDataIoUrlBuilder.Build(new ApiUrlPartsDto { ApiKey = "key+with&ampersand" });
+        string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto { ApiKey = "key+with&ampersand" });
 
         Assert.StartsWith("https://newsdata.io/api/1/latest?", url, StringComparison.Ordinal);
         Assert.Contains("apikey=key%2Bwith%26ampersand", url, StringComparison.Ordinal);
@@ -31,7 +31,7 @@ public sealed class NewsDataIoUrlBuilderTests
     [Fact]
     public void Build_AppendsCommaSeparatedLists_AndOptionalParameters()
     {
-        string url = NewsDataIoUrlBuilder.Build(new ApiUrlPartsDto
+        string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto
         {
             ApiKey = "k",
             Countries = ["de", " at "],
@@ -59,7 +59,7 @@ public sealed class NewsDataIoUrlBuilderTests
     [Fact]
     public void Build_SkipsNullOrEmptyCommaSeparatedSegments()
     {
-        string url = NewsDataIoUrlBuilder.Build(new ApiUrlPartsDto
+        string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto
         {
             ApiKey = "k",
             Countries = ["", "  ", "fr"],
@@ -72,7 +72,7 @@ public sealed class NewsDataIoUrlBuilderTests
     [Fact]
     public void Build_OmitsOptionalInts_WhenNull()
     {
-        string url = NewsDataIoUrlBuilder.Build(new ApiUrlPartsDto { ApiKey = "k", Image = null, RemoveDuplicate = null });
+        string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto { ApiKey = "k", Image = null, RemoveDuplicate = null });
 
         Assert.DoesNotContain("image=", url);
         Assert.DoesNotContain("removeduplicate=", url);

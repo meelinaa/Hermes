@@ -10,7 +10,7 @@
 @using Hermes.WebFrontend.Client.Services.User
 @inject HttpClient Http
 @inject AuthTokenStore AuthTokens
-@inject NewsSubscriptionListStore NewsListCache
+@inject NewsSubscriptionApiClient NewsListCache
 
 <div class="news-settings-panel">
     @if (!showForm)

@@ -11,21 +11,21 @@ namespace Hermes.Notifications.Receiving.Providers;
 /// <summary>
 /// MailHog email provider for inspecting and retrieving dev emails via the MailHog HTTP REST API.
 /// </summary>
-public sealed class MailHogEmailProvider : IMailHogEmailReader, IDisposable
+public sealed class MailHogEmailClient : IMailHogEmailReader, IDisposable
 {
     private const int PAGE_SIZE = 250;
 
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
-    private readonly MailHogEnvelopeProvider _envelopeReader;
+    private readonly MailHogEnvelopeUtility _envelopeReader;
     private readonly MailHogMessageMapper _messageMapper;
     private bool _disposed;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MailHogEmailProvider"/> class with the specified MailHog options.
+    /// Initializes a new instance of the <see cref="MailHogEmailClient"/> class with the specified MailHog options.
     /// </summary>
     /// <param name="settings">The MailHog configuration settings.</param>
-    public MailHogEmailProvider(MailHogOptions settings)
+    public MailHogEmailClient(MailHogOptions settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 

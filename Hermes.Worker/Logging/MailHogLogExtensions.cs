@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Hermes.Worker.Logging;
 
-public static partial class MailHogLogs
+public static partial class MailHogLogExtensions
 {
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "[MailHog] Scheduler-Testmail gesendet an {Address} (Absender wie in Email:DefaultFromAddress).")]
     public static partial void LogTestMailSent(this ILogger logger, string address);

@@ -5,7 +5,7 @@ namespace Hermes.Api.Services;
 /// <summary>
 /// Console Serilog bootstrap logger service initialized prior to full host/appsettings configuration.
 /// </summary>
-public static class SerilogBootstrapService
+public static class SerilogBootstrapHelper
 {
     /// <summary>
     /// Creates the initial Serilog console logger configuration.

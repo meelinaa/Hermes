@@ -5,7 +5,7 @@ namespace Hermes.Notifications.Receiving.MailHog;
 /// <summary>
 /// Internal provider for extracting messages list from MailHog response envelopes.
 /// </summary>
-internal sealed class MailHogEnvelopeProvider
+internal sealed class MailHogEnvelopeUtility
 {
     /// <summary>
     /// Extracts the list of MailHog message DTOs from an envelope response.

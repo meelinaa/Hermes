@@ -134,7 +134,7 @@ public sealed class UserVerificationServiceTests
             .ReturnsAsync(new User
             {
                 Id = 1,
-                TwoFactorCode = RefreshTokenHashService.Hash("123456"),
+                TwoFactorCode = RefreshTokenHashUtility.Hash("123456"),
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(-5),
             });
 
@@ -154,7 +154,7 @@ public sealed class UserVerificationServiceTests
             .ReturnsAsync(new User
             {
                 Id = 1,
-                TwoFactorCode = RefreshTokenHashService.Hash("999999"),
+                TwoFactorCode = RefreshTokenHashUtility.Hash("999999"),
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(10),
             });
 
@@ -174,7 +174,7 @@ public sealed class UserVerificationServiceTests
             .ReturnsAsync(new User
             {
                 Id = 8,
-                TwoFactorCode = RefreshTokenHashService.Hash("123456"),
+                TwoFactorCode = RefreshTokenHashUtility.Hash("123456"),
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
             });
         db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(8, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);

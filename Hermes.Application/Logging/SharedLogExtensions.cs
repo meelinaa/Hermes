@@ -5,7 +5,7 @@ namespace Hermes.Application.Logging;
 /// <summary>
 /// Provides shared, cross-cutting source-generated logger methods for common application errors.
 /// </summary>
-public static partial class SharedLogs
+public static partial class SharedLogExtensions
 {
     /// <summary>
     /// Logs a generic error message indicating that an unexpected operation failure occurred.

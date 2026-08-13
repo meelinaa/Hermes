@@ -4,7 +4,7 @@ using Serilog.Enrichers.Span;
 
 namespace Hermes.Worker.Hosting;
 
-public static class WorkerSerilogHostBuilderExtensions
+public static class WorkerSerilogBootstrapHelper
 {
     public static HostApplicationBuilder UseHermesWorkerSerilog(this HostApplicationBuilder builder)
     {

@@ -4,7 +4,7 @@ using Hermes.Domain.Enums;
 namespace Hermes.Infrastructure.Adapters.Outbound.Scheduling;
 
 /// <summary>Computes the next UTC instant for a newsletter digest given weekday/time-of-day rules in a time zone.</summary>
-public static class NewsletterNextRunService
+public static class NewsletterNextRunUtility
 {
     /// <summary>Returns the earliest scheduled send strictly after <paramref name="referenceUtcExclusive"/>.</summary>
     public static DateTime? ComputeNextOccurrenceUtcAfter(

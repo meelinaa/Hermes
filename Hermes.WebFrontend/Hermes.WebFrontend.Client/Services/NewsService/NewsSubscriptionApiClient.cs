@@ -9,7 +9,7 @@ namespace Hermes.WebFrontend.Client.Services.NewsService;
 /// Loads paged news list responses from the API. <see cref="Invalidate"/> is a no-op kept for logout hooks;
 /// list data is not cached between calls.
 /// </summary>
-public sealed class NewsSubscriptionListStore
+public sealed class NewsSubscriptionApiClient
 {
     /// <summary>Clears any client-side list state (hook for logout; no in-memory list cache).</summary>
     public void Invalidate()

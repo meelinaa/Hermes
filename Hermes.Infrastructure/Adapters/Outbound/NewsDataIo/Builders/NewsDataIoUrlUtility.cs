@@ -6,7 +6,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Builders;
 /// <summary>
 /// Builds query URLs for the NewsData.io latest endpoint from structured request parts.
 /// </summary>
-public static class NewsDataIoUrlBuilder
+public static class NewsDataIoUrlUtility
 {
     private const string BASE_URL = "https://newsdata.io/api/1/latest?";
 

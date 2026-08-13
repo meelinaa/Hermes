@@ -13,15 +13,15 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<AuthTokenStore>();
 builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<AuthLogoutService>();
-builder.Services.AddSingleton<UserProfileRefreshService>();
-builder.Services.AddScoped<NewsSubscriptionListStore>();
+builder.Services.AddSingleton<UserProfileRefreshStore>();
+builder.Services.AddScoped<NewsSubscriptionApiClient>();
 
 builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
 
 builder.Services.AddScoped(sp =>
 {
     AuthTokenStore store = sp.GetRequiredService<AuthTokenStore>();
-    AuthMessageHandler pipeline = new(store) { InnerHandler = new HttpClientHandler() };
+    AuthMessageMiddleware pipeline = new(store) { InnerHandler = new HttpClientHandler() };
     HttpClient client = new(pipeline);
     HermesApiHttp.ConfigureBaseAddress(client, sp);
     return client;

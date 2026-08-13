@@ -8,7 +8,7 @@ namespace Hermes.Notifications.Sending.HtmlLayout.Builders;
 /// <summary>
 /// Internal builder class for assembling account verification HTML emails.
 /// </summary>
-public class VerificationHtmlBuilder
+public class VerificationHtmlHelper
 {
     /// <summary>
     /// Assembles verification HTML content by substituting DTO values into the embedded Verification.html template.
@@ -22,7 +22,7 @@ public class VerificationHtmlBuilder
     {
         ArgumentNullException.ThrowIfNull(verificationContent);
 
-        Assembly assembly = typeof(VerificationHtmlBuilder).Assembly;
+        Assembly assembly = typeof(VerificationHtmlHelper).Assembly;
 
         string? verificationTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "Verification.html", cancellationToken).ConfigureAwait(false);
 

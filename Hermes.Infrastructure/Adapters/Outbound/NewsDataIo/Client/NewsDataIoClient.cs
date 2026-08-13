@@ -10,7 +10,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Providers;
 /// HTTP client adapter for retrieving latest news articles from the NewsData.io REST API.
 /// </summary>
 /// <param name="httpClient">The HTTP client instance.</param>
-public sealed class NewsDataIoProvider(HttpClient httpClient) : INewsArticleProvider
+public sealed class NewsDataIoClient(HttpClient httpClient) : INewsArticleProvider
 {
     /// <summary>
     /// Fetches latest articles for the supplied query and maps them into application news article models.
@@ -35,7 +35,7 @@ public sealed class NewsDataIoProvider(HttpClient httpClient) : INewsArticleProv
             ExcludeField = query.ExcludeField
         };
 
-        string url = NewsDataIoUrlBuilder.Build(urlParts);
+        string url = NewsDataIoUrlUtility.Build(urlParts);
         HttpResponseMessage response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
             return [];

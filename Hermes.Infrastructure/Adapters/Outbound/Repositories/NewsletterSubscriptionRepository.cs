@@ -234,7 +234,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (row.SendOnWeekdays.Count == 0 || row.SendAtTimes.Count == 0)
             return;
 
-        DateTime? next = NewsletterNextRunService.ComputeNextOccurrenceUtcAfter(
+        DateTime? next = NewsletterNextRunUtility.ComputeNextOccurrenceUtcAfter(
             row.SendOnWeekdays,
             row.SendAtTimes,
             newsletterTimeZone,

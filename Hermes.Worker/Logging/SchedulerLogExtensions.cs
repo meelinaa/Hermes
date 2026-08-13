@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Hermes.Worker.Logging;
 
-public static partial class SchedulerLogs
+public static partial class SchedulerLogExtensions
 {
     [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "[NewsletterSchedulerWorkerService] === Run START === wall-now (newsletter TZ={TzId})={Wall:o} | minute start wall={SlotWall:o} | slotUtc={SlotUtc:o} | source=UtcNow→TZ")]
     public static partial void LogRunStart(this ILogger logger, string tzId, DateTime wall, DateTime slotWall, DateTime slotUtc);

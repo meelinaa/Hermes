@@ -7,7 +7,7 @@ namespace Hermes.Application.Services.Security;
 /// Provides SHA-256 hashing for refresh token plain-text values.
 /// SHA-256 UTF-8 → uppercase hex — never persist the client plaintext.
 /// </summary>
-public static class RefreshTokenHashService
+public static class RefreshTokenHashUtility
 {
     /// <summary>
     /// Hashes a plain-text refresh token using SHA-256 and returns the result as an uppercase hex string.

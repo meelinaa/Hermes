@@ -13,7 +13,7 @@ namespace Hermes.Notifications.Sending.Providers;
 /// Sends e-mail via <see cref="SmtpClient"/> using <see cref="EmailOptions"/>.
 /// </summary>
 /// <param name="settings">The configured email options.</param>
-public sealed class SmtpEmailProvider(EmailOptions settings) : IEmailProvider
+public sealed class SmtpEmailClient(EmailOptions settings) : IEmailProvider
 {
     private readonly ResiliencePipeline _pipeline = new ResiliencePipelineBuilder()
         .AddRetry(new RetryStrategyOptions

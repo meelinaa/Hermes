@@ -9,7 +9,7 @@ namespace Hermes.Notifications.Sending.HtmlLayout.Builders;
 /// <summary>
 /// Internal builder class for assembling newsletter HTML bodies from header, item, and footer components.
 /// </summary>
-public sealed class NewsletterHtmlBuilder
+public sealed class NewsletterHtmlHelper
 {
     /// <summary>
     /// Assembles full HTML content by substituting DTO values into embedded HTML templates.
@@ -29,7 +29,7 @@ public sealed class NewsletterHtmlBuilder
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(footer);
 
-        Assembly assembly = typeof(NewsletterHtmlBuilder).Assembly;
+        Assembly assembly = typeof(NewsletterHtmlHelper).Assembly;
 
         string? headerTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "NewsletterHeader.html", cancellationToken).ConfigureAwait(false);
         string? itemTpl = await EmbeddedTemplateProvider.ReadEmbeddedTemplateAsync(assembly, "NewsletterItem.html", cancellationToken).ConfigureAwait(false);

@@ -8,7 +8,7 @@ namespace Hermes.Notifications.Sending.HtmlLayout.Services;
 
 /// <summary>
 /// Produces newsletter HTML by mapping Application-layer render requests
-/// to the internal <see cref="NewsletterHtmlBuilder"/> templates.
+/// to the internal <see cref="NewsletterHtmlHelper"/> templates.
 /// Keeps HTML templating concerns inside the Notifications boundary.
 /// </summary>
 public sealed class NewsletterHtmlService : INewsletterHtmlService
@@ -18,7 +18,7 @@ public sealed class NewsletterHtmlService : INewsletterHtmlService
 
     /// <summary>
     /// Renders a complete newsletter HTML body from the supplied request data
-    /// by delegating to <see cref="NewsletterHtmlBuilder"/>.
+    /// by delegating to <see cref="NewsletterHtmlHelper"/>.
     /// </summary>
     /// <param name="request">The newsletter render request DTO.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -63,7 +63,7 @@ public sealed class NewsletterHtmlService : INewsletterHtmlService
             DeaboUrl: "#",
             SettingsUrl: "#");
 
-        return await NewsletterHtmlBuilder
+        return await NewsletterHtmlHelper
             .BuildAsync(header, items, footer, cancellationToken)
             .ConfigureAwait(false);
     }
