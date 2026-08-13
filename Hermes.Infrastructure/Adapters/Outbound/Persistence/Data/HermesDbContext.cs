@@ -54,42 +54,42 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             entity.Property(newsEntity => newsEntity.Keywords)
                 .HasConversion(
                     keywordValues => keywordValues == null ? null : JsonSerializer.Serialize(keywordValues, (JsonSerializerOptions?)null),
-                    serializedKeywords => string.IsNullOrEmpty(serializedKeywords) ? null : JsonSerializer.Deserialize<List<string>>(serializedKeywords, (JsonSerializerOptions?)null));
+                    serializedKeywords => string.IsNullOrEmpty(serializedKeywords) ? null : JsonSerializer.Deserialize<IReadOnlyList<string>>(serializedKeywords, (JsonSerializerOptions?)null));
 
             entity.Property(newsEntity => newsEntity.Category)
                 .HasConversion(
                     categoryValues => categoryValues == null ? null : JsonSerializer.Serialize(categoryValues, HermesJsonOptions._forEnums),
                     serializedCategories => string.IsNullOrEmpty(serializedCategories)
                         ? null
-                        : JsonSerializer.Deserialize<List<NewsCategory>>(serializedCategories, HermesJsonOptions._forEnums));
+                        : JsonSerializer.Deserialize<IReadOnlyList<NewsCategory>>(serializedCategories, HermesJsonOptions._forEnums));
 
             entity.Property(newsEntity => newsEntity.Languages)
                 .HasConversion(
                     languageValues => languageValues == null ? null : JsonSerializer.Serialize(languageValues, HermesJsonOptions._forEnums),
                     serializedLanguages => string.IsNullOrEmpty(serializedLanguages)
                         ? null
-                        : JsonSerializer.Deserialize<List<Language>>(serializedLanguages, HermesJsonOptions._forEnums));
+                        : JsonSerializer.Deserialize<IReadOnlyList<Language>>(serializedLanguages, HermesJsonOptions._forEnums));
 
             entity.Property(newsEntity => newsEntity.Countries)
                 .HasConversion(
                     countryValues => countryValues == null ? null : JsonSerializer.Serialize(countryValues, HermesJsonOptions._forEnums),
                     serializedCountries => string.IsNullOrEmpty(serializedCountries)
                         ? null
-                        : JsonSerializer.Deserialize<List<Country>>(serializedCountries, HermesJsonOptions._forEnums));
+                        : JsonSerializer.Deserialize<IReadOnlyList<Country>>(serializedCountries, HermesJsonOptions._forEnums));
 
             entity.Property(newsEntity => newsEntity.SendOnWeekdays)
                 .HasConversion(
                     weekdayValues => JsonSerializer.Serialize(weekdayValues ?? new List<Weekdays>(), HermesJsonOptions._forEnums),
                     serializedWeekdays => string.IsNullOrWhiteSpace(serializedWeekdays)
-                        ? new List<Weekdays>()
-                        : JsonSerializer.Deserialize<List<Weekdays>>(serializedWeekdays, HermesJsonOptions._forEnums) ?? new List<Weekdays>());
+                        ? Array.Empty<Weekdays>()
+                        : JsonSerializer.Deserialize<IReadOnlyList<Weekdays>>(serializedWeekdays, HermesJsonOptions._forEnums) ?? Array.Empty<Weekdays>());
 
             entity.Property(newsEntity => newsEntity.SendAtTimes)
                 .HasConversion(
                     sendAtTimes => JsonSerializer.Serialize(sendAtTimes ?? new List<TimeOnly>(), (JsonSerializerOptions?)null),
                     serializedSendAtTimes => string.IsNullOrWhiteSpace(serializedSendAtTimes)
-                        ? new List<TimeOnly>()
-                        : JsonSerializer.Deserialize<List<TimeOnly>>(serializedSendAtTimes, (JsonSerializerOptions?)null) ?? new List<TimeOnly>());
+                        ? Array.Empty<TimeOnly>()
+                        : JsonSerializer.Deserialize<IReadOnlyList<TimeOnly>>(serializedSendAtTimes, (JsonSerializerOptions?)null) ?? Array.Empty<TimeOnly>());
 
             entity.Property(newsEntity => newsEntity.NextDigestSlotUtc);
             entity.HasIndex(newsEntity => newsEntity.NextDigestSlotUtc);

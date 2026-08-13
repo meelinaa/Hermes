@@ -22,32 +22,32 @@ public class NewsletterSubscription
     /// <summary>
     /// Gets or sets the list of keywords to search for articles.
     /// </summary>
-    public List<string>? Keywords { get; private set; }
+    public IReadOnlyList<string>? Keywords { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of news categories included in the newsletter.
     /// </summary>
-    public List<NewsCategory>? Category { get; private set; }
+    public IReadOnlyList<NewsCategory>? Category { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of languages for the newsletter articles.
     /// </summary>
-    public List<Language>? Languages { get; private set; }
+    public IReadOnlyList<Language>? Languages { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of countries for the newsletter articles.
     /// </summary>
-    public List<Country>? Countries { get; private set; }
+    public IReadOnlyList<Country>? Countries { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of weekdays when the newsletter should be sent.
     /// </summary>
-    public List<Weekdays> SendOnWeekdays { get; private set; } = [];
+    public IReadOnlyList<Weekdays> SendOnWeekdays { get; private set; } = [];
 
     /// <summary>
     /// Gets or sets the list of times in a day when the newsletter should be sent.
     /// </summary>
-    public List<TimeOnly> SendAtTimes { get; private set; } = [];
+    public IReadOnlyList<TimeOnly> SendAtTimes { get; private set; } = [];
 
     /// <summary>
     /// Gets or sets a value indicating whether this newsletter subscription is currently enabled.
@@ -95,7 +95,7 @@ public class NewsletterSubscription
         schedule.ApplyToSubscription(this);
     }
 
-    internal void SetSchedule(List<Weekdays> weekdays, List<TimeOnly> times)
+    internal void SetSchedule(IReadOnlyList<Weekdays> weekdays, IReadOnlyList<TimeOnly> times)
     {
         SendOnWeekdays = weekdays;
         SendAtTimes = times;
