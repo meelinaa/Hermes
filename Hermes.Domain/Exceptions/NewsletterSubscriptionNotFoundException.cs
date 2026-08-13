@@ -1,10 +1,10 @@
-namespace Hermes.Domain.Exceptions;
+﻿namespace Hermes.Domain.Exceptions;
 
 /// <summary>
 /// Exception thrown when a requested newsletter subscription entry was not found in the system.
 /// Maps to HTTP 404 at the API boundary.
 /// </summary>
-public sealed class NewsletterSubscriptionNotFoundException : Exception
+public sealed class NewsletterSubscriptionNotFoundException : DomainException
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="NewsletterSubscriptionNotFoundException"/> class with a default message.

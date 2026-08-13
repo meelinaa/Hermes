@@ -1,3 +1,4 @@
+﻿using Hermes.Domain.Exceptions;
 using System;
 using System.Collections.Generic;
 using Hermes.Domain.Events;
@@ -27,9 +28,9 @@ public class User : AggregateRoot
     public static User Create(string name, Email email, string passwordHash)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Name is required.", nameof(name));
+            throw new DomainValidationException("Name is required.");
         if (string.IsNullOrWhiteSpace(passwordHash))
-            throw new ArgumentException("PasswordHash is required.", nameof(passwordHash));
+            throw new DomainValidationException("PasswordHash is required.");
         
         return new User(name.Trim(), email, passwordHash);
     }
@@ -49,7 +50,7 @@ public class User : AggregateRoot
     public void Rename(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Name is required.", nameof(name));
+            throw new DomainValidationException("Name is required.");
         Name = name.Trim();
     }
 
@@ -74,14 +75,14 @@ public class User : AggregateRoot
     public void ReplacePasswordHash(string bcryptHash)
     {
         if (string.IsNullOrWhiteSpace(bcryptHash))
-            throw new ArgumentException("Password hash cannot be empty.", nameof(bcryptHash));
+            throw new DomainValidationException("Password hash cannot be empty.");
         PasswordHash = bcryptHash;
     }
 
     public void EnableTwoFactor(string code, DateTime expiry)
     {
         if (string.IsNullOrWhiteSpace(code))
-            throw new ArgumentException("Code darf nicht leer sein.", nameof(code));
+            throw new DomainValidationException("Code darf nicht leer sein.");
         
         TwoFactorCode = code;
         TwoFactorExpiry = expiry;

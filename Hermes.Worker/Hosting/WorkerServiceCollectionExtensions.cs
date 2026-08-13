@@ -1,5 +1,5 @@
 using Hangfire;
-using Hangfire.MySql;
+using Hangfire.Redis.StackExchange;
 using Polly;
 using Polly.Retry;
 using StackExchange.Redis;
@@ -92,10 +92,10 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddHangfire(configuration => configuration
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseStorage(new MySqlStorage(hangfireConnection, new MySqlStorageOptions
+            .UseRedisStorage(redisConnectionString, new Hangfire.Redis.StackExchange.RedisStorageOptions
             {
-                TablesPrefix = "Hangfire"
-            }))
+                Prefix = "Hangfire:"
+            })
             .UseFilter(new CorrelationIdServerFilter()));
 
         builder.Services.AddHangfireServer();

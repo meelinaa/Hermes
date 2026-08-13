@@ -1,3 +1,5 @@
+using Hermes.Domain.Exceptions;
+
 namespace Hermes.Domain.ValueObjects;
 
 public readonly record struct Email
@@ -11,15 +13,15 @@ public readonly record struct Email
         ArgumentNullException.ThrowIfNull(input);
         string trimmed = input.Trim();
         if (trimmed.Length == 0)
-            throw new ArgumentException("E-mail cannot be empty.", nameof(input));
+            throw new InvalidEmailException("E-mail cannot be empty.");
 
         string v = trimmed.ToLowerInvariant();
         if (v.Length > 254)
-            throw new ArgumentException("E-mail is too long.", nameof(input));
+            throw new InvalidEmailException("E-mail is too long.");
 
         int at = v.IndexOf('@');
         if (at <= 0 || at == v.Length - 1 || v.AsSpan(at + 1).IndexOf('@') >= 0)
-            throw new ArgumentException("Invalid e-mail format.", nameof(input));
+            throw new InvalidEmailException("Invalid e-mail format.");
 
         return new Email(v);
     }

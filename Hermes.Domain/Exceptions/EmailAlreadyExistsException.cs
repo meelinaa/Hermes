@@ -1,7 +1,7 @@
-namespace Hermes.Domain.Exceptions;
+﻿namespace Hermes.Domain.Exceptions;
 
-/// <summary>Registering a duplicate e-mail → map to HTTP 409 at the API boundary.</summary>
-public sealed class EmailAlreadyExistsException : Exception
+/// <summary>Registering a duplicate e-mail â†’ map to HTTP 409 at the API boundary.</summary>
+public sealed class EmailAlreadyExistsException : DomainException
 {
     public EmailAlreadyExistsException()
         : base("This email address is already registered. Please use a different email address.")

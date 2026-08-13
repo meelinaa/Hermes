@@ -1,10 +1,10 @@
-namespace Hermes.Domain.Exceptions;
+﻿namespace Hermes.Domain.Exceptions;
 
 /// <summary>
 /// Exception thrown when a user attempts to access or modify a newsletter subscription they do not own.
 /// Maps to HTTP 403 at the API boundary.
 /// </summary>
-public sealed class NewsletterSubscriptionAccessDeniedException : Exception
+public sealed class NewsletterSubscriptionAccessDeniedException : DomainException
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="NewsletterSubscriptionAccessDeniedException"/> class with a default message.

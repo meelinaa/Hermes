@@ -93,13 +93,24 @@ public sealed class GlobalExceptionHandler(IProblemDetailsService problemDetails
             return true;
         }
 
-        if (exception is ArgumentException argumentException)
+        if (exception is DomainValidationException validationException)
         {
             httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
             await problemDetailsService.WriteAsync(new ProblemDetailsContext
             {
                 HttpContext = httpContext,
-                ProblemDetails = CreateMinimalProblem(argumentException.Message, StatusCodes.Status400BadRequest)
+                ProblemDetails = CreateMinimalProblem(validationException.Message, StatusCodes.Status400BadRequest)
+            });
+            return true;
+        }
+
+        if (exception is DomainException domainException)
+        {
+            httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await problemDetailsService.WriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = httpContext,
+                ProblemDetails = CreateMinimalProblem(domainException.Message, StatusCodes.Status400BadRequest)
             });
             return true;
         }
