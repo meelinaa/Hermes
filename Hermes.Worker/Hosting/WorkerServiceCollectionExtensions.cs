@@ -2,6 +2,7 @@ using Hangfire;
 using Hangfire.MySql;
 using Polly;
 using Polly.Retry;
+using StackExchange.Redis;
 using System.Net.Mail;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Options.Email;
@@ -22,6 +23,7 @@ using Hermes.Worker.Filters.Hangfire;
 using Hermes.Worker.Services.Scheduling;
 using Hermes.Worker.Logging;
 using Microsoft.EntityFrameworkCore;
+using Hermes.Infrastructure.Adapters.Outbound.RateLimiting;
 
 namespace Hermes.Worker.Hosting;
 
@@ -51,8 +53,18 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddSingleton<IEmailProvider, SmtpEmailClient>();
         builder.Services.AddOptions<MailHogOptions>().BindConfiguration("MailHog").ValidateDataAnnotations().ValidateOnStart();
         
+        string? redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+        if (string.IsNullOrWhiteSpace(redisConnectionString))
+            throw new InvalidOperationException("Configure ConnectionStrings:Redis.");
+
+        IConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConnectionString);
+        builder.Services.AddSingleton(redis);
+
         builder.Services.AddResiliencePipeline("smtp-retry", pipelineBuilder =>
         {
+            // Dropping requests if they exceed 5 emails per second across all workers.
+            pipelineBuilder.AddRateLimiter(new RedisRateLimiter(redis, "smtp_global_ratelimit", limit: 5, window: TimeSpan.FromSeconds(1)));
+            
             pipelineBuilder.AddRetry(new RetryStrategyOptions
             {
                 ShouldHandle = new PredicateBuilder().Handle<SmtpException>().Handle<IOException>(),

@@ -6,6 +6,12 @@ services:
       - "1025:1025" # SMTP Port
       - "8025:8025" # Web UI Port
 
+  hermes-redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
   hermes-mysql:
     image: mysql:8.0
     restart: unless-stopped
@@ -74,6 +80,7 @@ services:
       - NewsDataIo__Key=${NEWS_DATA_IO_KEY}
       - Newsletter__TimeZoneId=Europe/Berlin
       - TZ=Europe/Berlin
+      - ConnectionStrings__Redis=hermes-redis:6379
     depends_on:
       hermes-mysql:
         condition: service_healthy
