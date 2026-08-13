@@ -14,6 +14,7 @@ using Serilog;
 using Serilog.Enrichers.Span;
 
 using Hermes.Api.Filters;
+using Hermes.Api.Middleware;
 using Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 using Hermes.Api.Validators.Auth;
 using Hermes.Application.Options.Auth;
@@ -105,6 +106,7 @@ public static class ApiServiceCollectionExtensions
         Log.Information("Added controllers, JWT authentication, FluentValidation, and OpenAPI services");
 
         services.AddProblemDetails();
+        services.AddExceptionHandler<GlobalExceptionHandler>();
 
         string[] allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                                   ?? ["http://localhost:5269", "https://localhost:7016"];
