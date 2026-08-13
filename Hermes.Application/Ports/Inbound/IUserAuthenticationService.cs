@@ -10,5 +10,5 @@ public interface IUserAuthenticationService
 
     Task<LoginResultDto> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default);
 
-    Task UpdateUserAsync(User user, string? currentPasswordPlain = null, CancellationToken cancellationToken = default);
+    Task UpdateUserAsync(int userId, string name, string email, string? newPasswordPlain, string? currentPasswordPlain = null, CancellationToken cancellationToken = default);
 }

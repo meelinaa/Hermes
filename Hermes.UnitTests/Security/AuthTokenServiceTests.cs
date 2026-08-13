@@ -109,7 +109,7 @@ public sealed class AuthTokenServiceTests
             TokenHash = hashOld,
             ExpiresAt = DateTime.UtcNow.AddDays(1),
             CreatedAt = DateTime.UtcNow,
-            User = new User { Id = new UserId(7), Email = "u@example.org", Name = "Uwe" },
+            User = new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" },
         };
 
         Mock<IRefreshTokenRepository> db = new();
@@ -152,7 +152,7 @@ public sealed class AuthTokenServiceTests
             TokenHash = hashOld,
             ExpiresAt = DateTime.UtcNow.AddDays(1),
             CreatedAt = DateTime.UtcNow,
-            User = new User { Id = new UserId(7), Email = "u@example.org", Name = "Uwe" },
+            User = new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" },
         };
 
         Mock<IRefreshTokenRepository> db = new();
@@ -185,7 +185,7 @@ public sealed class AuthTokenServiceTests
             ExpiresAt = DateTime.UtcNow.AddDays(1),
             CreatedAt = DateTime.UtcNow,
             RevokedAt = DateTime.UtcNow.AddMinutes(-5),
-            User = new User { Id = new UserId(7), Email = "u@example.org", Name = "Uwe" },
+            User = new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" },
         };
 
         Mock<IRefreshTokenRepository> db = new();
@@ -217,7 +217,7 @@ public sealed class AuthTokenServiceTests
             ExpiresAt = DateTime.UtcNow.AddMinutes(-10),
             CreatedAt = DateTime.UtcNow.AddDays(-15),
             RevokedAt = null,
-            User = new User { Id = new UserId(8), Email = "e@example.org", Name = "E" },
+            User = new User { Id = new UserId(8), Email = Email.Parse("e@example.org"), Name = "E" },
         };
 
         Mock<IRefreshTokenRepository> db = new();
@@ -317,3 +317,4 @@ public sealed class AuthTokenServiceTests
         db.Verify(dataStore => dataStore.RevokeAllRefreshTokensForUserAsync(new UserId(44), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
+

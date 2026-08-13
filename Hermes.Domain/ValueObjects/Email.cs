@@ -24,5 +24,8 @@ public readonly record struct Email
         return new Email(v);
     }
 
+    public static implicit operator string(Email email) => email.Value;
+    public static implicit operator Email(string value) => Parse(value);
+
     public override string ToString() => Value;
 }

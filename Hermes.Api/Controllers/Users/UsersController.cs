@@ -52,15 +52,7 @@ public class UsersController(
         if (this.WhenCannotAccessUser(request.Id) is { } denied)
             return denied;
 
-        User user = new()
-        {
-            Id = new UserId(request.Id),
-            Name = request.Name,
-            Email = request.Email,
-            PasswordHash = request.NewPassword
-        };
-
-        await authService.UpdateUserAsync(user, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
+        await authService.UpdateUserAsync(request.Id, request.Name, request.Email, request.NewPassword, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
 
         UserScopeDto? updated = await userService.GetUserByIdAsync(new UserId(request.Id), cancellationToken).ConfigureAwait(false);
         return updated is null ? this.NotFoundProblem() : Ok(updated.ToUserResponse());

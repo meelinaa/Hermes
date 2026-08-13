@@ -23,10 +23,9 @@ public sealed class NewsletterDigestService(
     IUserRepository users,
     INewsletterSubscriptionRepository newsletterSubscriptions,
     INotificationLogRepository notificationLogs,
-    INewsArticleProvider newsArticleProvider,
+    IArticleFetchingService articleFetchingService,
     IEmailProvider emailSender,
     INewsletterHtmlService newsletterRenderer,
-    IOptions<NewsDataIoOptions> newsDataOptions,
     IOptions<NewsletterOptions> newsletterOptions,
     TimeProvider timeProvider,
     ILogger<NewsletterDigestService> logger) : INewsletterDigestService
@@ -47,10 +46,6 @@ public sealed class NewsletterDigestService(
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
         if (newsId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(newsId), "News ID must be positive.");
-        
-        string? apiKey = newsDataOptions.Value.Key?.Trim();
-        if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("Configure NewsDataIo:Key.");
 
         DateTime windowStart = DateTime.SpecifyKind(digestSlotStartUtc, DateTimeKind.Utc);
         windowStart = new DateTime(windowStart.Year, windowStart.Month, windowStart.Day, windowStart.Hour, windowStart.Minute, 0, DateTimeKind.Utc);
@@ -67,7 +62,7 @@ public sealed class NewsletterDigestService(
         }
 
         User? user = await users.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
-        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+        if (user is null || string.IsNullOrWhiteSpace(user.Email.Value))
             return;
 
         NewsletterSubscription? subscription = await newsletterSubscriptions.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
@@ -80,11 +75,7 @@ public sealed class NewsletterDigestService(
             return;
         }
 
-        NewsArticleQueryDto? query = BuildArticleQuery(apiKey, subscription);
-        if (query is null)
-            return;
-
-        IReadOnlyList<NewsArticle> articles = await newsArticleProvider.GetLatestAsync(query, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<NewsArticle> articles = await articleFetchingService.FetchArticlesForSubscriptionAsync(subscription, cancellationToken).ConfigureAwait(false);
         if (articles.Count == 0)
         {
             await AdvanceNextDigestSlotAsync(newsId, userId, windowEnd, cancellationToken).ConfigureAwait(false);
@@ -112,7 +103,7 @@ public sealed class NewsletterDigestService(
         {
             await emailSender.SendAsync(
                 new EmailMessageDto(
-                    new EmailRecipientDto(user.Email.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
+                    new EmailRecipientDto(user.Email!.Value.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
                     subject,
                     body),
                 cancellationToken).ConfigureAwait(false);
@@ -161,45 +152,7 @@ public sealed class NewsletterDigestService(
         return newsletterSubscriptions.AdvanceNextDigestSlotAsync(newsId, userId, zone, windowEnd, cancellationToken);
     }
 
-    /// <summary>
-    /// Builds the external article query parameters from subscription filter criteria.
-    /// Maps country names to ISO 3166-1 Alpha-2 codes, languages to ISO 639 codes, and combines keyword terms with OR operators.
-    /// </summary>
-    /// <param name="apiKey">The external API provider key.</param>
-    /// <param name="subscription">The newsletter subscription containing user-selected topic filters.</param>
-    /// <returns>A populated <see cref="NewsArticleQueryDto"/> if valid filters exist; otherwise <c>null</c> when no filter criteria are specified.</returns>
-    private static NewsArticleQueryDto? BuildArticleQuery(string apiKey, NewsletterSubscription subscription)
-    {
-        List<string>? countries = subscription.Countries is { Count: > 0 }
-            ? subscription.Countries.Select(CountryIsoCodeMapper.ToIso3166Alpha2).ToList()
-            : null;
-        List<string>? languages = subscription.Languages is { Count: > 0 }
-            ? subscription.Languages.Select(LanguageIsoCodeMapper.ToIso639Code).ToList()
-            : null;
-        List<string>? categories = subscription.Category is { Count: > 0 }
-            ? subscription.Category.Select(category => category.ToString().ToLowerInvariant()).ToList()
-            : null;
 
-        string? keywordsQuery = null;
-        if (subscription.Keywords is { Count: > 0 })
-        {
-            List<string> terms = subscription.Keywords.Where(keyword => !string.IsNullOrWhiteSpace(keyword)).Select(keyword => keyword.Trim()).ToList();
-            if (terms.Count > 0)
-                keywordsQuery = string.Join(" OR ", terms);
-        }
-
-        if (countries is null && languages is null && categories is null && string.IsNullOrWhiteSpace(keywordsQuery))
-            return null;
-
-        return new NewsArticleQueryDto
-        {
-            ApiKey = apiKey,
-            Countries = countries,
-            Languages = languages,
-            Categories = categories,
-            KeywordsQuery = keywordsQuery
-        };
-    }
 
     /// <summary>
     /// Truncates raw text content to a specified maximum character length for digest card preview snippets.

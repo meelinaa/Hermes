@@ -140,3 +140,5 @@ public sealed class UserProfileUpdateRequestValidatorTests
         result.ShouldNotHaveValidationErrorFor(x => x.CurrentPassword);
     }
 }
+
+

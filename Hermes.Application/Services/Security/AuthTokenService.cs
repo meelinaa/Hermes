@@ -83,7 +83,7 @@ public sealed class AuthTokenService(
         if (!rotated)
             return null;
 
-        JwtAccessTokenResultDto access = jwt.Issue(old.User.Id, old.User.Email, old.User.Name);
+        JwtAccessTokenResultDto access = jwt.Issue(old.User.Id, old.User.Email.Value, old.User.Name);
         return new AuthTokensResultDto(
             access.Token,
             access.ExpiresAtUtc,

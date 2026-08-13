@@ -16,7 +16,7 @@ public sealed class UserServiceTests
     public async Task GetUserByNameAsync_Should_ReturnScope_FromStore()
     {
         // Arrange
-        UserScopeDto expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" };
+        UserScopeDto expected = new() { UserId = 7, Name = "Sam", Email = Email.Parse("sam@test.dev") };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
         UserService sut = CreateUserService(db.Object);
@@ -44,7 +44,7 @@ public sealed class UserServiceTests
     public async Task GetUserByIdAsync_Should_ReturnScope_FromStore()
     {
         // Arrange
-        UserScopeDto expected = new() { UserId = 3, Email = "e@e.e", Name = "E" };
+        UserScopeDto expected = new() { UserId = 3, Email = Email.Parse("e@e.e"), Name = "E" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByIdAsync(new UserId(3), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
         UserService sut = CreateUserService(db.Object);
@@ -61,7 +61,7 @@ public sealed class UserServiceTests
     public async Task GetUserByEmailAsync_Should_ReturnScope_FromStore_WhenNormalized()
     {
         // Arrange
-        UserScopeDto expected = new() { UserId = 9, Email = "a@b.c", Name = "A" };
+        UserScopeDto expected = new() { UserId = 9, Email = Email.Parse("a@b.c"), Name = "A" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByEmailAsync("a@b.c", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
         UserService sut = CreateUserService(db.Object);
@@ -103,7 +103,7 @@ public sealed class UserServiceTests
     {
         // Arrange
         Mock<IUserRepository> db = new();
-        UserScopeDto scope = new() { UserId = 1, Email = "a@b", Name = "A" };
+        UserScopeDto scope = new() { UserId = 1, Email = Email.Parse("a@b"), Name = "A" };
         db.Setup(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
         UserService sut = CreateUserService(db.Object);
 
@@ -114,3 +114,4 @@ public sealed class UserServiceTests
         db.Verify(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
     }
 }
+

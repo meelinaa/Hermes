@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Hermes.Domain.Events;
 using Hermes.Domain.ValueObjects;
 
@@ -5,19 +7,44 @@ namespace Hermes.Domain.Entities;
 
 public class User : AggregateRoot
 {
-    public UserId Id { get; set; }
-    public string? Name { get; set; }
-    public string? Email { get; set; }
-    public string? PasswordHash { get; set; }
-    public bool IsEmailVerified { get; set; }
-    public string? TwoFactorCode { get; set; }
-    public DateTime? TwoFactorExpiry { get; set; }
+    private readonly List<NewsletterSubscription> _newsletterSubscriptions = [];
+    private readonly List<NotificationLog> _notificationLogs = [];
+    private readonly List<RefreshToken> _refreshTokens = [];
 
-    public ICollection<NewsletterSubscription> NewsletterSubscriptions { get; set; } = [];
+    // Internal parameterless constructor for EF Core and Unit Tests
+    internal User() { }
 
-    public ICollection<NotificationLog> NotificationLogs { get; set; } = [];
+    private User(string name, Email email, string passwordHash)
+    {
+        Name = name;
+        Email = email;
+        PasswordHash = passwordHash;
+        IsEmailVerified = false;
+        
+        AddDomainEvent(new UserRegisteredEvent(Id, email.Value));
+    }
 
-    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+    public static User Create(string name, Email email, string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Name is required.", nameof(name));
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new ArgumentException("PasswordHash is required.", nameof(passwordHash));
+        
+        return new User(name.Trim(), email, passwordHash);
+    }
+
+    public UserId Id { get; internal set; }
+    public string Name { get; internal set; } = string.Empty;
+    public Email Email { get; internal set; } = default!;
+    public string PasswordHash { get; internal set; } = string.Empty;
+    public bool IsEmailVerified { get; internal set; }
+    public string? TwoFactorCode { get; internal set; }
+    public DateTime? TwoFactorExpiry { get; internal set; }
+
+    public IReadOnlyList<NewsletterSubscription> NewsletterSubscriptions => _newsletterSubscriptions.AsReadOnly();
+    public IReadOnlyList<NotificationLog> NotificationLogs => _notificationLogs.AsReadOnly();
+    public IReadOnlyList<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
     public void Rename(string name)
     {
@@ -27,26 +54,42 @@ public class User : AggregateRoot
     }
 
     /// <summary>Primary e-mail change clears <see cref="IsEmailVerified"/> until the new address is verified.</summary>
-    public void ChangePrimaryEmail(Email email)
+    public void ChangePrimaryEmail(Email nextEmail)
     {
-        string next = email.Value;
-        string? previous = Email;
-        Email = next;
-        if (!string.Equals(previous, next, StringComparison.Ordinal))
+        Email previous = Email;
+        Email = nextEmail;
+        if (!string.Equals(previous.Value, nextEmail.Value, StringComparison.OrdinalIgnoreCase))
         {
             IsEmailVerified = false;
-            AddDomainEvent(new UserEmailChangedEvent(Id, previous, next));
+            // The event uses the string values
+            AddDomainEvent(new UserEmailChangedEvent(Id, previous.Value, nextEmail.Value));
         }
+    }
+
+    public void VerifyEmail()
+    {
+        IsEmailVerified = true;
     }
 
     public void ReplacePasswordHash(string bcryptHash)
     {
-        ArgumentNullException.ThrowIfNull(bcryptHash);
+        if (string.IsNullOrWhiteSpace(bcryptHash))
+            throw new ArgumentException("Password hash cannot be empty.", nameof(bcryptHash));
         PasswordHash = bcryptHash;
     }
 
-    public void RegisterUser(string email)
+    public void EnableTwoFactor(string code, DateTime expiry)
     {
-        AddDomainEvent(new UserRegisteredEvent(Id, email));
+        if (string.IsNullOrWhiteSpace(code))
+            throw new ArgumentException("Code darf nicht leer sein.", nameof(code));
+        
+        TwoFactorCode = code;
+        TwoFactorExpiry = expiry;
+    }
+
+    public void DisableTwoFactor()
+    {
+        TwoFactorCode = null;
+        TwoFactorExpiry = null;
     }
 }

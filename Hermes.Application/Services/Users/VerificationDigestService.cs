@@ -62,7 +62,7 @@ public sealed class VerificationDigestService(
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
         User? user = await _users.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
-        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+        if (user is null || string.IsNullOrWhiteSpace(user.Email.Value))
             return;
 
         string? code = GenerateNumericVerificationCode();
@@ -82,7 +82,7 @@ public sealed class VerificationDigestService(
 
         VerificationRenderRequest renderRequest = new(
             UserDisplayName: user.Name,
-            RecipientEmail: user.Email.Trim(),
+            RecipientEmail: user.Email!.Value.Trim(),
             VerificationCode: code,
             SupportEmail: supportEmail,
             UnsubscribeUrl: $"{baseUrl}{UnsubscribeEndpointPath}",
@@ -99,7 +99,7 @@ public sealed class VerificationDigestService(
             await _emailSender
                 .SendAsync(
                     new EmailMessageDto(
-                        new EmailRecipientDto(user.Email.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
+                        new EmailRecipientDto(user.Email!.Value.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
                         emailSubject,
                         emailBody),
                     cancellationToken)

@@ -81,6 +81,7 @@ public static class WorkerServiceCollectionExtensions
             .AddStandardResilienceHandler();
         builder.Services.AddSingleton<INewsletterHtmlService, NewsletterHtmlService>();
         builder.Services.AddSingleton<IVerificationHtmlService, VerificationHtmlService>();
+        builder.Services.AddScoped<IArticleFetchingService, ArticleFetchingService>();
         builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
         builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();

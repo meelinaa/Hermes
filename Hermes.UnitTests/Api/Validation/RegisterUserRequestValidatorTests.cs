@@ -59,3 +59,5 @@ public sealed class RegisterUserRequestValidatorTests
             .WithErrorMessage("Password is required.");
     }
 }
+
+

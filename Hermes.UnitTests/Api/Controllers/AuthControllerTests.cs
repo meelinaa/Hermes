@@ -56,7 +56,7 @@ public sealed class AuthControllerTests
             .ReturnsAsync(new AuthTokensResultDto("access-token", DateTime.UtcNow.AddMinutes(15), "refresh-token", DateTime.UtcNow.AddDays(7)));
 
         AuthController sut = CreateController(authServiceMock.Object);
-        LoginRequestDto request = new() { NameOrEmail = "valid@test.com", Password = "Password123" };
+        LoginRequestDto request = new() { NameOrEmail = Email.Parse("valid@test.com"), Password = "Password123" };
 
         // Act
         IActionResult result = await sut.Login(request, authTokenServiceMock.Object, CancellationToken.None);
@@ -80,7 +80,7 @@ public sealed class AuthControllerTests
             .ReturnsAsync(new LoginResultDto(false, "Invalid credentials.", null));
 
         AuthController sut = CreateController(authServiceMock.Object);
-        LoginRequestDto request = new() { NameOrEmail = "invalid@test.com", Password = "WrongPassword" };
+        LoginRequestDto request = new() { NameOrEmail = Email.Parse("invalid@test.com"), Password = "WrongPassword" };
 
         // Act
         IActionResult result = await sut.Login(request, Mock.Of<IAuthTokenService>(), CancellationToken.None);
@@ -209,3 +209,4 @@ public sealed class AuthControllerTests
         Assert.Equal(StatusCodes.Status401Unauthorized, objResult.StatusCode);
     }
 }
+

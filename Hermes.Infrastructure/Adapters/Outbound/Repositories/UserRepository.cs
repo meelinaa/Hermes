@@ -20,16 +20,11 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         if (user.Id.Value != 0)
             throw new ArgumentException("New users must have id 0 before insert.", nameof(user));
 
-        if (!string.IsNullOrWhiteSpace(user.Email))
-        {
-            EmailAddress email = EmailAddress.Parse(user.Email);
-            user.Email = email.Value;
-            bool exists = await db.Users.AsNoTracking()
-                .AnyAsync(userEntity => userEntity.Email == email.Value, cancellationToken)
-                .ConfigureAwait(false);
-            if (exists)
-                throw new EmailAlreadyExistsException();
-        }
+        bool exists = await db.Users.AsNoTracking()
+            .AnyAsync(userEntity => userEntity.Email == user.Email, cancellationToken)
+            .ConfigureAwait(false);
+        if (exists)
+            throw new EmailAlreadyExistsException();
 
         await db.Users.AddAsync(user, cancellationToken).ConfigureAwait(false);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -56,7 +51,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
 
         EmailAddress normalized = EmailAddress.Parse(email);
         User? user = await db.Users.AsNoTracking()
-            .FirstOrDefaultAsync(userEntity => userEntity.Email != null && userEntity.Email == normalized.Value, cancellationToken)
+            .FirstOrDefaultAsync(userEntity => userEntity.Email == normalized, cancellationToken)
             .ConfigureAwait(false);
 
         return user is null ? throw new UserNotFoundException($"User with email '{email}' was not found.") : MapToUserScope(user);
@@ -94,7 +89,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         EmailAddress normalized = EmailAddress.Parse(email);
 
         User? user = await db.Users.AsNoTracking()
-            .FirstOrDefaultAsync(userEntity => userEntity.Email == normalized.Value, cancellationToken)
+            .FirstOrDefaultAsync(userEntity => userEntity.Email == normalized, cancellationToken)
             .ConfigureAwait(false);
 
         return user ?? throw new UserNotFoundException();
@@ -134,11 +129,11 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         if (entity is null)
             throw new UserNotFoundException($"User with id {user.Id} was not found.");
 
-        entity.Rename(user.Name!);
-        entity.ChangePrimaryEmail(EmailAddress.Parse(user.Email!));
+        entity.Rename(user.Name);
+        entity.ChangePrimaryEmail(user.Email);
 
         if (!string.IsNullOrWhiteSpace(user.PasswordHash))
-            entity.ReplacePasswordHash(user.PasswordHash!);
+            entity.ReplacePasswordHash(user.PasswordHash);
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -156,9 +151,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         if (!exists)
             throw new UserNotFoundException($"User with id {user.UserId} was not found.");
 
-        User userEntity = MapToUserEntity(user);
-        db.Users.Remove(userEntity);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await db.Users.Where(u => u.Id == new UserId(user.UserId)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -178,8 +171,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         if (user is null)
             throw new UserNotFoundException($"User with id {userId} was not found.");
 
-        user.TwoFactorCode = verificationCode.Trim();
-        user.TwoFactorExpiry = expires;
+        user.EnableTwoFactor(verificationCode.Trim(), expires);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -193,24 +185,16 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         if (user is null)
             throw new UserNotFoundException($"User with id {userId} was not found.");
 
-        user.IsEmailVerified = true;
-        user.TwoFactorCode = null;
-        user.TwoFactorExpiry = null;
+        user.VerifyEmail();
+        user.DisableTwoFactor();
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static UserScopeDto MapToUserScope(User user) => new()
     {
         UserId = user.Id.Value,
-        Name = user.Name ?? string.Empty,
-        Email = user.Email ?? string.Empty,
+        Name = user.Name,
+        Email = user.Email.Value,
         IsEmailVerified = user.IsEmailVerified
-    };
-
-    private static User MapToUserEntity(UserScopeDto scope) => new()
-    {
-        Id = new UserId(scope.UserId),
-        Name = scope.Name,
-        Email = scope.Email
     };
 }

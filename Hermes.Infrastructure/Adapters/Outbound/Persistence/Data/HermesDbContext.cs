@@ -35,7 +35,12 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             entity.ToTable("users");
             entity.HasKey(userEntity => userEntity.Id);
             entity.Property(userEntity => userEntity.Id).HasConversion(id => id.Value, val => new UserId(val));
+            entity.Property(userEntity => userEntity.Email).HasConversion(e => e.Value, val => Email.Parse(val));
             entity.HasIndex(userEntity => userEntity.Email).IsUnique();
+
+            entity.Navigation(e => e.NewsletterSubscriptions).UsePropertyAccessMode(PropertyAccessMode.Field);
+            entity.Navigation(e => e.NotificationLogs).UsePropertyAccessMode(PropertyAccessMode.Field);
+            entity.Navigation(e => e.RefreshTokens).UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<NewsletterSubscription>(entity =>

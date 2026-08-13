@@ -24,7 +24,7 @@ public sealed class HermesDbContextTests
         {
             Id = new UserId(Random.Shared.Next(1, 10000)),
             Name = "Tester",
-            Email = "db@test.example",
+            Email = Email.Parse("db@test.example"),
             PasswordHash = "$2a$placeholder",
         };
         ctx.Users.Add(seededUser);
@@ -160,7 +160,7 @@ public sealed class HermesDbContextTests
         {
             Id = user.Id,
             Name = user.Name,
-            Email = "new-email@test.example",
+            Email = Email.Parse("new-email@test.example"),
             PasswordHash = null,
         };
 
@@ -172,3 +172,4 @@ public sealed class HermesDbContextTests
         Assert.False(reloaded.IsEmailVerified);
     }
 }
+

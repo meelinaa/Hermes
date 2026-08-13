@@ -37,7 +37,7 @@ public sealed class UserTests
     public void ChangePrimaryEmail_Should_UpdateEmailAndResetVerification_WhenEmailIsDifferent()
     {
         // Arrange
-        User sut = new() { Email = "old@example.com", IsEmailVerified = true };
+        User sut = new() { Email = Email.Parse("old@example.com"), IsEmailVerified = true };
         Email newEmail = Email.Parse("new@example.com");
 
         // Act
@@ -52,7 +52,7 @@ public sealed class UserTests
     public void ChangePrimaryEmail_Should_NotResetVerification_WhenEmailIsSame()
     {
         // Arrange
-        User sut = new() { Email = "same@example.com", IsEmailVerified = true };
+        User sut = new() { Email = Email.Parse("same@example.com"), IsEmailVerified = true };
         Email newEmail = Email.Parse("same@example.com");
 
         // Act
@@ -77,12 +77,9 @@ public sealed class UserTests
     }
 
     [Fact]
-    public void ReplacePasswordHash_Should_ThrowArgumentNullException_WhenHashIsNull()
+    public void ReplacePasswordHash_Should_ThrowArgumentException_WhenHashIsNull()
     {
-        // Arrange
-        User sut = new();
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => sut.ReplacePasswordHash(null!));
+        User sut = User.Create("N", "a@b.c", "hash");
+        Assert.Throws<ArgumentException>(() => sut.ReplacePasswordHash(null!));
     }
 }

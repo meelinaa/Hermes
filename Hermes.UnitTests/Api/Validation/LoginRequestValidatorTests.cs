@@ -57,3 +57,5 @@ public sealed class LoginRequestValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.Password);
     }
 }
+
+

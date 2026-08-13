@@ -37,7 +37,7 @@ public sealed class VerificationDigestServiceTests
         IOptions<HermesSiteUrlsOptions> site = Options.Create(new HermesSiteUrlsOptions
         {
             PublicBaseUrl = "https://test.example",
-            SupportEmail = "support@test.example",
+            SupportEmail = Email.Parse("support@test.example"),
         });
         IOptions<SecurityOptions> security = Options.Create(new SecurityOptions
         {
@@ -89,33 +89,12 @@ public sealed class VerificationDigestServiceTests
             Times.Never);
     }
 
-    // [B]OUNDARY: Aborts early without sending email when target user has blank email address
-    [Fact]
-    public async Task SendAsync_Should_ReturnWithoutMail_WhenUserHasNoEmail()
-    {
-        // Arrange
-        Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(3), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = new UserId(3), Name = "N", Email = "  " });
-
-        Mock<IEmailProvider> mail = new();
-        VerificationDigestService sut = CreateSut(db.Object, mail.Object);
-
-        // Act
-        await sut.SendAsync(new UserId(3));
-
-        // Assert
-        mail.Verify(
-            emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
     // [R]IGHT: Generates 6-digit OTP code, persists hashed challenge, and dispatches verification email
     [Fact]
     public async Task SendAsync_Should_PersistChallenge_AndSendMail_WhenUserValid()
     {
         // Arrange
-        User user = new() { Id = new UserId(10), Name = "Pat", Email = "pat@test.dev" };
+        User user = new() { Id = new UserId(10), Name = "Pat", Email = Email.Parse("pat@test.dev") };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(10), It.IsAny<CancellationToken>())).ReturnsAsync(user);
         string? capturedCode = null;
@@ -155,7 +134,7 @@ public sealed class VerificationDigestServiceTests
     public async Task SendAsync_Should_PersistPlainSixDigitCode_WhenHashingDisabled()
     {
         // Arrange
-        User user = new() { Id = new UserId(11), Name = "Pat", Email = "pat@test.dev" };
+        User user = new() { Id = new UserId(11), Name = "Pat", Email = Email.Parse("pat@test.dev") };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(11), It.IsAny<CancellationToken>())).ReturnsAsync(user);
         string? capturedCode = null;
@@ -183,7 +162,7 @@ public sealed class VerificationDigestServiceTests
     public async Task SendAsync_Should_Propagate_WhenSmtpFails()
     {
         // Arrange
-        User user = new() { Id = new UserId(1), Email = "e@test.dev", Name = "E" };
+        User user = new() { Id = new UserId(1), Email = Email.Parse("e@test.dev"), Name = "E" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(1), It.IsAny<CancellationToken>())).ReturnsAsync(user);
         db.Setup(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(new UserId(1), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
@@ -199,3 +178,4 @@ public sealed class VerificationDigestServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await sut.SendAsync(new UserId(1)));
     }
 }
+

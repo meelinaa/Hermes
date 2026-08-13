@@ -30,7 +30,7 @@ public sealed class UserVerificationServiceTests
         // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync("u@test.dev", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = new UserId(42), Email = "u@test.dev" });
+            .ReturnsAsync(new User { Id = new UserId(42), Email = Email.Parse("u@test.dev") });
 
         Mock<IVerificationMailJobService> trigger = new();
         trigger.Setup(jobTrigger => jobTrigger.EnqueueSendVerificationMail(new UserId(42))).Returns("job-1");
@@ -238,3 +238,4 @@ public sealed class UserVerificationServiceTests
         db.Verify(dataStore => dataStore.CompleteUserEmailVerificationAsync(new UserId(3), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
+
