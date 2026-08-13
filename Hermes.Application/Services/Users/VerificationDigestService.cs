@@ -26,6 +26,7 @@ public sealed class VerificationDigestService(
     IVerificationHtmlService verificationRenderer,
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,
     IOptions<SecurityOptions> securityOptions,
+    TimeProvider timeProvider,
     ILogger<VerificationDigestService> logger) : IVerificationDigestService
 {
     /// <summary>
@@ -64,7 +65,7 @@ public sealed class VerificationDigestService(
             return;
 
         string? code = GenerateNumericVerificationCode();
-        DateTime expiresAt = DateTime.UtcNow.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
+        DateTime expiresAt = timeProvider.GetUtcNow().UtcDateTime.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
 
         string persisted = _securityOptions.Value.HashEmailVerificationCodes
             ? RefreshTokenHashUtility.Hash(code)

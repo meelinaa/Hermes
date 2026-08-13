@@ -14,7 +14,8 @@ using Hermes.Domain.Entities;
 namespace Hermes.Api.Controllers.Users;
 
 /// <summary>
-/// Controller for managing user profiles, registrations, and account verification actions.
+/// Provides lifecycle management for user accounts. 
+/// Handles self-registration, profile updates, account deletion, and email address verification workflows.
 /// </summary>
 [Authorize]
 [ApiController]
@@ -28,12 +29,9 @@ public class UsersController(
     private static readonly ConcurrentDictionary<int, DateTimeOffset> _lastVerificationMailByUserId = new();
 
     /// <summary>
-    /// Registers a new user with the specified credentials.
-    /// Validation is handled automatically by the global filters.
+    /// Creates a new user identity and provisions their initial data structures.
+    /// Acts as the public entry point for new customers to join the platform.
     /// </summary>
-    /// <param name="request">The registration payload.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A response containing the registered user details.</returns>
     [AllowAnonymous]
     [HttpPost]
     public async Task<ActionResult<UserResponseDto>> SetNewUser([FromBody] RegisterUserRequestDto request, CancellationToken cancellationToken)
@@ -43,13 +41,9 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Updates the profile (name, email, or password) of the authenticated user.
-    /// Validation is handled automatically by the global filters.
-    /// Exceptions are caught by global middleware.
+    /// Applies changes to a user's master record. 
+    /// Automatically revokes email verification status if the email address is changed.
     /// </summary>
-    /// <param name="request">The profile update payload.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The updated user profile response.</returns>
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPut]
     public async Task<ActionResult<UserResponseDto>> UpdateUser([FromBody] UserProfileUpdateRequestDto request, CancellationToken cancellationToken)
@@ -72,11 +66,9 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Deletes a user profile and all associated data.
+    /// Permanently removes a user and their cascaded data (e.g. subscriptions, tokens) from the system.
+    /// Satisfies right-to-be-forgotten GDPR requirements.
     /// </summary>
-    /// <param name="id">The ID of the user to delete.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>An OK result if deleted successfully.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{id:int}")]
@@ -91,11 +83,9 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Retrieves user profile details by ID.
+    /// Fetches the user's current state to synchronize client applications.
+    /// Typically called upon application startup to restore session context.
     /// </summary>
-    /// <param name="id">The ID of the user.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The user details.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
@@ -105,11 +95,9 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Retrieves user profile details by their email address.
+    /// Looks up a user account by email address.
+    /// Used during administrative flows or invite-acceptance processes where the internal ID is not yet known.
     /// </summary>
-    /// <param name="email">The email address of the user.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The user details.</returns>
     [HttpGet("by-email/{email}")]
     public async Task<ActionResult<UserResponseDto>> GetUserByEmail(string email, CancellationToken cancellationToken)
     {
@@ -127,11 +115,9 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Requests a new verification email for the specified user ID (subject to a cooldown limit).
+    /// Dispatches an email containing a 6-digit OTP to prove domain ownership.
+    /// Protects against spam by enforcing a strict in-memory cooldown period per user.
     /// </summary>
-    /// <param name="id">The ID of the user to send the verification email to.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The result status of the verification email request.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("VerifyMailPolicy")]
     [HttpPost("{id:int}/verify")]
@@ -150,12 +136,9 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Verifies the user's email address by checking the supplied numeric verification code.
-    /// Validation is handled automatically by the global filters.
+    /// Consumes the OTP provided via email to mark the account as verified.
+    /// Unlocks platform features that require a confirmed email address.
     /// </summary>
-    /// <param name="request">The verification payload containing the code.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The updated user details if verification was successful.</returns>
     [EnableRateLimiting("VerifyCodePolicy")]
     [HttpPost("verify/code")]
     public async Task<ActionResult<UserResponseDto>> CheckVerificationCode([FromBody] UserVerificationCodeRequestDto request, CancellationToken cancellationToken)
@@ -170,7 +153,8 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Checks if a verification email has been sent recently to enforce a rate limit cooldown.
+    /// Evaluates the time elapsed since the last OTP dispatch to prevent SMTP abuse.
+    /// Returns a Retry-After header hint if the cooldown is still active.
     /// </summary>
     private ActionResult? TryGetVerificationMailCooldownResponse(int userId)
     {
@@ -187,7 +171,7 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Registers the timestamp of a verification email send.
+    /// Updates the in-memory rate-limiting dictionary with the current UTC timestamp after a successful dispatch.
     /// </summary>
     private static void RegisterVerificationMailSend(int userId)
         => _lastVerificationMailByUserId[userId] = DateTimeOffset.UtcNow;

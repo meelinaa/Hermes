@@ -17,7 +17,8 @@ using Hermes.Domain.Entities;
 namespace Hermes.Api.Controllers.NotificationLogs;
 
 /// <summary>
-/// Controller for managing and creating user notification delivery logs.
+/// Manages audit trails of dispatched notifications (e.g. newsletter emails). 
+/// Enables debugging of delivery failures and ensures the duplicate-prevention window functions correctly.
 /// </summary>
 [Authorize]
 [ApiController]
@@ -25,13 +26,9 @@ namespace Hermes.Api.Controllers.NotificationLogs;
 public class NotificationLogsController(INotificationLogService notificationLogService) : ControllerBase
 {
     /// <summary>
-    /// Creates a new notification log entry for the specified user.
+    /// Records a new delivery attempt. Used by background workers to register a sent, pending, or failed dispatch,
+    /// providing an audit history and enabling rate limiting (e.g. duplicate digest prevention).
     /// </summary>
-    /// <param name="userId">The ID of the user owning the log entry.</param>
-    /// <param name="request">The notification log payload.</param>
-    /// <param name="validator">The FluentValidation validator instance.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The created notification log response.</returns>
     /// <remarks>
     /// <code>
     /// {

@@ -60,6 +60,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();
         builder.Services.AddScoped<NotificationJobService>();
         builder.Services.AddScoped<NewsletterSchedulerWorkerService>();
+        builder.Services.AddSingleton(TimeProvider.System);
 
         builder.Services.AddHangfire(configuration => configuration
             .UseSimpleAssemblyNameTypeSerializer()

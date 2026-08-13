@@ -82,7 +82,17 @@ public sealed class NewsletterDigestServiceTests
             newsletterRenderer,
             newsOptions ?? Options.Create(new NewsDataIoOptions { Key = "integration-test-api-key" }),
             newsletterOptions ?? Options.Create(new NewsletterOptions()),
+            TimeProvider.System,
             logger ?? Mock.Of<ILogger<NewsletterDigestService>>());
+    }
+
+    private static NewsletterSubscription CreateNews(int id, int userId, string[]? keywords = null, bool isEnabled = true)
+    {
+        var news = NewsletterSubscription.CreateForUser(userId);
+        news.UpdateFilters(keywords, null, null, null);
+        if (!isEnabled) news.Disable();
+        news.SetId(id);
+        return news;
     }
 
     // [B]OUNDARY: Rejects non-positive user ID or news ID input parameters
@@ -177,7 +187,7 @@ public sealed class NewsletterDigestServiceTests
 
         Mock<INewsletterSubscriptionRepository> newsStore = new();
         newsStore.Setup(s => s.GetNewsByIdAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NewsletterSubscription { Id = 10, UserId = 5, IsEnabled = true, Keywords = ["test"] });
+            .ReturnsAsync(CreateNews(10, 5, ["test"], true));
         SetupAdvanceDigestSlot(newsStore);
 
         Mock<IEmailProvider> emailSender = new();
@@ -347,7 +357,7 @@ public sealed class NewsletterDigestServiceTests
         Mock<INewsletterSubscriptionRepository> newsPort = new();
         SetupAdvanceDigestSlot(newsPort);
         newsPort.Setup(store => store.GetNewsByIdAsync(1, 42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NewsletterSubscription { Id = 42, UserId = 1, Keywords = ["x"], IsEnabled = false });
+            .ReturnsAsync(CreateNews(42, 1, ["x"], false));
 
         Mock<INewsArticleProvider> articles = new();
         NewsletterDigestService sut = CreateSut(users.Object, newsPort.Object, logs.Object, articles.Object);
@@ -377,15 +387,7 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_NotCallNewsApi_WhenFiltersProduceNoQuery()
     {
         // Arrange
-        NewsletterSubscription news = new()
-        {
-            Id = 3,
-            UserId = 1,
-            Keywords = ["   "],
-            Countries = [],
-            Languages = [],
-            Category = [],
-        };
+        NewsletterSubscription news = CreateNews(3, 1, ["   "]);
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
                 It.IsAny<int>(),
@@ -425,12 +427,7 @@ public sealed class NewsletterDigestServiceTests
         NewsArticleQueryDto? capturedQuery = null;
         NotificationLog? capturedLog = null;
 
-        NewsletterSubscription news = new()
-        {
-            Id = 12,
-            UserId = 2,
-            Keywords = ["Berlin"],
-        };
+        NewsletterSubscription news = CreateNews(12, 2, ["Berlin"]);
 
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
@@ -495,7 +492,7 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_WriteFailedLog_AndPropagate_WhenSmtpFails()
     {
         // Arrange
-        NewsletterSubscription news = new() { Id = 1, UserId = 1, Keywords = ["test"] };
+        NewsletterSubscription news = CreateNews(1, 1, ["test"]);
 
         Mock<INotificationLogRepository> logs = new();
         logs.Setup(s => s.ExistsSentNotificationInWindowAsync(

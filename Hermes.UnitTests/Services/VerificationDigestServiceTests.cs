@@ -48,6 +48,7 @@ public sealed class VerificationDigestServiceTests
             verificationRenderer,
             site,
             security,
+            TimeProvider.System,
             NullLogger<VerificationDigestService>.Instance);
     }
 

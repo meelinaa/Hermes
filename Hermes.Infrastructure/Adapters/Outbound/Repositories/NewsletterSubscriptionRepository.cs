@@ -242,7 +242,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
 
         if (next.HasValue)
         {
-            row.NextDigestSlotUtc = next.Value;
+            row.SetNextDigestSlot(next.Value);
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

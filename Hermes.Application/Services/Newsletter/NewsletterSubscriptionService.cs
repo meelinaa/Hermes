@@ -14,7 +14,8 @@ namespace Hermes.Application.Services.Newsletter;
 /// </summary>
 public sealed class NewsletterSubscriptionService(
     INewsletterSubscriptionRepository db,
-    IOptions<NewsletterOptions> newsletterOptions) : INewsletterSubscriptionService
+    IOptions<NewsletterOptions> newsletterOptions,
+    TimeProvider timeProvider) : INewsletterSubscriptionService
 {
     /// <summary>
     /// Validates schedule window requirements and persists a new newsletter subscription profile.
@@ -59,7 +60,7 @@ public sealed class NewsletterSubscriptionService(
     private async ValueTask AdvanceDigestSlotAfterMutationAsync(NewsletterSubscription news, CancellationToken cancellationToken)
     {
         TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
-        await db.AdvanceNextDigestSlotAsync(news.Id, news.UserId, zone, DateTime.UtcNow, cancellationToken)
+        await db.AdvanceNextDigestSlotAsync(news.Id, news.UserId, zone, timeProvider.GetUtcNow().UtcDateTime, cancellationToken)
             .ConfigureAwait(false);
     }
 

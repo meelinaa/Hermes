@@ -79,7 +79,7 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
         {
             valid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
         }
-        catch
+        catch (Exception ex) when (ex is BCrypt.Net.SaltParseException or ArgumentException)
         {
             valid = false;
         }
@@ -129,7 +129,7 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             {
                 valid = BCrypt.Net.BCrypt.Verify(currentPasswordPlain.Trim(), existing.PasswordHash);
             }
-            catch
+            catch (Exception ex) when (ex is BCrypt.Net.SaltParseException or ArgumentException)
             {
                 valid = false;
             }

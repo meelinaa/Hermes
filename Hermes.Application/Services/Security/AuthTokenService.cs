@@ -18,6 +18,7 @@ public sealed class AuthTokenService(
     IRefreshTokenRepository db,
     IJwtTokenProvider jwt,
     IOptions<JwtOptions> options,
+    TimeProvider timeProvider,
     ILogger<AuthTokenService> logger) : IAuthTokenService
 {
     private readonly JwtOptions _o = options.Value;
@@ -36,8 +37,8 @@ public sealed class AuthTokenService(
         {
             UserId = userId,
             TokenHash = RefreshTokenHashUtility.Hash(plain),
-            ExpiresAt = DateTime.UtcNow.AddDays(_o.RefreshTokenDays),
-            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(_o.RefreshTokenDays),
+            CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
         };
         await db.AddRefreshTokenAsync(row, cancellationToken).ConfigureAwait(false);
         return new AuthTokensResultDto(
@@ -61,7 +62,7 @@ public sealed class AuthTokenService(
         if (old is null || old.User is null)
             return null;
 
-        if (old.RevokedAt != null || old.ExpiresAt <= DateTime.UtcNow)
+        if (old.RevokedAt != null || old.ExpiresAt <= timeProvider.GetUtcNow().UtcDateTime)
         {
             string shortHash = hash.Length > 8 ? hash[..8] + "..." : hash;
             logger.LogReplayDetected(old.UserId, shortHash);
@@ -74,8 +75,8 @@ public sealed class AuthTokenService(
         {
             UserId = old.UserId,
             TokenHash = RefreshTokenHashUtility.Hash(newPlain),
-            ExpiresAt = DateTime.UtcNow.AddDays(_o.RefreshTokenDays),
-            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(_o.RefreshTokenDays),
+            CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
         };
         bool rotated = await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
         if (!rotated)

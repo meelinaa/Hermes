@@ -18,7 +18,8 @@ using Hermes.Domain.Enums;
 namespace Hermes.Api.Controllers.Newsletter;
 
 /// <summary>
-/// Controller for managing newsletter subscription profiles and schedules.
+/// Exposes endpoints to manage newsletter configurations. 
+/// Enables users to customize topics, frequency, and delivery times for their personal news digests.
 /// </summary>
 [Authorize]
 [ApiController]
@@ -29,17 +30,10 @@ public class NewsletterSubscriptionController(
     IOptions<PaginationOptions> paginationOptions) : ControllerBase
 {
     /// <summary>
-    /// Retrieves a paged list of newsletter subscriptions for a given user.
+    /// Returns a paginated overview of the user's active and inactive subscriptions.
+    /// Allows client UIs to display a comprehensive dashboard of configured news streams,
+    /// supporting both offset and cursor-based pagination for large datasets.
     /// </summary>
-    /// <param name="userId">The ID of the user.</param>
-    /// <param name="page">The page number (defaults to 1).</param>
-    /// <param name="pageSize">The page size (defaults to configuration limit).</param>
-    /// <param name="afterId">Optional cursor identifier for keyset paging.</param>
-    /// <param name="sort">Sort order direction, e.g. "id" or "-id".</param>
-    /// <param name="q">Optional search query term.</param>
-    /// <param name="category">Optional news category filter.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A paged list of newsletter subscription profiles.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/newsletter-subscriptions")]
     public async Task<ActionResult<PagedNewsletterSubscriptionListResponseDto>> GetNewsList(
@@ -112,7 +106,7 @@ public class NewsletterSubscriptionController(
     }
 
     /// <summary>
-    /// Parses the sorting parameter into internal flags.
+    /// Normalizes sorting query parameters into boolean flags used by the data access layer.
     /// </summary>
     private static bool TryParseSort(string? sort, out bool sortDescending, out string? error)
     {
@@ -133,12 +127,9 @@ public class NewsletterSubscriptionController(
     }
 
     /// <summary>
-    /// Retrieves a single newsletter subscription profile by its ID.
+    /// Fetches the details of a specific subscription.
+    /// Primarily used to populate edit forms on the client side with existing keywords and scheduling data.
     /// </summary>
-    /// <param name="userId">The ID of the user owning the profile.</param>
-    /// <param name="newsId">The ID of the newsletter subscription.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The newsletter subscription details.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [HttpGet("{userId:int}/newsletter-subscriptions/{newsId:int}")]
     public async Task<ActionResult<NewsletterSubscriptionResponseDto>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
@@ -148,11 +139,9 @@ public class NewsletterSubscriptionController(
     }
 
     /// <summary>
-    /// Creates a new newsletter subscription profile for the authenticated user.
+    /// Registers a new newsletter configuration.
+    /// Automatically triggers a background evaluation to calculate the first delivery slot based on the user's schedule.
     /// </summary>
-    /// <param name="request">The parameters of the newsletter subscription to create.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A response containing the created subscription identifier.</returns>
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPost("newsletter-subscriptions")]
     public async Task<ActionResult<CreateNewsletterSubscriptionResponseDto>> SetNews(
@@ -169,11 +158,9 @@ public class NewsletterSubscriptionController(
     }
 
     /// <summary>
-    /// Updates an existing newsletter subscription profile.
+    /// Overwrites an existing subscription's rules, such as keywords, categories, or schedules.
+    /// Forces an immediate recalculation of the next delivery window to reflect schedule modifications.
     /// </summary>
-    /// <param name="request">The updated properties of the newsletter subscription.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>An OK result if updated successfully.</returns>
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPut("newsletter-subscriptions")]
     public async Task<ActionResult> UpdateNews(
@@ -195,11 +182,9 @@ public class NewsletterSubscriptionController(
     }
 
     /// <summary>
-    /// Deletes all newsletter subscriptions for the specified user.
+    /// Wipes all newsletter configurations for a user.
+    /// Typically invoked during account deletion or as a bulk reset action by the user.
     /// </summary>
-    /// <param name="userId">The ID of the user.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The delete status summary.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/newsletter-subscriptions/all")]
@@ -210,12 +195,9 @@ public class NewsletterSubscriptionController(
     }
 
     /// <summary>
-    /// Deletes a specific newsletter subscription profile.
+    /// Removes a specific subscription.
+    /// Stops any further email deliveries for this particular news topic configuration.
     /// </summary>
-    /// <param name="userId">The ID of the user owning the profile.</param>
-    /// <param name="newsId">The ID of the newsletter subscription to delete.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>An OK result if deleted successfully.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_USER_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{userId:int}/newsletter-subscriptions/{newsId:int}")]

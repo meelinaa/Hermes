@@ -11,7 +11,7 @@ namespace Hermes.Notifications.Sending.HtmlLayout.Services;
 /// to the internal <see cref="NewsletterHtmlHelper"/> templates.
 /// Keeps HTML templating concerns inside the Notifications boundary.
 /// </summary>
-public sealed class NewsletterHtmlService : INewsletterHtmlService
+public sealed class NewsletterHtmlService(TimeProvider timeProvider) : INewsletterHtmlService
 {
     private const int MAX_ARTICLES = 10;
     private static readonly CultureInfo _culture = CultureInfo.GetCultureInfo("de-DE");
@@ -29,9 +29,9 @@ public sealed class NewsletterHtmlService : INewsletterHtmlService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        string dateDisplay = DateTime.UtcNow.ToString("dddd, dd. MMMM yyyy", _culture);
+        string dateDisplay = timeProvider.GetUtcNow().UtcDateTime.ToString("dddd, dd. MMMM yyyy", _culture);
 
-        string greeting = DateTime.UtcNow.Hour switch
+        string greeting = timeProvider.GetUtcNow().UtcDateTime.Hour switch
         {
             < 12 => "Guten Morgen",
             < 18 => "Guten Tag",

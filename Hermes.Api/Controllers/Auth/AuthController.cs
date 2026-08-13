@@ -10,20 +10,17 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Hermes.Api.Controllers.Auth;
 
 /// <summary>
-/// Handles authentication endpoints such as login, refresh tokens, and logout.
+/// Exposes authentication flows to client applications, enabling session establishment, 
+/// token rotation, and secure logout.
 /// </summary>
 [ApiController]
 [Route("api/v1/auth")]
 public class AuthController(IUserAuthenticationService authService) : ControllerBase
 {
     /// <summary>
-    /// Processes a user login request, validating the credentials and returning access/refresh tokens.
-    /// Validation is handled automatically by the global filters.
+    /// Establishes a new authenticated session for the user upon successful credential verification.
+    /// Uses rate limiting to mitigate credential stuffing and brute-force attacks.
     /// </summary>
-    /// <param name="request">The login payload containing credentials.</param>
-    /// <param name="authTokens">The token service used to issue JWTs.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>An action result containing tokens or an unauthorized problem.</returns>
     [AllowAnonymous]
     [HttpPost("login")]
     [EnableRateLimiting("AuthLoginPolicy")]
@@ -49,13 +46,9 @@ public class AuthController(IUserAuthenticationService authService) : Controller
     }
 
     /// <summary>
-    /// Rotates the refresh token to extend the user session and issues a new access token.
-    /// Validation is handled automatically by the global filters.
+    /// Extends an active user session by exchanging a valid refresh token for a fresh JWT.
+    /// Protects against token theft via strict rotation policies in the underlying service layer.
     /// </summary>
-    /// <param name="request">The refresh payload containing the current refresh token.</param>
-    /// <param name="authTokens">The token service used to rotate the tokens.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>An action result containing rotated tokens or an unauthorized problem.</returns>
     [AllowAnonymous]
     [HttpPost("refresh")]
     [EnableRateLimiting("AuthRefreshPolicy")]
@@ -79,12 +72,9 @@ public class AuthController(IUserAuthenticationService authService) : Controller
     }
 
     /// <summary>
-    /// Logs out the user by revoking the supplied refresh token (or all tokens if empty).
+    /// Terminates the current session by revoking the active refresh token, preventing further rotation.
+    /// If no specific token is provided, all sessions for the user are immediately invalidated (e.g. for security lockdown).
     /// </summary>
-    /// <param name="body">The optional logout request containing the refresh token to revoke.</param>
-    /// <param name="authTokens">The token service used to revoke session state.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A no content result or unauthorized if verification fails.</returns>
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(

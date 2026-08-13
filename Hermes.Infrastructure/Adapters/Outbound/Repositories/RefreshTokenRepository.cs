@@ -7,14 +7,14 @@ using Microsoft.EntityFrameworkCore;
 namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;
 
 /// <inheritdoc />
-public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRepository
+public sealed class RefreshTokenRepository(HermesDbContext db, TimeProvider timeProvider) : IRefreshTokenRepository
 {
     /// <inheritdoc />
     public async ValueTask<RefreshToken?> GetActiveRefreshTokenByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(tokenHash))
             return null;
-        DateTime utc = DateTime.UtcNow;
+        DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
         return await db.RefreshTokens
             .Include(refreshToken => refreshToken.User)
             .FirstOrDefaultAsync(
@@ -42,7 +42,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
         ArgumentNullException.ThrowIfNull(trackedOld);
         ArgumentNullException.ThrowIfNull(newToken);
 
-        DateTime utc = DateTime.UtcNow;
+        DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
         int oldId = trackedOld.Id;
         string expectedHash = trackedOld.TokenHash;
 
@@ -93,7 +93,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
     public async ValueTask RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(trackedToken);
-        trackedToken.RevokedAt = DateTime.UtcNow;
+        trackedToken.RevokedAt = timeProvider.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -108,7 +108,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
     /// <inheritdoc />
     public async ValueTask RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default)
     {
-        DateTime utc = DateTime.UtcNow;
+        DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
         List<RefreshToken> active = await db.RefreshTokens
             .Where(refreshToken => refreshToken.UserId == userId && refreshToken.RevokedAt == null && refreshToken.ExpiresAt > utc)
             .ToListAsync(cancellationToken)
@@ -128,7 +128,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                DateTime utc = DateTime.UtcNow;
+                DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
 
                 List<RefreshToken> userTokens = await db.RefreshTokens
                     .Where(t => t.UserId == compromisedToken.UserId)
@@ -168,7 +168,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db) : IRefreshTokenRe
         }
         else
         {
-            DateTime utc = DateTime.UtcNow;
+            DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
 
             List<RefreshToken> userTokens = await db.RefreshTokens
                 .Where(t => t.UserId == compromisedToken.UserId)

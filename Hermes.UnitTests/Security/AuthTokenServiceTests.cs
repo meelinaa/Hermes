@@ -20,7 +20,7 @@ public sealed class AuthTokenServiceTests
         JwtOptions? options = null)
     {
         JwtOptions jwtOptions = options ?? new JwtOptions { RefreshTokenDays = 14 };
-        return new AuthTokenService(db.Object, jwt.Object, Options.Create(jwtOptions), logger?.Object ?? new Mock<ILogger<AuthTokenService>>().Object);
+        return new AuthTokenService(db.Object, jwt.Object, Options.Create(jwtOptions), TimeProvider.System, logger?.Object ?? new Mock<ILogger<AuthTokenService>>().Object);
     }
 
     [Fact]

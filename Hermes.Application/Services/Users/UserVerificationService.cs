@@ -19,7 +19,8 @@ namespace Hermes.Application.Services.Users;
 public sealed class UserVerificationService(
     IUserRepository db,
     IVerificationMailJobService verificationMailJobTrigger,
-    IOptions<SecurityOptions> securityOptions) : IUserVerificationService
+    IOptions<SecurityOptions> securityOptions,
+    TimeProvider timeProvider) : IUserVerificationService
 {
     /// <summary>
     /// Enqueues a background job to send a verification email with a numeric challenge code to the specified address.
@@ -68,7 +69,7 @@ public sealed class UserVerificationService(
             ? DateTime.SpecifyKind(expiry.Value, DateTimeKind.Utc)
             : expiry.Value.ToUniversalTime();
 
-        if (DateTime.UtcNow >= expiresUtc)
+        if (timeProvider.GetUtcNow().UtcDateTime >= expiresUtc)
             throw new VerificationCodeMismatchException();
 
         string provided = code.ToString("D6", CultureInfo.InvariantCulture);

@@ -13,7 +13,7 @@ namespace Hermes.Application.Services.Security;
 /// <summary>
 /// Issues JWT access tokens signed with the configured HMAC-SHA256 key.
 /// </summary>
-public sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtTokenProvider
+public sealed class JwtTokenProvider(IOptions<JwtOptions> options, TimeProvider timeProvider) : IJwtTokenProvider
 {
     /// <summary>
     /// Issues a signed JWT access token for the specified user and returns its expiry time.
@@ -35,7 +35,7 @@ public sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtTokenPr
             new(JwtRegisteredClaimNames.Sub, id),
             new(ClaimTypes.NameIdentifier, id),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
-            new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
+            new(JwtRegisteredClaimNames.Iat, timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
         ];
 
         if (!string.IsNullOrWhiteSpace(email))
@@ -45,13 +45,13 @@ public sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtTokenPr
 
         SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(jwtOptions.SigningKey));
         SigningCredentials creds = new(key, SecurityAlgorithms.HmacSha256);
-        DateTime expires = DateTime.UtcNow.AddMinutes(jwtOptions.AccessTokenMinutes);
+        DateTime expires = timeProvider.GetUtcNow().UtcDateTime.AddMinutes(jwtOptions.AccessTokenMinutes);
 
         JwtSecurityToken token = new(
             issuer: jwtOptions.Issuer,
             audience: jwtOptions.Audience,
             claims: claims,
-            notBefore: DateTime.UtcNow,
+            notBefore: timeProvider.GetUtcNow().UtcDateTime,
             expires: expires,
             signingCredentials: creds);
 

@@ -12,52 +12,78 @@ public class NewsletterSubscription
     /// <summary>
     /// Gets or sets the unique identifier of the newsletter subscription.
     /// </summary>
-    public int Id { get; set; }
+    public int Id { get; private set; }
 
     /// <summary>
     /// Gets or sets the ID of the user who owns this subscription.
     /// </summary>
-    public int UserId { get; set; }
+    public int UserId { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of keywords to search for articles.
     /// </summary>
-    public List<string>? Keywords { get; set; }
+    public List<string>? Keywords { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of news categories included in the newsletter.
     /// </summary>
-    public List<NewsCategory>? Category { get; set; }
+    public List<NewsCategory>? Category { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of languages for the newsletter articles.
     /// </summary>
-    public List<Language>? Languages { get; set; }
+    public List<Language>? Languages { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of countries for the newsletter articles.
     /// </summary>
-    public List<Country>? Countries { get; set; }
+    public List<Country>? Countries { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of weekdays when the newsletter should be sent.
     /// </summary>
-    public List<Weekdays> SendOnWeekdays { get; set; } = [];
+    public List<Weekdays> SendOnWeekdays { get; private set; } = [];
 
     /// <summary>
     /// Gets or sets the list of times in a day when the newsletter should be sent.
     /// </summary>
-    public List<TimeOnly> SendAtTimes { get; set; } = [];
+    public List<TimeOnly> SendAtTimes { get; private set; } = [];
 
     /// <summary>
     /// Gets or sets a value indicating whether this newsletter subscription is currently enabled.
     /// </summary>
-    public bool IsEnabled { get; set; } = true;
+    public bool IsEnabled { get; private set; } = true;
 
     /// <summary>
     /// Materialized next digest eligibility (UTC minute boundary); query path may use JSON when unset.
     /// </summary>
-    public DateTime? NextDigestSlotUtc { get; set; }
+    public DateTime? NextDigestSlotUtc { get; private set; }
+
+    public static NewsletterSubscription CreateForUser(int userId)
+    {
+        if (userId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
+        return new NewsletterSubscription { UserId = userId };
+    }
+
+    public void UpdateFilters(
+        IEnumerable<string>? keywords,
+        IEnumerable<NewsCategory>? categories,
+        IEnumerable<Language>? languages,
+        IEnumerable<Country>? countries)
+    {
+        Keywords = keywords?.Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()).ToList();
+        Category = categories?.ToList();
+        Languages = languages?.ToList();
+        Countries = countries?.ToList();
+    }
+
+    public void Enable() => IsEnabled = true;
+    public void Disable() => IsEnabled = false;
+
+    internal void SetId(int id) => Id = id;
+
+    internal void SetUserId(int userId) => UserId = userId;
 
     /// <summary>
     /// Assigns the schedule window configuration (weekdays and times) to this newsletter subscription.
@@ -68,4 +94,12 @@ public class NewsletterSubscription
         ArgumentNullException.ThrowIfNull(schedule);
         schedule.ApplyToSubscription(this);
     }
+
+    internal void SetSchedule(List<Weekdays> weekdays, List<TimeOnly> times)
+    {
+        SendOnWeekdays = weekdays;
+        SendAtTimes = times;
+    }
+
+    public void SetNextDigestSlot(DateTime? next) => NextDigestSlotUtc = next;
 }

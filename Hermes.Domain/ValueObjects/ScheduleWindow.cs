@@ -36,7 +36,6 @@ public sealed record ScheduleWindow
     public void ApplyToSubscription(NewsletterSubscription subscription)
     {
         ArgumentNullException.ThrowIfNull(subscription);
-        subscription.SendOnWeekdays = Weekdays.ToList();
-        subscription.SendAtTimes = Times.ToList();
+        subscription.SetSchedule(Weekdays.ToList(), Times.ToList());
     }
 }

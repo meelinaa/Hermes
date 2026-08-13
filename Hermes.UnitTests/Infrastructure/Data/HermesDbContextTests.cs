@@ -100,7 +100,7 @@ public sealed class HermesDbContextTests
     public async Task CompleteRefreshRotationAsync_SetsRevokedAndReplacementLink()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
-        var tokens = new RefreshTokenRepository(ctx);
+        var tokens = new RefreshTokenRepository(ctx, TimeProvider.System);
         User user = await SeedUserAsync(ctx);
 
         RefreshToken oldToken = new()
@@ -138,7 +138,7 @@ public sealed class HermesDbContextTests
     public async Task GetActiveRefreshTokenByHashAsync_Should_ReturnNull_WhenHashEmpty()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
-        var tokens = new RefreshTokenRepository(ctx);
+        var tokens = new RefreshTokenRepository(ctx, TimeProvider.System);
 
         RefreshToken? row = await tokens.GetActiveRefreshTokenByHashAsync("", CancellationToken.None);
 

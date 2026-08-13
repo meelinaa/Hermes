@@ -27,7 +27,7 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task SetNewsAsync_Should_Throw_WhenNewsNull()
     {
         // Arrange
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts, TimeProvider.System);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(async () => await sut.SetNewsAsync(null!));
@@ -43,8 +43,10 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task SetNewsAsync_Should_RejectNonPositiveOwningUserId(int invalidUserId)
     {
         // Arrange
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
-        NewsletterSubscription news = new() { Id = 0, UserId = invalidUserId };
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts, TimeProvider.System);
+        NewsletterSubscription news = NewsletterSubscription.CreateForUser(1);
+        news.SetUserId(invalidUserId);
+        news.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(10, 0)]));
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await sut.SetNewsAsync(news));
@@ -58,17 +60,18 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task SetNewsAsync_Should_ReturnPersistedId_AfterRepositoryAssignsKey()
     {
         // Arrange
-        NewsletterSubscription news = new() { Id = 0, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
+        NewsletterSubscription news = NewsletterSubscription.CreateForUser(1);
+        news.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(10, 0)]));
         Mock<INewsletterSubscriptionRepository> db = new();
         db.Setup(repository => repository.SetNewsAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()))
-            .Callback<NewsletterSubscription, CancellationToken>((n, _) => n.Id = 55)
+            .Callback<NewsletterSubscription, CancellationToken>((n, _) => n.SetId(55))
             .Returns(ValueTask.CompletedTask);
         db.Setup(dataStore => dataStore.AdvanceNextDigestSlotAsync(
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<TimeZoneInfo>(), It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
 
-        NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts, TimeProvider.System);
 
         // Act
         int id = await sut.SetNewsAsync(news);
@@ -97,7 +100,7 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task GetNewsByIdAsync_Should_RejectNonPositiveIdentifiers(int userId, int newsId)
     {
         // Arrange
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts, TimeProvider.System);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(async () => await sut.GetNewsByIdAsync(userId, newsId));
@@ -112,16 +115,11 @@ public sealed class NewsletterSubscriptionServiceTests
     {
         // Arrange
         Mock<INewsletterSubscriptionRepository> db = new();
-        NewsletterSubscription news = new()
-        {
-            Id = 9,
-            UserId = 4,
-            SendOnWeekdays = [Weekdays.Tuesday],
-            SendAtTimes = [new TimeOnly(8, 0)],
-        };
+        NewsletterSubscription news = NewsletterSubscription.CreateForUser(4);
+        news.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Tuesday], [new TimeOnly(8, 0)]));
         db.Setup(dataStore => dataStore.DeleteNewsAsync(news, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
-        NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts, TimeProvider.System);
 
         // Act
         await sut.DeleteNewsAsync(news);
@@ -146,7 +144,9 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task UpdateNewsAsync_Should_AdvanceDigestSlot_AfterPersist()
     {
         // Arrange
-        NewsletterSubscription news = new() { Id = 1, UserId = 1, SendOnWeekdays = [Weekdays.Monday], SendAtTimes = [new TimeOnly(10, 0)] };
+        NewsletterSubscription news = NewsletterSubscription.CreateForUser(1);
+        news.SetId(1);
+        news.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(10, 0)]));
         Mock<INewsletterSubscriptionRepository> db = new();
         db.Setup(dataStore => dataStore.UpdateNewsAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
@@ -158,7 +158,7 @@ public sealed class NewsletterSubscriptionServiceTests
                 It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
 
-        NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(db.Object, _defaultNewsletterOpts, TimeProvider.System);
 
         // Act
         await sut.UpdateNewsAsync(news);
@@ -182,7 +182,7 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task GetNewsListAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
         // Arrange
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts, TimeProvider.System);
         NewsletterSubscriptionListQueryDto query = new(invalidUserId, 1, 10, AfterId: null, SortDescending: false, Search: null, Category: null);
 
         // Act & Assert
@@ -199,7 +199,7 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task DeleteAllNewsByUserAsync_Should_RejectNonPositiveUserId(int invalidUserId)
     {
         // Arrange
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts, TimeProvider.System);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(async () => await sut.DeleteAllNewsByUserAsync(invalidUserId));
@@ -213,7 +213,7 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task UpdateNewsAsync_Should_Throw_WhenNewsNull()
     {
         // Arrange
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts, TimeProvider.System);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(async () => await sut.UpdateNewsAsync(null!));
@@ -227,7 +227,7 @@ public sealed class NewsletterSubscriptionServiceTests
     public async Task DeleteNewsAsync_Should_Throw_WhenNewsNull()
     {
         // Arrange
-        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts);
+        NewsletterSubscriptionService sut = new(Mock.Of<INewsletterSubscriptionRepository>(), _defaultNewsletterOpts, TimeProvider.System);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(async () => await sut.DeleteNewsAsync(null!));

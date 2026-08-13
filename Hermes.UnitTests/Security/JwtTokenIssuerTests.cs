@@ -44,7 +44,7 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_Embed_SubClaim_WithUserIdString_AndAllowValidation()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenProvider issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o), TimeProvider.System);
 
         JwtAccessTokenResultDto result = issuer.Issue(42, "user@site.test", "  Name  ");
 
@@ -67,7 +67,7 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_OmitOptionalClaims_WhenEmailAndNameMissingOrWhitespace()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenProvider issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o), TimeProvider.System);
 
         JwtAccessTokenResultDto result = issuer.Issue(1, null, "   ");
 
@@ -83,7 +83,7 @@ public sealed class JwtTokenIssuerTests
     public void Issue_Should_GenerateDistinctCompactTokens_PerIssuance()
     {
         JwtOptions o = CreateValidOptions();
-        JwtTokenProvider issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o), TimeProvider.System);
 
         JwtAccessTokenResultDto a = issuer.Issue(1, "a@test", "A");
         JwtAccessTokenResultDto b = issuer.Issue(1, "a@test", "A");
@@ -96,7 +96,7 @@ public sealed class JwtTokenIssuerTests
     {
         JwtOptions o = CreateValidOptions();
         o.AccessTokenMinutes = 5;
-        JwtTokenProvider issuer = new(Options.Create(o));
+        JwtTokenProvider issuer = new(Options.Create(o), TimeProvider.System);
         DateTime before = DateTime.UtcNow;
 
         JwtAccessTokenResultDto result = issuer.Issue(1, null, null);
@@ -113,7 +113,7 @@ public sealed class JwtTokenIssuerTests
     [InlineData(-1)]
     public void Issue_Should_RejectNonPositiveUserIdentifier(int invalidUserId)
     {
-        JwtTokenProvider issuer = new(Options.Create(CreateValidOptions()));
+        JwtTokenProvider issuer = new(Options.Create(CreateValidOptions()), TimeProvider.System);
 
         Assert.Throws<ArgumentOutOfRangeException>(() => issuer.Issue(invalidUserId, null, null));
     }

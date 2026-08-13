@@ -19,7 +19,8 @@ public sealed class UserVerificationServiceTests
         new(
             db,
             trigger ?? Mock.Of<IVerificationMailJobService>(),
-            Options.Create(new SecurityOptions { HashEmailVerificationCodes = hashEmailVerificationCodes }));
+            Options.Create(new SecurityOptions { HashEmailVerificationCodes = hashEmailVerificationCodes }),
+            TimeProvider.System);
 
     // [R]IGHT: Enqueues background job to send verification email for existing user
     [Fact]
