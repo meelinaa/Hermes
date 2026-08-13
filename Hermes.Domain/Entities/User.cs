@@ -1,8 +1,9 @@
+using Hermes.Domain.Events;
 using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Domain.Entities;
 
-public class User
+public class User : AggregateRoot
 {
     public UserId Id { get; set; }
     public string? Name { get; set; }
@@ -32,12 +33,20 @@ public class User
         string? previous = Email;
         Email = next;
         if (!string.Equals(previous, next, StringComparison.Ordinal))
+        {
             IsEmailVerified = false;
+            AddDomainEvent(new UserEmailChangedEvent(Id, previous, next));
+        }
     }
 
     public void ReplacePasswordHash(string bcryptHash)
     {
         ArgumentNullException.ThrowIfNull(bcryptHash);
         PasswordHash = bcryptHash;
+    }
+
+    public void RegisterUser(string email)
+    {
+        AddDomainEvent(new UserRegisteredEvent(Id, email));
     }
 }

@@ -1,6 +1,5 @@
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
-using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Domain.ValueObjects;
 

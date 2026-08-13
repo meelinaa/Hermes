@@ -239,8 +239,7 @@ public sealed class UserAuthenticationServiceTests
         await sut.UpdateUserAsync(patch, currentPasswordPlain: "oldpw");
 
         // Assert
-        Assert.True(BCrypt.Net.BCrypt.Verify("new-secret", patch.PasswordHash));
-        db.Verify(dataStore => dataStore.UpdateUserAsync(patch, It.IsAny<CancellationToken>()), Times.Once);
+        db.Verify(dataStore => dataStore.UpdateUserAsync(It.Is<User>(u => BCrypt.Net.BCrypt.Verify("new-secret", u.PasswordHash)), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // [E]RROR: Throws exception when current password is omitted during password change
@@ -248,7 +247,10 @@ public sealed class UserAuthenticationServiceTests
     public async Task UpdateUserAsync_Should_RequireCurrentPassword_WhenChangingPassword()
     {
         // Arrange
-        UserAuthenticationService sut = CreateService(Mock.Of<IUserRepository>());
+        Mock<IUserRepository> db = new();
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = new UserId(1), Email = "a@b.c", Name = "N", PasswordHash = "old" });
+        UserAuthenticationService sut = CreateService(db.Object);
         User patch = new() { Id = new UserId(1), Email = "a@b.c", Name = "N", PasswordHash = "new" };
 
         // Act & Assert
@@ -314,6 +316,8 @@ public sealed class UserAuthenticationServiceTests
         // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = new UserId(2), Email = "u@x.y", Name = "OnlyName", PasswordHash = "hash" });
 
         UserAuthenticationService sut = CreateService(db.Object);
         User patch = new() { Id = new UserId(2), Email = "u@x.y", Name = "OnlyName", PasswordHash = null };
@@ -322,8 +326,7 @@ public sealed class UserAuthenticationServiceTests
         await sut.UpdateUserAsync(patch, currentPasswordPlain: null);
 
         // Assert
-        Assert.Null(patch.PasswordHash);
-        db.Verify(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Never);
-        db.Verify(dataStore => dataStore.UpdateUserAsync(patch, It.IsAny<CancellationToken>()), Times.Once);
+        db.Verify(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Once);
+        db.Verify(dataStore => dataStore.UpdateUserAsync(It.Is<User>(u => u.PasswordHash == "hash"), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

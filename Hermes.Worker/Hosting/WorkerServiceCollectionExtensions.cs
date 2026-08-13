@@ -1,5 +1,8 @@
 using Hangfire;
 using Hangfire.MySql;
+using Polly;
+using Polly.Retry;
+using System.Net.Mail;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Options.Email;
 using Hermes.Application.Options.External;
@@ -47,6 +50,17 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value);
         builder.Services.AddSingleton<IEmailProvider, SmtpEmailClient>();
         builder.Services.AddOptions<MailHogOptions>().BindConfiguration("MailHog").ValidateDataAnnotations().ValidateOnStart();
+        
+        builder.Services.AddResiliencePipeline("smtp-retry", pipelineBuilder =>
+        {
+            pipelineBuilder.AddRetry(new RetryStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder().Handle<SmtpException>().Handle<IOException>(),
+                MaxRetryAttempts = 3,
+                Delay = TimeSpan.FromSeconds(2),
+                BackoffType = DelayBackoffType.Exponential
+            });
+        });
         builder.Services.AddOptions<NewsDataIoOptions>().BindConfiguration("NewsDataIo").ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddOptions<HermesSiteUrlsOptions>().BindConfiguration(HermesSiteUrlsOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddOptions<NewsletterOptions>().BindConfiguration(NewsletterOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();

@@ -39,6 +39,7 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             Email = request.Email,
             PasswordHash = request.Password
         };
+        user.RegisterUser(request.Email);
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id.Value <= 0)
             throw new InvalidOperationException("Failed to create user.");
@@ -108,19 +109,20 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
         if (string.IsNullOrEmpty(user.Email))
             throw new ArgumentException("Email is required.", nameof(user));
 
+        User? existing = await db.GetUserEntityByIdAsync(user.Id, cancellationToken).ConfigureAwait(false);
+        if (existing is null)
+            throw new UserNotFoundException($"User with id {user.Id.Value} was not found.");
+
         Email normalizedEmail = Email.Parse(user.Email);
-        user.Email = normalizedEmail.Value;
+        existing.Rename(user.Name);
+        existing.ChangePrimaryEmail(normalizedEmail);
 
         string? newPlain = user.PasswordHash;
-        string? hashedForDb = null;
         if (!string.IsNullOrWhiteSpace(newPlain))
         {
             if (string.IsNullOrWhiteSpace(currentPasswordPlain))
                 throw new ArgumentException("Current password is required when setting a new password.", nameof(currentPasswordPlain));
 
-            User? existing = await db.GetUserEntityByIdAsync(user.Id, cancellationToken).ConfigureAwait(false);
-            if (existing is null)
-                throw new UserNotFoundException($"User with id {user.Id.Value} was not found.");
             if (string.IsNullOrEmpty(existing.PasswordHash))
                 throw new InvalidOperationException("Cannot change password: no password is set for this account.");
 
@@ -137,10 +139,9 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             if (!valid)
                 throw new WrongCurrentPasswordException();
 
-            hashedForDb = BCrypt.Net.BCrypt.HashPassword(newPlain.Trim());
+            existing.ReplacePasswordHash(BCrypt.Net.BCrypt.HashPassword(newPlain.Trim()));
         }
 
-        user.PasswordHash = hashedForDb;
-        await db.UpdateUserAsync(user, cancellationToken).ConfigureAwait(false);
+        await db.UpdateUserAsync(existing, cancellationToken).ConfigureAwait(false);
     }
 }

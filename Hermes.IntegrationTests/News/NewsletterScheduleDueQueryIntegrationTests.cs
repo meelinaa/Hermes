@@ -26,14 +26,14 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
 
         User user = new()
         {
-            Id = 0,
+            Id = new Hermes.Domain.ValueObjects.UserId(0),
             Name = "schedule-due-test",
             Email = $"sched-due-{Guid.NewGuid():N}@test.local",
             PasswordHash = "hash",
             IsEmailVerified = true,
         };
         await users.SetUserAsync(user, CancellationToken.None);
-        int userId = user.Id;
+        Hermes.Domain.ValueObjects.UserId userId = user.Id;
 
         NewsletterSubscription mondaySlot = NewsletterSubscription.CreateForUser(userId);
         mondaySlot.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(9, 30)]));
@@ -52,7 +52,7 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
         DateTime slotStartUtc = new(2026, 5, 4, 7, 0, 0, DateTimeKind.Utc);
         DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
 
-        List<(int NewsId, int UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
+        List<(Hermes.Domain.ValueObjects.NewsletterId NewsId, Hermes.Domain.ValueObjects.UserId UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
             Weekdays.Monday,
             9,
             30,
@@ -77,14 +77,14 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
 
         User user = new()
         {
-            Id = 0,
+            Id = new Hermes.Domain.ValueObjects.UserId(0),
             Name = "schedule-disabled-test",
             Email = $"sched-off-{Guid.NewGuid():N}@test.local",
             PasswordHash = "hash",
             IsEmailVerified = true,
         };
         await users.SetUserAsync(user, CancellationToken.None);
-        int userId = user.Id;
+        Hermes.Domain.ValueObjects.UserId userId = user.Id;
 
         NewsletterSubscription enabledRow = NewsletterSubscription.CreateForUser(userId);
         enabledRow.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(9, 30)]));
@@ -99,7 +99,7 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
         DateTime slotStartUtc = new(2026, 5, 4, 7, 0, 0, DateTimeKind.Utc);
         DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
 
-        List<(int NewsId, int UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
+        List<(Hermes.Domain.ValueObjects.NewsletterId NewsId, Hermes.Domain.ValueObjects.UserId UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
             Weekdays.Monday,
             9,
             30,

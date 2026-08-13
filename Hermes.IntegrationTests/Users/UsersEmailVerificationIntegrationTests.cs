@@ -24,7 +24,7 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
     {
         using IServiceScope scope = factory.Services.CreateScope();
         HermesDbContext db = scope.ServiceProvider.GetRequiredService<HermesDbContext>();
-        User user = await db.Users.FirstAsync(userEntity => userEntity.Id == userId);
+        User user = await db.Users.FirstAsync(userEntity => userEntity.Id == new Hermes.Domain.ValueObjects.UserId(userId));
         user.TwoFactorCode = code;
         user.TwoFactorExpiry = expiryUtc;
         await db.SaveChangesAsync();

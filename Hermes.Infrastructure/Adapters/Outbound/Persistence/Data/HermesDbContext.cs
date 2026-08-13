@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.Events;
 using Hermes.Domain.ValueObjects;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Mappers;
 using Microsoft.EntityFrameworkCore;
+using Hermes.Application.Ports.Outbound;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 
@@ -11,7 +13,7 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 /// EF Core database context for Hermes (MySQL via Pomelo): mappings and coordinated save semantics only.
 /// </summary>
 /// <remarks>Type-specific persistence lives in <see cref="Hermes.Infrastructure.Adapters.Outbound.Repositories.UserStore"/>, <see cref="Hermes.Infrastructure.Adapters.Outbound.Repositories.NewsStore"/>, and sibling types.</remarks>
-public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbContext(options)
+public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainEventDispatcher? dispatcher = null) : DbContext(options)
 {
     /// <inheritdoc />
     public DbSet<User> Users { get; set; } = null!;
@@ -142,6 +144,22 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
     /// <inheritdoc />
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        var entitiesWithEvents = ChangeTracker.Entries<AggregateRoot>()
+            .Select(e => e.Entity)
+            .Where(e => e.DomainEvents.Any())
+            .ToList();
+
+        var events = entitiesWithEvents.SelectMany(e => e.DomainEvents).ToList();
+        entitiesWithEvents.ForEach(e => e.ClearDomainEvents());
+
+        if (dispatcher is not null)
+        {
+            foreach (var domainEvent in events)
+            {
+                await dispatcher.DispatchAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
         try
         {
             return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);

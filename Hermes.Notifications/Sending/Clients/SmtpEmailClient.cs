@@ -6,6 +6,7 @@ using Hermes.Application.Options.Email;
 using Hermes.Application.Ports.Outbound;
 using Polly;
 using Polly.Retry;
+using Polly.Registry;
 
 namespace Hermes.Notifications.Sending.Providers;
 
@@ -13,17 +14,9 @@ namespace Hermes.Notifications.Sending.Providers;
 /// Sends e-mail via <see cref="SmtpClient"/> using <see cref="EmailOptions"/>.
 /// </summary>
 /// <param name="settings">The configured email options.</param>
-public sealed class SmtpEmailClient(EmailOptions settings) : IEmailProvider
+public sealed class SmtpEmailClient(EmailOptions settings, ResiliencePipelineProvider<string> pipelineProvider) : IEmailProvider
 {
-    private readonly ResiliencePipeline _pipeline = new ResiliencePipelineBuilder()
-        .AddRetry(new RetryStrategyOptions
-        {
-            ShouldHandle = new PredicateBuilder().Handle<SmtpException>().Handle<IOException>(),
-            MaxRetryAttempts = 3,
-            Delay = TimeSpan.FromSeconds(2),
-            BackoffType = DelayBackoffType.Exponential
-        })
-        .Build();
+    private readonly ResiliencePipeline _pipeline = pipelineProvider.GetPipeline("smtp-retry");
 
     /// <inheritdoc />
     public async Task SendAsync(EmailMessageDto message, CancellationToken cancellationToken = default)

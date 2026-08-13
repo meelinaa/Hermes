@@ -29,6 +29,9 @@ using Hermes.Application.Services.Security;
 using Hermes.Application.Services.Users;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
+using Hermes.Infrastructure.EventDispatching;
+using Hermes.Domain.Events;
+using Hermes.Application.EventHandlers;
 
 namespace Hermes.Api.Hosting;
 
@@ -75,6 +78,10 @@ public static class ApiServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IVerificationMailJobService, VerificationMailJobWrapper>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");
+
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();
+        services.AddScoped<IDomainEventHandler<UserEmailChangedEvent>, UserEmailChangedEventHandler>();
 
         services.AddHangfire((sp, config) => config
             .UseSimpleAssemblyNameTypeSerializer()
