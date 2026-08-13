@@ -1,5 +1,6 @@
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ public sealed class HermesDbContextTests
     {
         User seededUser = new()
         {
+            Id = new UserId(Random.Shared.Next(1, 10000)),
             Name = "Tester",
             Email = "db@test.example",
             PasswordHash = "$2a$placeholder",
@@ -43,14 +45,14 @@ public sealed class HermesDbContextTests
         ctx.NotificationLogs.Add(new NotificationLog
         {
             UserId = user.Id,
-            NewsId = 42,
+            NewsId = new NewsletterId(42),
             SentAt = windowStart.AddSeconds(40),
             Status = NotificationStatus.Sent,
             Channel = DeliveryChannel.Email,
         });
         await ctx.SaveChangesAsync();
 
-        bool exists = await logStore.ExistsSentNotificationInWindowAsync(user.Id, 42, windowStart, windowEnd, CancellationToken.None);
+        bool exists = await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(42), windowStart, windowEnd, CancellationToken.None);
 
         Assert.True(exists);
     }
@@ -68,7 +70,7 @@ public sealed class HermesDbContextTests
         ctx.NotificationLogs.Add(new NotificationLog
         {
             UserId = user.Id,
-            NewsId = 1,
+            NewsId = new NewsletterId(1),
             SentAt = windowStart.AddMinutes(-5),
             Status = NotificationStatus.Sent,
             Channel = DeliveryChannel.Email,
@@ -76,7 +78,7 @@ public sealed class HermesDbContextTests
         ctx.NotificationLogs.Add(new NotificationLog
         {
             UserId = user.Id,
-            NewsId = 2,
+            NewsId = new NewsletterId(2),
             SentAt = windowStart.AddSeconds(20),
             Status = NotificationStatus.Failed,
             Channel = DeliveryChannel.Email,
@@ -84,16 +86,16 @@ public sealed class HermesDbContextTests
         ctx.NotificationLogs.Add(new NotificationLog
         {
             UserId = user.Id,
-            NewsId = 3,
+            NewsId = new NewsletterId(3),
             SentAt = windowEnd,
             Status = NotificationStatus.Sent,
             Channel = DeliveryChannel.Email,
         });
         await ctx.SaveChangesAsync();
 
-        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 1, windowStart, windowEnd, CancellationToken.None));
-        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 2, windowStart, windowEnd, CancellationToken.None));
-        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 3, windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(1), windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(2), windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(3), windowStart, windowEnd, CancellationToken.None));
     }
 
     [Fact]

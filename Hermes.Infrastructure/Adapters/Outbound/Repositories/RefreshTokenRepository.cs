@@ -1,6 +1,7 @@
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -106,7 +107,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db, TimeProvider time
     }
 
     /// <inheritdoc />
-    public async ValueTask RevokeAllRefreshTokensForUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask RevokeAllRefreshTokensForUserAsync(UserId userId, CancellationToken cancellationToken = default)
     {
         DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
         List<RefreshToken> active = await db.RefreshTokens

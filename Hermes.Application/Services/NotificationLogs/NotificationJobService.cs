@@ -1,4 +1,5 @@
 using Hermes.Application.Ports.Inbound;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.NotificationLogs;
 
@@ -17,7 +18,7 @@ public sealed class NotificationJobService(
     /// <param name="digestSlotStartUtc">The UTC timestamp of the digest slot.</param>
     /// <param name="cancellationToken">Cancellation token for async operations.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task SendNewsDigestAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
+    public async Task SendNewsDigestAsync(UserId userId, NewsletterId newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
         => await newsletterDigestService.SendAsync(userId, newsId, digestSlotStartUtc, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
@@ -26,6 +27,6 @@ public sealed class NotificationJobService(
     /// <param name="userId">The ID of the user to verify.</param>
     /// <param name="cancellationToken">Cancellation token for async operations.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task SendVerificationMailAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task SendVerificationMailAsync(UserId userId, CancellationToken cancellationToken = default)
         => await verificationDigestService.SendAsync(userId, cancellationToken).ConfigureAwait(false);
 }

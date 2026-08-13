@@ -1,5 +1,6 @@
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Api.Mapping.Newsletter;
 
@@ -14,7 +15,7 @@ internal static class NewsletterSubscriptionHttpMapper
     /// <param name="dto">The creation request payload.</param>
     /// <param name="userId">The ID of the subscribing user.</param>
     /// <returns>The mapped <see cref="NewsletterSubscription"/> domain entity.</returns>
-    public static NewsletterSubscription ToEntity(this CreateNewsletterSubscriptionRequestDto dto, int userId)
+    public static NewsletterSubscription ToEntity(this CreateNewsletterSubscriptionRequestDto dto, UserId userId)
     {
         NewsletterSubscription news = NewsletterSubscription.CreateForUser(userId);
         news.UpdateFilters(dto.Keywords, dto.Category, dto.Languages, dto.Countries);
@@ -35,7 +36,7 @@ internal static class NewsletterSubscriptionHttpMapper
     /// <param name="userId">The ID of the user requesting update.</param>
     /// <param name="existing">The existing subscription entity.</param>
     /// <returns>The updated <see cref="NewsletterSubscription"/> entity.</returns>
-    public static NewsletterSubscription ToEntity(this UpdateNewsletterSubscriptionRequestDto dto, int userId, NewsletterSubscription existing)
+    public static NewsletterSubscription ToEntity(this UpdateNewsletterSubscriptionRequestDto dto, UserId userId, NewsletterSubscription existing)
     {
         existing.UpdateFilters(dto.Keywords, dto.Category, dto.Languages, dto.Countries);
         
@@ -64,8 +65,8 @@ internal static class NewsletterSubscriptionHttpMapper
     public static NewsletterSubscriptionResponseDto ToResponse(this NewsletterSubscription entity) =>
         new()
         {
-            Id = entity.Id,
-            UserId = entity.UserId,
+            Id = entity.Id.Value,
+            UserId = entity.UserId.Value,
             Keywords = entity.Keywords,
             Category = entity.Category,
             Languages = entity.Languages,

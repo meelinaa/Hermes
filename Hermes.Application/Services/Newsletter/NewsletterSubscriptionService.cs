@@ -25,10 +25,10 @@ public sealed class NewsletterSubscriptionService(
     /// <returns>The unique database identifier assigned to the created subscription.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="news"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the owning user ID is less than or equal to zero.</exception>
-    public async ValueTask<int> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterId> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
-        if (news.UserId <= 0)
+        if (news.UserId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(news.UserId), "Owning user ID must be greater than zero.");
         ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
         news.AssignDigestSchedule(window);
@@ -84,11 +84,11 @@ public sealed class NewsletterSubscriptionService(
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>The matching <see cref="NewsletterSubscription"/> if found; otherwise <c>null</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="userId"/> or <paramref name="id"/> is less than or equal to zero.</exception>
-    public async ValueTask<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscription?> GetNewsByIdAsync(UserId userId, NewsletterId id, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentException("User id must be greater than zero.", nameof(userId));
-        if (id <= 0)
+        if (id.Value <= 0)
             throw new ArgumentException("News id must be greater than zero.", nameof(id));
         return await db.GetNewsByIdAsync(userId, id, cancellationToken).ConfigureAwait(false);
     }
@@ -100,9 +100,9 @@ public sealed class NewsletterSubscriptionService(
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>The matching <see cref="NewsletterSubscription"/> if found; otherwise <c>null</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is less than or equal to zero.</exception>
-    public async ValueTask<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscription?> FindNewsByIdAsync(NewsletterId id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
+        if (id.Value <= 0)
             throw new ArgumentException("News id must be greater than zero.", nameof(id));
         return await db.FindNewsByIdAsync(id, cancellationToken).ConfigureAwait(false);
     }
@@ -141,9 +141,9 @@ public sealed class NewsletterSubscriptionService(
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>The total number of subscription records deleted.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="userId"/> is less than or equal to zero.</exception>
-    public async ValueTask<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask<int> DeleteAllNewsByUserAsync(UserId userId, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentException("User id must be greater than zero.", nameof(userId));
         return await db.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
     }

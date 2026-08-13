@@ -14,6 +14,7 @@ using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Newsletter;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Api.Controllers.Newsletter;
 
@@ -134,7 +135,7 @@ public class NewsletterSubscriptionController(
     [HttpGet("{userId:int}/newsletter-subscriptions/{newsId:int}")]
     public async Task<ActionResult<NewsletterSubscriptionResponseDto>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
     {
-        NewsletterSubscription? news = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+        NewsletterSubscription? news = await newsService.GetNewsByIdAsync(new UserId(userId), new NewsletterId(newsId), cancellationToken).ConfigureAwait(false);
         return news is null ? this.NotFoundProblem() : Ok(news.ToResponse());
     }
 
@@ -151,8 +152,8 @@ public class NewsletterSubscriptionController(
         if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
-        NewsletterSubscription entity = request.ToEntity(currentUserId);
-        int newsId = await newsService.SetNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+        NewsletterSubscription entity = request.ToEntity(new UserId(currentUserId));
+        int newsId = (await newsService.SetNewsAsync(entity, cancellationToken).ConfigureAwait(false)).Value;
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         return Ok(new CreateNewsletterSubscriptionResponseDto(currentUserId, newsId));
     }
@@ -170,11 +171,11 @@ public class NewsletterSubscriptionController(
         if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
-        NewsletterSubscription? existing = await newsService.FindNewsByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        NewsletterSubscription? existing = await newsService.FindNewsByIdAsync(new NewsletterId(request.Id), cancellationToken).ConfigureAwait(false);
         if (existing is null)
             return this.NotFoundProblem();
 
-        NewsletterSubscription entity = request.ToEntity(currentUserId, existing);
+        NewsletterSubscription entity = request.ToEntity(new UserId(currentUserId), existing);
         await newsService.UpdateNewsAsync(entity, cancellationToken).ConfigureAwait(false);
 
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
@@ -190,7 +191,7 @@ public class NewsletterSubscriptionController(
     [HttpDelete("{userId:int}/newsletter-subscriptions/all")]
     public async Task<ActionResult<DeleteAllNewsletterSubscriptionResponseDto>> DeleteAllNews(int userId, CancellationToken cancellationToken)
     {
-        int deleted = await newsService.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        int deleted = await newsService.DeleteAllNewsByUserAsync(new UserId(userId), cancellationToken).ConfigureAwait(false);
         return Ok(new DeleteAllNewsletterSubscriptionResponseDto(deleted));
     }
 
@@ -203,7 +204,7 @@ public class NewsletterSubscriptionController(
     [HttpDelete("{userId:int}/newsletter-subscriptions/{newsId:int}")]
     public async Task<ActionResult> DeleteNews(int userId, int newsId, CancellationToken cancellationToken)
     {
-        NewsletterSubscription? deleteNews = await newsService.GetNewsByIdAsync(userId, newsId, cancellationToken).ConfigureAwait(false);
+        NewsletterSubscription? deleteNews = await newsService.GetNewsByIdAsync(new UserId(userId), new NewsletterId(newsId), cancellationToken).ConfigureAwait(false);
         if (deleteNews is null)
             return this.NotFoundProblem();
 

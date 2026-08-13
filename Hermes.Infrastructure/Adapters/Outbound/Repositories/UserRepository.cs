@@ -6,6 +6,7 @@ using Hermes.Domain.Exceptions;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using EmailAddress = Hermes.Domain.ValueObjects.Email;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;
 
@@ -16,7 +17,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     public async ValueTask SetUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
-        if (user.Id != 0)
+        if (user.Id.Value != 0)
             throw new ArgumentException("New users must have id 0 before insert.", nameof(user));
 
         if (!string.IsNullOrWhiteSpace(user.Email))
@@ -62,10 +63,10 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async ValueTask<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<UserScopeDto?> GetUserByIdAsync(UserId id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
-            throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
+        if (id.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id.Value, "User id must be greater than zero.");
 
         User? user = await db.Users.AsNoTracking()
             .FirstOrDefaultAsync(userEntity => userEntity.Id == id, cancellationToken)
@@ -100,10 +101,10 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async ValueTask<User?> GetUserEntityForAuthenticationByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<User?> GetUserEntityForAuthenticationByIdAsync(UserId id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
-            throw new ArgumentOutOfRangeException(nameof(id), id, "User id must be greater than zero.");
+        if (id.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id.Value, "User id must be greater than zero.");
 
         User? user = await db.Users
             .AsNoTracking()
@@ -113,9 +114,9 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async ValueTask<User?> GetUserEntityByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<User?> GetUserEntityByIdAsync(UserId id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
+        if (id.Value <= 0)
             return null;
         return await db.Users.AsNoTracking()
             .FirstOrDefaultAsync(userEntity => userEntity.Id == id, cancellationToken)
@@ -126,7 +127,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     public async ValueTask UpdateUserAsync(User user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
-        if (user.Id <= 0)
+        if (user.Id.Value <= 0)
             throw new ArgumentException("User id must be greater than zero for update.", nameof(user));
 
         User? entity = await db.Users.FirstOrDefaultAsync(userEntity => userEntity.Id == user.Id, cancellationToken).ConfigureAwait(false);
@@ -150,7 +151,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
             throw new ArgumentException("User id must be greater than zero.", nameof(user));
 
         bool exists = await db.Users.AsNoTracking()
-            .AnyAsync(userEntity => userEntity.Id == user.UserId, cancellationToken)
+            .AnyAsync(userEntity => userEntity.Id == new UserId(user.UserId), cancellationToken)
             .ConfigureAwait(false);
         if (!exists)
             throw new UserNotFoundException($"User with id {user.UserId} was not found.");
@@ -162,13 +163,13 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
 
     /// <inheritdoc />
     public async ValueTask SetUserEmailVerificationChallengeAsync(
-        int userId,
+        UserId userId,
         string verificationCode,
         DateTime expiresAtUtc,
         CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
-            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+        if (userId.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId.Value, "User id must be greater than zero.");
         if (string.IsNullOrWhiteSpace(verificationCode))
             throw new ArgumentException("Verification code is required.", nameof(verificationCode));
 
@@ -183,10 +184,10 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
     }
 
     /// <inheritdoc />
-    public async ValueTask CompleteUserEmailVerificationAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask CompleteUserEmailVerificationAsync(UserId userId, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
-            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
+        if (userId.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId.Value, "User id must be greater than zero.");
 
         User? user = await db.Users.FirstOrDefaultAsync(userEntity => userEntity.Id == userId, cancellationToken).ConfigureAwait(false);
         if (user is null)
@@ -200,7 +201,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
 
     private static UserScopeDto MapToUserScope(User user) => new()
     {
-        UserId = user.Id,
+        UserId = user.Id.Value,
         Name = user.Name ?? string.Empty,
         Email = user.Email ?? string.Empty,
         IsEmailVerified = user.IsEmailVerified
@@ -208,7 +209,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
 
     private static User MapToUserEntity(UserScopeDto scope) => new()
     {
-        Id = scope.UserId,
+        Id = new UserId(scope.UserId),
         Name = scope.Name,
         Email = scope.Email
     };

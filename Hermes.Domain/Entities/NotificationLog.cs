@@ -1,14 +1,15 @@
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Domain.Entities;
 
 public class NotificationLog
 {
     public int Id { get; set; }
-    public int UserId { get; set; }
+    public UserId UserId { get; set; }
 
     /// <summary>Optional link to the news profile for digest-related sends.</summary>
-    public int? NewsId { get; set; }
+    public NewsletterId? NewsId { get; set; }
     public DateTime SentAt { get; set; }
     public NotificationStatus Status { get; set; }
     public DeliveryChannel Channel { get; set; }

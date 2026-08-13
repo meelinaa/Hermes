@@ -5,6 +5,7 @@ using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services;
+using Hermes.Domain.ValueObjects;
 using Hermes.Notifications.Receiving.Options;
 using Hermes.Worker.Services.Scheduling;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -40,7 +41,7 @@ public sealed class NewsletterSchedulerTests
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<(int NewsId, int UserId)>());
+            .ReturnsAsync(Array.Empty<(NewsletterId NewsId, UserId UserId)>());
 
         Mock<IEmailProvider> emailSender = new();
 
@@ -97,7 +98,7 @@ public sealed class NewsletterSchedulerTests
     public async Task RunAsync_Should_EnqueueJobs_ForEveryDueItem()
     {
         // Arrange
-        IReadOnlyList<(int NewsId, int UserId)> dueItems = [(10, 1), (11, 2)];
+        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> dueItems = [(new NewsletterId(10), new UserId(1)), (new NewsletterId(11), new UserId(2))];
         Mock<INewsletterScheduleService> schedule = new();
         schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(dueItems);
@@ -129,7 +130,7 @@ public sealed class NewsletterSchedulerTests
         // Arrange
         Mock<INewsletterScheduleService> schedule = new();
         schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<(int, int)>());
+            .ReturnsAsync(Array.Empty<(NewsletterId, UserId)>());
 
         Mock<IEmailProvider> emailSender = new();
 
@@ -157,7 +158,7 @@ public sealed class NewsletterSchedulerTests
         // Arrange
         Mock<INewsletterScheduleService> schedule = new();
         schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<(int, int)>());
+            .ReturnsAsync(Array.Empty<(NewsletterId, UserId)>());
 
         Mock<IEmailProvider> emailSender = new();
         emailSender.Setup(x => x.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
@@ -185,7 +186,7 @@ public sealed class NewsletterSchedulerTests
         // Arrange
         Mock<INewsletterScheduleService> schedule = new();
         schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<(int, int)>());
+            .ReturnsAsync(Array.Empty<(NewsletterId, UserId)>());
 
         Mock<IEmailProvider> emailSender = new();
         emailSender.Setup(x => x.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))

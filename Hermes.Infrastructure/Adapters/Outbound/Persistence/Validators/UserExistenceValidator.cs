@@ -1,5 +1,6 @@
 using Hermes.Domain.Exceptions;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
+using Hermes.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Validators;
@@ -17,14 +18,14 @@ internal static class UserExistenceValidator
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the asynchronous validation.</returns>
     /// <exception cref="UserNotFoundException">Thrown if the user does not exist or userId is invalid.</exception>
-    public static async Task EnsureExistsAsync(HermesDbContext db, int userId, CancellationToken cancellationToken)
+    public static async Task EnsureExistsAsync(HermesDbContext db, UserId userId, CancellationToken cancellationToken)
     {
-        if (userId <= 0)
-            throw new UserNotFoundException($"No user with id {userId} exists.");
+        if (userId.Value <= 0)
+            throw new UserNotFoundException($"No user with id {userId.Value} exists.");
         bool exists = await db.Users.AsNoTracking()
             .AnyAsync(userEntity => userEntity.Id == userId, cancellationToken)
             .ConfigureAwait(false);
         if (!exists)
-            throw new UserNotFoundException($"No user with id {userId} exists.");
+            throw new UserNotFoundException($"No user with id {userId.Value} exists.");
     }
 }

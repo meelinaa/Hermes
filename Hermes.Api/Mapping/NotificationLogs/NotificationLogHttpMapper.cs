@@ -1,5 +1,6 @@
 using Hermes.Application.DTOs.NotificationLogs;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Api.Mapping.NotificationLogs;
 
@@ -17,8 +18,8 @@ internal static class NotificationLogHttpMapper
     public static NotificationLog ToEntity(this CreateNotificationLogRequestDto dto, int userId) =>
         new()
         {
-            UserId = userId,
-            NewsId = dto.NewsId,
+            UserId = new UserId(userId),
+            NewsId = dto.NewsId.HasValue ? new NewsletterId(dto.NewsId.Value) : null,
             SentAt = dto.SentAt,
             Status = dto.Status,
             Channel = dto.Channel,
@@ -36,8 +37,8 @@ internal static class NotificationLogHttpMapper
         new()
         {
             Id = entity.Id,
-            UserId = entity.UserId,
-            NewsId = entity.NewsId,
+            UserId = entity.UserId.Value,
+            NewsId = entity.NewsId?.Value,
             SentAt = entity.SentAt,
             Status = entity.Status,
             Channel = entity.Channel,

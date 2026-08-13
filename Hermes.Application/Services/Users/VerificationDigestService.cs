@@ -13,6 +13,7 @@ using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Security;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Users;
 
@@ -55,9 +56,9 @@ public sealed class VerificationDigestService(
     /// <param name="userId">The unique identifier of the target user requesting email verification.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="userId"/> is less than or equal to zero.</exception>
-    public async Task SendAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task SendAsync(UserId userId, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
         User? user = await _users.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
@@ -106,12 +107,12 @@ public sealed class VerificationDigestService(
         }
         catch (OperationCanceledException)
         {
-            _logger.LogVerificationCanceled(userId);
+            _logger.LogVerificationCanceled(userId.Value);
             throw;
         }
         catch (Exception exception)
         {
-            _logger.LogVerificationFailed(exception, userId);
+            _logger.LogVerificationFailed(exception, userId.Value);
             throw;
         }
     }

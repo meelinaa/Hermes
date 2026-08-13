@@ -8,6 +8,7 @@ using Hermes.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Hermes.Application.Logging;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Security;
 
@@ -26,9 +27,9 @@ public sealed class AuthTokenService(
     /// <summary>
     /// Issues a new JWT access token and a persisted refresh token for the given user.
     /// </summary>
-    public async ValueTask<AuthTokensResultDto> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default)
+    public async ValueTask<AuthTokensResultDto> IssueTokensAsync(UserId userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
         JwtAccessTokenResultDto access = jwt.Issue(userId, email, name);
@@ -65,7 +66,7 @@ public sealed class AuthTokenService(
         if (old.RevokedAt != null || old.ExpiresAt <= timeProvider.GetUtcNow().UtcDateTime)
         {
             string shortHash = hash.Length > 8 ? hash[..8] + "..." : hash;
-            logger.LogReplayDetected(old.UserId, shortHash);
+            logger.LogReplayDetected(old.UserId.Value, shortHash);
             await db.RevokeTokenFamilyAsync(old, cancellationToken).ConfigureAwait(false);
             return null;
         }
@@ -94,7 +95,7 @@ public sealed class AuthTokenService(
     /// Attempts to revoke a specific refresh token belonging to the given user.
     /// Returns false when the token is not found or does not belong to the user.
     /// </summary>
-    public async ValueTask<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, int userId, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, UserId userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
             return false;
@@ -111,7 +112,7 @@ public sealed class AuthTokenService(
     /// <summary>
     /// Revokes all refresh tokens for the given user.
     /// </summary>
-    public ValueTask RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default) =>
+    public ValueTask RevokeAllForUserAsync(UserId userId, CancellationToken cancellationToken = default) =>
         db.RevokeAllRefreshTokensForUserAsync(userId, cancellationToken);
 
     /// <summary>64 bytes cryptographically random, Base64 — opaque high-entropy refresh material.</summary>

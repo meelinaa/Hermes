@@ -12,6 +12,7 @@ using Hermes.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Hermes.Application.Logging;
 using Microsoft.Extensions.Options;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Newsletter;
 
@@ -40,11 +41,11 @@ public sealed class NewsletterDigestService(
     /// <param name="newsId">The unique identifier of the newsletter subscription.</param>
     /// <param name="digestSlotStartUtc">The UTC timestamp marking the start of the current digest schedule window.</param>
     /// <param name="cancellationToken">A token to observe while waiting for async operations to complete.</param>
-    public async Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
+    public async Task SendAsync(UserId userId, NewsletterId newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
-        if (newsId <= 0)
+        if (newsId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(newsId), "News ID must be positive.");
         
         string? apiKey = newsDataOptions.Value.Key?.Trim();
@@ -90,7 +91,7 @@ public sealed class NewsletterDigestService(
             return;
         }
 
-        string? subject = $"Hermes Newsletter (#{newsId}) — {timeProvider.GetUtcNow().UtcDateTime.ToString("d", _digestCulture)}";
+        string? subject = $"Hermes Newsletter (#{newsId.Value}) — {timeProvider.GetUtcNow().UtcDateTime.ToString("d", _digestCulture)}";
 
         List<NewsletterArticleItemDto> articleItems = articles
             .Take(MAX_ARTICLES_IN_NEWSLETTER)
@@ -129,12 +130,12 @@ public sealed class NewsletterDigestService(
         }
         catch (OperationCanceledException)
         {
-            logger.LogNewsletterDigestCanceled(userId, newsId);
+            logger.LogNewsletterDigestCanceled(userId.Value, newsId.Value);
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogNewsletterDigestFailed(ex, userId, newsId);
+            logger.LogNewsletterDigestFailed(ex, userId.Value, newsId.Value);
             await notificationLogs.SetNotificationLogAsync(
                 new NotificationLog
                 {
@@ -154,7 +155,7 @@ public sealed class NewsletterDigestService(
         }
     }
 
-    private ValueTask AdvanceNextDigestSlotAsync(int newsId, int userId, DateTime windowEnd, CancellationToken cancellationToken)
+    private ValueTask AdvanceNextDigestSlotAsync(NewsletterId newsId, UserId userId, DateTime windowEnd, CancellationToken cancellationToken)
     {
         TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
         return newsletterSubscriptions.AdvanceNextDigestSlotAsync(newsId, userId, zone, windowEnd, cancellationToken);

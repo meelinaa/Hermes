@@ -4,6 +4,7 @@ using Hermes.Application.DTOs.Login;
 using Hermes.Application.DTOs.Security;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services.Security;
+using Hermes.Domain.ValueObjects;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -51,7 +52,7 @@ public sealed class AuthControllerTests
             .ReturnsAsync(new LoginResultDto(true, null, 1, "valid@test.com", "ValidUser"));
 
         Mock<IAuthTokenService> authTokenServiceMock = new();
-        authTokenServiceMock.Setup(x => x.IssueTokensAsync(1, "valid@test.com", "ValidUser", It.IsAny<CancellationToken>()))
+        authTokenServiceMock.Setup(x => x.IssueTokensAsync(new UserId(1), "valid@test.com", "ValidUser", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AuthTokensResultDto("access-token", DateTime.UtcNow.AddMinutes(15), "refresh-token", DateTime.UtcNow.AddDays(7)));
 
         AuthController sut = CreateController(authServiceMock.Object);
@@ -157,7 +158,7 @@ public sealed class AuthControllerTests
     {
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
-        authTokenServiceMock.Setup(x => x.TryRevokeRefreshForUserAsync("valid-refresh-token", 1, It.IsAny<CancellationToken>()))
+        authTokenServiceMock.Setup(x => x.TryRevokeRefreshForUserAsync("valid-refresh-token", new UserId(1), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>(), CreatePrincipalWithId(1));
@@ -175,7 +176,7 @@ public sealed class AuthControllerTests
     {
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
-        authTokenServiceMock.Setup(x => x.RevokeAllForUserAsync(1, It.IsAny<CancellationToken>()))
+        authTokenServiceMock.Setup(x => x.RevokeAllForUserAsync(new UserId(1), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
 
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>(), CreatePrincipalWithId(1));
@@ -185,7 +186,7 @@ public sealed class AuthControllerTests
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        authTokenServiceMock.Verify(x => x.RevokeAllForUserAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+        authTokenServiceMock.Verify(x => x.RevokeAllForUserAsync(new UserId(1), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // [E]RROR: Revoking invalid refresh token returns HTTP 401 Unauthorized problem details
@@ -194,7 +195,7 @@ public sealed class AuthControllerTests
     {
         // Arrange
         Mock<IAuthTokenService> authTokenServiceMock = new();
-        authTokenServiceMock.Setup(x => x.TryRevokeRefreshForUserAsync("invalid-refresh-token", 1, It.IsAny<CancellationToken>()))
+        authTokenServiceMock.Setup(x => x.TryRevokeRefreshForUserAsync("invalid-refresh-token", new UserId(1), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         AuthController sut = CreateController(Mock.Of<IUserAuthenticationService>(), CreatePrincipalWithId(1));

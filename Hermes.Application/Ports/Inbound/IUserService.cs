@@ -1,4 +1,5 @@
 using Hermes.Application.DTOs.User;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Ports.Inbound;
 
@@ -10,5 +11,5 @@ public interface IUserService
 
     ValueTask<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default);
 
-    ValueTask<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
+    ValueTask<UserScopeDto?> GetUserByIdAsync(UserId id, CancellationToken cancellationToken = default);
 }

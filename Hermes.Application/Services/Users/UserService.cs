@@ -2,6 +2,7 @@ using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Users;
 
@@ -43,9 +44,9 @@ public sealed class UserService(IUserRepository db) : IUserService
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
     /// <returns>A <see cref="UserScopeDto"/> if found; otherwise, <c>null</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is non-positive.</exception>
-    public async ValueTask<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<UserScopeDto?> GetUserByIdAsync(UserId id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
+        if (id.Value <= 0)
             throw new ArgumentException("Id must be greater than zero.", nameof(id));
         return await db.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
     }

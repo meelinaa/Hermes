@@ -51,15 +51,15 @@ public sealed class UserVerificationService(
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="userId"/> or <paramref name="code"/> is out of valid bounds.</exception>
     /// <exception cref="UserNotFoundException">Thrown when the specified user is missing.</exception>
     /// <exception cref="VerificationCodeMismatchException">Thrown when the code does not match, has expired, or is missing.</exception>
-    public async Task CheckVerificationCodeAsync(int userId, int code, CancellationToken cancellationToken = default)
+    public async Task CheckVerificationCodeAsync(UserId userId, int code, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User id must be positive.");
         if (code is < 0 or > 999_999)
             throw new ArgumentOutOfRangeException(nameof(code), "Verification code must be a six-digit value.");
 
         User? user = await db.GetUserEntityForAuthenticationByIdAsync(userId, cancellationToken).ConfigureAwait(false)
-            ?? throw new UserNotFoundException($"User with id {userId} was not found.");
+            ?? throw new UserNotFoundException($"User with id {userId.Value} was not found.");
         string? stored = user.TwoFactorCode;
         DateTime? expiry = user.TwoFactorExpiry;
         if (string.IsNullOrWhiteSpace(stored) || !expiry.HasValue)

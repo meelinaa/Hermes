@@ -1,5 +1,6 @@
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Ports.Inbound;
 
@@ -11,7 +12,7 @@ public interface INewsletterSubscriptionService
     /// <summary>
     /// Creates or sets a newsletter subscription.
     /// </summary>
-    ValueTask<int> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default);
+    ValueTask<NewsletterId> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing newsletter subscription.
@@ -26,12 +27,12 @@ public interface INewsletterSubscriptionService
     /// <summary>
     /// Retrieves a newsletter subscription by ID for a specific user.
     /// </summary>
-    ValueTask<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default);
+    ValueTask<NewsletterSubscription?> GetNewsByIdAsync(UserId userId, NewsletterId id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Finds a newsletter subscription by its ID.
     /// </summary>
-    ValueTask<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default);
+    ValueTask<NewsletterSubscription?> FindNewsByIdAsync(NewsletterId id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves a paged list of newsletter subscriptions matching the query criteria.
@@ -41,5 +42,5 @@ public interface INewsletterSubscriptionService
     /// <summary>
     /// Deletes all newsletter subscriptions belonging to a user.
     /// </summary>
-    ValueTask<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
+    ValueTask<int> DeleteAllNewsByUserAsync(UserId userId, CancellationToken cancellationToken = default);
 }

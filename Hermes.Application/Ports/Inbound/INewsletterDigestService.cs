@@ -1,6 +1,8 @@
 namespace Hermes.Application.Ports.Inbound;
 
+using Hermes.Domain.ValueObjects;
+
 public interface INewsletterDigestService
 {
-    Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default);
+    Task SendAsync(UserId userId, NewsletterId newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default);
 }

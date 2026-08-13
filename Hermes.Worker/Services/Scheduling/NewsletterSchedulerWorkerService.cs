@@ -9,6 +9,7 @@ using Hermes.Notifications.Receiving.Options;
 using Hermes.Worker.Services.MailHog;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Hermes.Domain.ValueObjects;
 using Hermes.Worker.Logging;
 
 namespace Hermes.Worker.Services.Scheduling;
@@ -44,20 +45,20 @@ public sealed class NewsletterSchedulerWorkerService(
 
         DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
 
-        IReadOnlyList<(int NewsId, int UserId)> due = await newsletterScheduleService
+        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> due = await newsletterScheduleService
             .GetDueItemsAsync(wallNow, slotStartUtc, slotEndUtc, cancellationToken)
             .ConfigureAwait(false);
 
         if (due.Count > 0)
         {
-            logger.LogFoundDueItems(due.Count, string.Join(", ", due.Select(d => d.NewsId)));
+            logger.LogFoundDueItems(due.Count, string.Join(", ", due.Select(d => d.NewsId.Value)));
         }
 
-        foreach ((int newsId, int userId) in due)
+        foreach ((NewsletterId newsId, UserId userId) in due)
         {
             string? jobId = backgroundJobClient.Enqueue<NotificationJobService>(notificationJobs =>
                 notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
-            logger.LogJobEnqueued(newsId, userId, jobId);
+            logger.LogJobEnqueued(newsId.Value, userId.Value, jobId);
         }
 
         logger.LogRunEnd(slotStartUtc, due.Count);

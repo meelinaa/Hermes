@@ -1,6 +1,8 @@
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
+using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Ports.Outbound;
 
@@ -32,7 +34,7 @@ public interface INewsletterSubscriptionRepository
     /// <summary>
     /// Retrieves newsletter subscription schedules that are due for delivery in the specified slot.
     /// </summary>
-    ValueTask<List<(int NewsId, int UserId)>> GetDueNewsScheduleForSlotAsync(
+    ValueTask<List<(NewsletterId NewsId, UserId UserId)>> GetDueNewsScheduleForSlotAsync(
         Weekdays weekday,
         int hour,
         int minute,
@@ -44,8 +46,8 @@ public interface INewsletterSubscriptionRepository
     /// Advances the next digest slot timestamp for a newsletter subscription.
     /// </summary>
     ValueTask AdvanceNextDigestSlotAsync(
-        int newsId,
-        int userId,
+        NewsletterId newsId,
+        UserId userId,
         TimeZoneInfo newsletterTimeZone,
         DateTime referenceUtcExclusive,
         CancellationToken cancellationToken = default);
@@ -53,15 +55,15 @@ public interface INewsletterSubscriptionRepository
     /// <summary>
     /// Retrieves a newsletter subscription by ID for a specific user.
     /// </summary>
-    ValueTask<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default);
+    ValueTask<NewsletterSubscription?> GetNewsByIdAsync(UserId userId, NewsletterId id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Finds a newsletter subscription by its ID.
     /// </summary>
-    ValueTask<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default);
+    ValueTask<NewsletterSubscription?> FindNewsByIdAsync(NewsletterId id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes all newsletter subscriptions belonging to a user.
     /// </summary>
-    ValueTask<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default);
+    ValueTask<int> DeleteAllNewsByUserAsync(UserId userId, CancellationToken cancellationToken = default);
 }

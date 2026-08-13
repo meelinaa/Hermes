@@ -12,12 +12,12 @@ public class NewsletterSubscription
     /// <summary>
     /// Gets or sets the unique identifier of the newsletter subscription.
     /// </summary>
-    public int Id { get; private set; }
+    public NewsletterId Id { get; private set; }
 
     /// <summary>
     /// Gets or sets the ID of the user who owns this subscription.
     /// </summary>
-    public int UserId { get; private set; }
+    public UserId UserId { get; private set; }
 
     /// <summary>
     /// Gets or sets the list of keywords to search for articles.
@@ -59,9 +59,9 @@ public class NewsletterSubscription
     /// </summary>
     public DateTime? NextDigestSlotUtc { get; private set; }
 
-    public static NewsletterSubscription CreateForUser(int userId)
+    public static NewsletterSubscription CreateForUser(UserId userId)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
         return new NewsletterSubscription { UserId = userId };
     }
@@ -81,9 +81,9 @@ public class NewsletterSubscription
     public void Enable() => IsEnabled = true;
     public void Disable() => IsEnabled = false;
 
-    internal void SetId(int id) => Id = id;
+    internal void SetId(NewsletterId id) => Id = id;
 
-    internal void SetUserId(int userId) => UserId = userId;
+    internal void SetUserId(UserId userId) => UserId = userId;
 
     /// <summary>
     /// Assigns the schedule window configuration (weekdays and times) to this newsletter subscription.

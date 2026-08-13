@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Mappers;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,6 +32,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         {
             entity.ToTable("users");
             entity.HasKey(userEntity => userEntity.Id);
+            entity.Property(userEntity => userEntity.Id).HasConversion(id => id.Value, val => new UserId(val));
             entity.HasIndex(userEntity => userEntity.Email).IsUnique();
         });
 
@@ -38,6 +40,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
         {
             entity.ToTable("news");
             entity.HasKey(newsEntity => newsEntity.Id);
+            entity.Property(newsEntity => newsEntity.Id).HasConversion(id => id.Value, val => new NewsletterId(val));
+            entity.Property(newsEntity => newsEntity.UserId).HasConversion(id => id.Value, val => new UserId(val));
             entity.HasIndex(newsEntity => newsEntity.UserId);
 
             entity.HasOne<User>()
@@ -100,7 +104,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
                 .HasForeignKey(notificationLog => notificationLog.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.Property(notificationLog => notificationLog.NewsId);
+            entity.Property(notificationLog => notificationLog.UserId).HasConversion(id => id.Value, val => new UserId(val));
+            entity.Property(notificationLog => notificationLog.NewsId).HasConversion(id => id.HasValue ? id.Value.Value : (int?)null, val => val.HasValue ? new NewsletterId(val.Value) : (NewsletterId?)null);
             entity.Property(notificationLog => notificationLog.Status).HasConversion<string>().HasMaxLength(32);
             entity.Property(notificationLog => notificationLog.Channel).HasConversion<string>().HasMaxLength(32);
 
@@ -123,6 +128,8 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options) : DbCont
                 .WithMany(userEntity => userEntity.RefreshTokens)
                 .HasForeignKey(refreshToken => refreshToken.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(refreshToken => refreshToken.UserId).HasConversion(id => id.Value, val => new UserId(val));
 
             entity.HasOne(refreshToken => refreshToken.ReplacedByToken)
                 .WithMany()

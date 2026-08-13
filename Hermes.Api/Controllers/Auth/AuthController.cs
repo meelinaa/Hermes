@@ -3,6 +3,7 @@ using Hermes.Application.DTOs.Login;
 using Hermes.Application.DTOs.Security;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services.Security;
+using Hermes.Domain.ValueObjects;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -33,7 +34,7 @@ public class AuthController(IUserAuthenticationService authService) : Controller
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
 
-        AuthTokensResultDto tokens = await authTokens.IssueTokensAsync(result.UserId!.Value, result.Email, result.Name, cancellationToken).ConfigureAwait(false);
+        AuthTokensResultDto tokens = await authTokens.IssueTokensAsync(new UserId(result.UserId!.Value), result.Email, result.Name, cancellationToken).ConfigureAwait(false);
         LoginResponseDto body = new(
             Success: true,
             UserId: result.UserId!.Value,
@@ -87,11 +88,11 @@ public class AuthController(IUserAuthenticationService authService) : Controller
 
         if (string.IsNullOrWhiteSpace(body?.RefreshToken))
         {
-            await authTokens.RevokeAllForUserAsync(userId, cancellationToken).ConfigureAwait(false);
+            await authTokens.RevokeAllForUserAsync(new UserId(userId), cancellationToken).ConfigureAwait(false);
             return NoContent();
         }
 
-        bool ok = await authTokens.TryRevokeRefreshForUserAsync(body.RefreshToken, userId, cancellationToken).ConfigureAwait(false);
+        bool ok = await authTokens.TryRevokeRefreshForUserAsync(body.RefreshToken, new UserId(userId), cancellationToken).ConfigureAwait(false);
         if (!ok)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
 

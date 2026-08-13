@@ -40,13 +40,13 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             PasswordHash = request.Password
         };
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
-        if (user.Id <= 0)
+        if (user.Id.Value <= 0)
             throw new InvalidOperationException("Failed to create user.");
         UserScopeDto userScope = new()
         {
             Name = user.Name,
             Email = user.Email,
-            UserId = user.Id,
+            UserId = user.Id.Value,
             IsEmailVerified = false
         };
         return userScope;
@@ -87,7 +87,7 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
         if (!valid)
             return new LoginResultDto(false, "Invalid login or password.", null);
 
-        return new LoginResultDto(true, null, user.Id, user.Email, user.Name);
+        return new LoginResultDto(true, null, user.Id.Value, user.Email, user.Name);
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
 
             User? existing = await db.GetUserEntityByIdAsync(user.Id, cancellationToken).ConfigureAwait(false);
             if (existing is null)
-                throw new UserNotFoundException($"User with id {user.Id} was not found.");
+                throw new UserNotFoundException($"User with id {user.Id.Value} was not found.");
             if (string.IsNullOrEmpty(existing.PasswordHash))
                 throw new InvalidOperationException("Cannot change password: no password is set for this account.");
 

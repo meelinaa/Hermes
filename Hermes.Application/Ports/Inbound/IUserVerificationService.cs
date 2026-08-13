@@ -1,8 +1,10 @@
 namespace Hermes.Application.Ports.Inbound;
 
+using Hermes.Domain.ValueObjects;
+
 public interface IUserVerificationService
 {
     Task SendVerificationMailAsync(string email, CancellationToken cancellationToken);
 
-    Task CheckVerificationCodeAsync(int userId, int code, CancellationToken cancellationToken = default);
+    Task CheckVerificationCodeAsync(UserId userId, int code, CancellationToken cancellationToken = default);
 }

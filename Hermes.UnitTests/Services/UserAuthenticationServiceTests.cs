@@ -4,6 +4,7 @@ using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Users;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
+using Hermes.Domain.ValueObjects;
 using Moq;
 using Xunit;
 
@@ -20,7 +21,7 @@ public sealed class UserAuthenticationServiceTests
         // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
-            .Callback<User, CancellationToken>((u, _) => u.Id = 100)
+            .Callback<User, CancellationToken>((u, _) => u.Id = new UserId(100))
             .Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
@@ -49,7 +50,7 @@ public sealed class UserAuthenticationServiceTests
         // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
-            .Callback<User, CancellationToken>((u, _) => u.Id = 5)
+            .Callback<User, CancellationToken>((u, _) => u.Id = new UserId(5))
             .Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
@@ -113,7 +114,7 @@ public sealed class UserAuthenticationServiceTests
         string hash = BCrypt.Net.BCrypt.HashPassword("good");
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync("me@test.dev", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 3, Email = "me@test.dev", PasswordHash = hash, Name = "Me" });
+            .ReturnsAsync(new User { Id = new UserId(3), Email = "me@test.dev", PasswordHash = hash, Name = "Me" });
 
         UserAuthenticationService sut = CreateService(db.Object);
 
@@ -134,7 +135,7 @@ public sealed class UserAuthenticationServiceTests
         string hash = BCrypt.Net.BCrypt.HashPassword("pw");
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("alice", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 2, Email = "a@b.c", PasswordHash = hash, Name = "alice" });
+            .ReturnsAsync(new User { Id = new UserId(2), Email = "a@b.c", PasswordHash = hash, Name = "alice" });
 
         UserAuthenticationService sut = CreateService(db.Object);
 
@@ -154,7 +155,7 @@ public sealed class UserAuthenticationServiceTests
         string hash = BCrypt.Net.BCrypt.HashPassword("right");
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("bob", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 1, PasswordHash = hash, Name = "bob", Email = "b@c.d" });
+            .ReturnsAsync(new User { Id = new UserId(1), PasswordHash = hash, Name = "bob", Email = "b@c.d" });
 
         UserAuthenticationService sut = CreateService(db.Object);
 
@@ -191,7 +192,7 @@ public sealed class UserAuthenticationServiceTests
         // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("bob", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 1, Name = "bob", Email = "b@c.d", PasswordHash = "" });
+            .ReturnsAsync(new User { Id = new UserId(1), Name = "bob", Email = "b@c.d", PasswordHash = "" });
         UserAuthenticationService sut = CreateService(db.Object);
 
         // Act
@@ -209,7 +210,7 @@ public sealed class UserAuthenticationServiceTests
         // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("bob", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 1, Name = "bob", Email = "b@c.d", PasswordHash = "invalid_hash_format" });
+            .ReturnsAsync(new User { Id = new UserId(1), Name = "bob", Email = "b@c.d", PasswordHash = "invalid_hash_format" });
         UserAuthenticationService sut = CreateService(db.Object);
 
         // Act
@@ -227,12 +228,12 @@ public sealed class UserAuthenticationServiceTests
         // Arrange
         string existingHash = BCrypt.Net.BCrypt.HashPassword("oldpw");
         Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(5, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 5, Email = "x@y.z", Name = "X", PasswordHash = existingHash });
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(5), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = new UserId(5), Email = "x@y.z", Name = "X", PasswordHash = existingHash });
         db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
-        User patch = new() { Id = 5, Email = "x@y.z", Name = "X", PasswordHash = "new-secret" };
+        User patch = new() { Id = new UserId(5), Email = "x@y.z", Name = "X", PasswordHash = "new-secret" };
 
         // Act
         await sut.UpdateUserAsync(patch, currentPasswordPlain: "oldpw");
@@ -248,7 +249,7 @@ public sealed class UserAuthenticationServiceTests
     {
         // Arrange
         UserAuthenticationService sut = CreateService(Mock.Of<IUserRepository>());
-        User patch = new() { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = "new" };
+        User patch = new() { Id = new UserId(1), Email = "a@b.c", Name = "N", PasswordHash = "new" };
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -261,11 +262,11 @@ public sealed class UserAuthenticationServiceTests
     {
         // Arrange
         Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(9, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 9, Email = "e@f.g", Name = "E", PasswordHash = BCrypt.Net.BCrypt.HashPassword("real") });
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(9), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = new UserId(9), Email = "e@f.g", Name = "E", PasswordHash = BCrypt.Net.BCrypt.HashPassword("real") });
 
         UserAuthenticationService sut = CreateService(db.Object);
-        User patch = new() { Id = 9, Email = "e@f.g", Name = "E", PasswordHash = "hacker" };
+        User patch = new() { Id = new UserId(9), Email = "e@f.g", Name = "E", PasswordHash = "hacker" };
 
         // Act & Assert
         await Assert.ThrowsAsync<WrongCurrentPasswordException>(() =>
@@ -278,11 +279,11 @@ public sealed class UserAuthenticationServiceTests
     {
         // Arrange
         Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(404, It.IsAny<CancellationToken>()))
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(404), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
         UserAuthenticationService sut = CreateService(db.Object);
-        User patch = new() { Id = 404, Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" };
+        User patch = new() { Id = new UserId(404), Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" };
 
         // Act & Assert
         await Assert.ThrowsAsync<UserNotFoundException>(() =>
@@ -295,11 +296,11 @@ public sealed class UserAuthenticationServiceTests
     {
         // Arrange
         Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = null });
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(1), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = new UserId(1), Email = "a@b.c", Name = "N", PasswordHash = null });
 
         UserAuthenticationService sut = CreateService(db.Object);
-        User patch = new() { Id = 1, Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" };
+        User patch = new() { Id = new UserId(1), Email = "a@b.c", Name = "N", PasswordHash = "new-Valid_9!" };
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -315,14 +316,14 @@ public sealed class UserAuthenticationServiceTests
         db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
-        User patch = new() { Id = 2, Email = "u@x.y", Name = "OnlyName", PasswordHash = null };
+        User patch = new() { Id = new UserId(2), Email = "u@x.y", Name = "OnlyName", PasswordHash = null };
 
         // Act
         await sut.UpdateUserAsync(patch, currentPasswordPlain: null);
 
         // Assert
         Assert.Null(patch.PasswordHash);
-        db.Verify(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        db.Verify(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Never);
         db.Verify(dataStore => dataStore.UpdateUserAsync(patch, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

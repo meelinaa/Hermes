@@ -1,11 +1,12 @@
-namespace Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
+namespace Hermes.Domain.Entities;
 /// <summary>Persisted refresh session: only hash stored; plaintext returned once per issue/rotate.</summary>
 public class RefreshToken
 {
     public int Id { get; set; }
 
-    public int UserId { get; set; }
+    public UserId UserId { get; set; }
 
     /// <summary>SHA-256 hex of client refresh token (never persist plaintext).</summary>
     public string TokenHash { get; set; } = string.Empty;

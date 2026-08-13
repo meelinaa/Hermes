@@ -1,8 +1,8 @@
 using Hermes.Application.Mapping;
-using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Newsletter;
 
@@ -19,7 +19,7 @@ public sealed class NewsletterScheduleService(INewsletterSubscriptionRepository 
     /// <param name="slotEndUtc">The UTC timestamp marking the end of the evaluation time slot.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests during async database lookup.</param>
     /// <returns>A collection of tuple pairs containing the due subscription ID (<c>NewsId</c>) and owning user ID (<c>UserId</c>).</returns>
-    public async Task<IReadOnlyList<(int NewsId, int UserId)>> GetDueItemsAsync(
+    public async Task<IReadOnlyList<(NewsletterId NewsId, UserId UserId)>> GetDueItemsAsync(
         DateTime nowLocal,
         DateTime slotStartUtc,
         DateTime slotEndUtc,

@@ -1,6 +1,7 @@
 using Hangfire;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.NotificationLogs;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 
@@ -11,9 +12,9 @@ public sealed class VerificationMailJobWrapper(JobStorage jobStorage)
     : IVerificationMailJobService
 {
     /// <inheritdoc />
-    public string? EnqueueSendVerificationMail(int userId)
+    public string? EnqueueSendVerificationMail(UserId userId)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User id must be positive.");
 
         BackgroundJobClient client = new(jobStorage);

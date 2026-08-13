@@ -10,6 +10,7 @@ using Hermes.Api.Mapping.Users;
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Api.Controllers.Users;
 
@@ -53,7 +54,7 @@ public class UsersController(
 
         User user = new()
         {
-            Id = request.Id,
+            Id = new UserId(request.Id),
             Name = request.Name,
             Email = request.Email,
             PasswordHash = request.NewPassword
@@ -61,7 +62,7 @@ public class UsersController(
 
         await authService.UpdateUserAsync(user, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
 
-        UserScopeDto? updated = await userService.GetUserByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? updated = await userService.GetUserByIdAsync(new UserId(request.Id), cancellationToken).ConfigureAwait(false);
         return updated is null ? this.NotFoundProblem() : Ok(updated.ToUserResponse());
     }
 
@@ -74,7 +75,7 @@ public class UsersController(
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteUser(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? user = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
         if (user is null)
             return this.NotFoundProblem();
 
@@ -90,7 +91,7 @@ public class UsersController(
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? user = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
         return user is null ? this.NotFoundProblem() : Ok(user.ToUserResponse());
     }
 
@@ -123,7 +124,7 @@ public class UsersController(
     [HttpPost("{id:int}/verify")]
     public async Task<ActionResult<SendVerificationMailResponseDto>> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? user = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email))
             return this.NotFoundProblem();
 
@@ -146,9 +147,9 @@ public class UsersController(
         if (this.WhenCannotAccessUser(request.UserId) is { } denied)
             return denied;
 
-        await verificationService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
+        await verificationService.CheckVerificationCodeAsync(new UserId(request.UserId), request.Code, cancellationToken).ConfigureAwait(false);
 
-        UserScopeDto? refreshed = await userService.GetUserByIdAsync(request.UserId, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? refreshed = await userService.GetUserByIdAsync(new UserId(request.UserId), cancellationToken).ConfigureAwait(false);
         return refreshed is null ? this.NotFoundProblem() : Ok(refreshed.ToUserResponse());
     }
 

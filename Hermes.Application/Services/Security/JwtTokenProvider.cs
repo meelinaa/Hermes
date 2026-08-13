@@ -5,6 +5,7 @@ using System.Text;
 using Hermes.Application.DTOs.Security;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports.Outbound;
+using Hermes.Domain.ValueObjects;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -22,13 +23,13 @@ public sealed class JwtTokenProvider(IOptions<JwtOptions> options, TimeProvider 
     /// <param name="email">Optional email claim.</param>
     /// <param name="name">Optional display name claim.</param>
     /// <returns>A DTO containing the signed token and its UTC expiry.</returns>
-    public JwtAccessTokenResultDto Issue(int userId, string? email, string? name)
+    public JwtAccessTokenResultDto Issue(UserId userId, string? email, string? name)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
 
         JwtOptions jwtOptions = options.Value;
-        string? id = userId.ToString(CultureInfo.InvariantCulture);
+        string? id = userId.Value.ToString(CultureInfo.InvariantCulture);
 
         List<Claim> claims =
         [

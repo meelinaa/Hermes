@@ -2,6 +2,7 @@ using Hermes.Application.Ports;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Validators;
 using Microsoft.EntityFrameworkCore;
@@ -37,8 +38,8 @@ public sealed class NotificationLogRepository(HermesDbContext db) : INotificatio
 
     /// <inheritdoc />
     public async ValueTask<bool> ExistsSentNotificationInWindowAsync(
-        int userId,
-        int newsId,
+        UserId userId,
+        NewsletterId newsId,
         DateTime windowStartUtc,
         DateTime windowEndUtc,
         CancellationToken cancellationToken = default)

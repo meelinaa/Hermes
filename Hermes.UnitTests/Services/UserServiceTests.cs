@@ -1,6 +1,7 @@
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Users;
+using Hermes.Domain.ValueObjects;
 using Moq;
 using Xunit;
 
@@ -45,11 +46,11 @@ public sealed class UserServiceTests
         // Arrange
         UserScopeDto expected = new() { UserId = 3, Email = "e@e.e", Name = "E" };
         Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.GetUserByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+        db.Setup(dataStore => dataStore.GetUserByIdAsync(new UserId(3), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
         UserService sut = CreateUserService(db.Object);
 
         // Act
-        UserScopeDto? r = await sut.GetUserByIdAsync(3);
+        UserScopeDto? r = await sut.GetUserByIdAsync(new UserId(3));
 
         // Assert
         Assert.Same(expected, r);
@@ -82,7 +83,7 @@ public sealed class UserServiceTests
         UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.GetUserByIdAsync(invalidId));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.GetUserByIdAsync(new UserId(invalidId)));
     }
 
     // [B]OUNDARY: Rejects empty or whitespace-only email input
