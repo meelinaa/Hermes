@@ -2,6 +2,7 @@ using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Domain.ValueObjects;
 using Xunit;
+using Hermes.Domain.Exceptions;
 
 namespace Hermes.UnitTests.Domain.ValueObjects;
 
@@ -29,7 +30,7 @@ public sealed class ScheduleWindowTests
         List<TimeOnly> times = [new TimeOnly(8, 0)];
 
         // Act & Assert
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => ScheduleWindow.EnsureForDigestScheduling(null, times));
+        DomainValidationException ex = Assert.Throws<DomainValidationException>(() => ScheduleWindow.EnsureForDigestScheduling(null, times));
         Assert.Contains("requires at least one weekday", ex.Message);
     }
 
@@ -40,7 +41,7 @@ public sealed class ScheduleWindowTests
         List<Weekdays> days = [Weekdays.Monday];
 
         // Act & Assert
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => ScheduleWindow.EnsureForDigestScheduling(days, null));
+        DomainValidationException ex = Assert.Throws<DomainValidationException>(() => ScheduleWindow.EnsureForDigestScheduling(days, null));
         Assert.Contains("requires at least one weekday", ex.Message);
     }
 
@@ -52,7 +53,7 @@ public sealed class ScheduleWindowTests
         List<TimeOnly> times = [new TimeOnly(8, 0)];
 
         // Act & Assert
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => ScheduleWindow.EnsureForDigestScheduling(days, times));
+        DomainValidationException ex = Assert.Throws<DomainValidationException>(() => ScheduleWindow.EnsureForDigestScheduling(days, times));
         Assert.Contains("requires at least one weekday", ex.Message);
     }
 
@@ -64,7 +65,7 @@ public sealed class ScheduleWindowTests
         List<TimeOnly> times = [];
 
         // Act & Assert
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => ScheduleWindow.EnsureForDigestScheduling(days, times));
+        DomainValidationException ex = Assert.Throws<DomainValidationException>(() => ScheduleWindow.EnsureForDigestScheduling(days, times));
         Assert.Contains("requires at least one weekday", ex.Message);
     }
 

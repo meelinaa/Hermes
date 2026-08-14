@@ -1,6 +1,7 @@
 using Hermes.Domain.Entities;
 using Hermes.Domain.ValueObjects;
 using Xunit;
+using Hermes.Domain.Exceptions;
 
 namespace Hermes.UnitTests.Domain.Entities;
 
@@ -29,7 +30,7 @@ public sealed class UserTests
         User sut = new() { Name = "Valid Name" };
 
         // Act & Assert
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => sut.Rename(invalidName!));
+        DomainValidationException ex = Assert.Throws<DomainValidationException>(() => sut.Rename(invalidName!));
         Assert.Contains("Name is required", ex.Message);
     }
 
@@ -80,6 +81,6 @@ public sealed class UserTests
     public void ReplacePasswordHash_Should_ThrowArgumentException_WhenHashIsNull()
     {
         User sut = User.Create("N", "a@b.c", "hash");
-        Assert.Throws<ArgumentException>(() => sut.ReplacePasswordHash(null!));
+        Assert.Throws<DomainValidationException>(() => sut.ReplacePasswordHash(null!));
     }
 }

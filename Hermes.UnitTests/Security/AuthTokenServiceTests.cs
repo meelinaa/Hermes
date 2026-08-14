@@ -88,8 +88,10 @@ public sealed class AuthTokenServiceTests
         string plain = "token";
         string hash = RefreshTokenHashUtility.Hash(plain);
         Mock<IRefreshTokenRepository> db = new();
+        RefreshToken row = RefreshToken.Create(new UserId(1), hash, DateTime.UtcNow.AddDays(1), DateTime.UtcNow);
+        typeof(RefreshToken).GetProperty("User")!.SetValue(row, null);
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RefreshToken { UserId = new UserId(1), TokenHash = hash, User = null });
+            .ReturnsAsync(row);
         Mock<IJwtTokenProvider> jwt = new();
         AuthTokenService sut = CreateSut(db, jwt);
         Assert.Null(await sut.RotateAsync(plain));
@@ -102,15 +104,15 @@ public sealed class AuthTokenServiceTests
     {
         string plainOld = "old-refresh-plain";
         string hashOld = RefreshTokenHashUtility.Hash(plainOld);
-        RefreshToken oldRow = new()
-        {
-            Id = 10,
-            UserId = new UserId(7),
-            TokenHash = hashOld,
-            ExpiresAt = DateTime.UtcNow.AddDays(1),
-            CreatedAt = DateTime.UtcNow,
-            User = new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" },
-        };
+        RefreshToken oldRow = RefreshToken.Create(
+            new UserId(7),
+            hashOld,
+            DateTime.UtcNow.AddDays(1),
+            DateTime.UtcNow);
+        // We can't set User or Id directly anymore, so we need reflection or we just ignore Id if it's not strictly needed.
+        // Let's use reflection to set Id and User for testing purposes since it's a domain entity.
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(oldRow, 10);
+        typeof(RefreshToken).GetProperty("User")!.SetValue(oldRow, new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" });
 
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
@@ -145,15 +147,13 @@ public sealed class AuthTokenServiceTests
     {
         string plainOld = "concurrent-loser";
         string hashOld = RefreshTokenHashUtility.Hash(plainOld);
-        RefreshToken oldRow = new()
-        {
-            Id = 99,
-            UserId = new UserId(7),
-            TokenHash = hashOld,
-            ExpiresAt = DateTime.UtcNow.AddDays(1),
-            CreatedAt = DateTime.UtcNow,
-            User = new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" },
-        };
+        RefreshToken oldRow = RefreshToken.Create(
+            new UserId(7),
+            hashOld,
+            DateTime.UtcNow.AddDays(1),
+            DateTime.UtcNow);
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(oldRow, 99);
+        typeof(RefreshToken).GetProperty("User")!.SetValue(oldRow, new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" });
 
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
@@ -177,16 +177,14 @@ public sealed class AuthTokenServiceTests
     {
         string plainOld = "revoked-refresh-plain";
         string hashOld = RefreshTokenHashUtility.Hash(plainOld);
-        RefreshToken oldRow = new()
-        {
-            Id = 10,
-            UserId = new UserId(7),
-            TokenHash = hashOld,
-            ExpiresAt = DateTime.UtcNow.AddDays(1),
-            CreatedAt = DateTime.UtcNow,
-            RevokedAt = DateTime.UtcNow.AddMinutes(-5),
-            User = new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" },
-        };
+        RefreshToken oldRow = RefreshToken.Create(
+            new UserId(7),
+            hashOld,
+            DateTime.UtcNow.AddDays(1),
+            DateTime.UtcNow);
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(oldRow, 10);
+        oldRow.Revoke(DateTime.UtcNow.AddMinutes(-5));
+        typeof(RefreshToken).GetProperty("User")!.SetValue(oldRow, new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" });
 
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
@@ -209,16 +207,13 @@ public sealed class AuthTokenServiceTests
         // Arrange
         string plainOld = "expired-refresh-plain";
         string hashOld = RefreshTokenHashUtility.Hash(plainOld);
-        RefreshToken oldRow = new()
-        {
-            Id = 11,
-            UserId = new UserId(8),
-            TokenHash = hashOld,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(-10),
-            CreatedAt = DateTime.UtcNow.AddDays(-15),
-            RevokedAt = null,
-            User = new User { Id = new UserId(8), Email = Email.Parse("e@example.org"), Name = "E" },
-        };
+        RefreshToken oldRow = RefreshToken.Create(
+            new UserId(8),
+            hashOld,
+            DateTime.UtcNow.AddMinutes(-10),
+            DateTime.UtcNow.AddDays(-15));
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(oldRow, 11);
+        typeof(RefreshToken).GetProperty("User")!.SetValue(oldRow, new User { Id = new UserId(8), Email = Email.Parse("e@example.org"), Name = "E" });
 
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
@@ -280,7 +275,7 @@ public sealed class AuthTokenServiceTests
     {
         string plain = "secret";
         string hash = RefreshTokenHashUtility.Hash(plain);
-        RefreshToken row = new() { UserId = new UserId(5), TokenHash = hash };
+        RefreshToken row = RefreshToken.Create(new UserId(5), hash, DateTime.UtcNow.AddDays(1), DateTime.UtcNow);
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(row);
@@ -295,7 +290,7 @@ public sealed class AuthTokenServiceTests
     {
         string plain = "secret";
         string hash = RefreshTokenHashUtility.Hash(plain);
-        RefreshToken row = new() { UserId = new UserId(12), TokenHash = hash };
+        RefreshToken row = RefreshToken.Create(new UserId(12), hash, DateTime.UtcNow.AddDays(1), DateTime.UtcNow);
         Mock<IRefreshTokenRepository> db = new();
         db.Setup(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
             .ReturnsAsync(row);

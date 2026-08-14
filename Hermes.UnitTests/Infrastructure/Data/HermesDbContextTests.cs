@@ -42,14 +42,9 @@ public sealed class HermesDbContextTests
         DateTime windowStart = new(2026, 4, 10, 8, 15, 0, DateTimeKind.Utc);
         DateTime windowEnd = windowStart.AddMinutes(1);
 
-        ctx.NotificationLogs.Add(new NotificationLog
-        {
-            UserId = user.Id,
-            NewsId = new NewsletterId(42),
-            SentAt = windowStart.AddSeconds(40),
-            Status = NotificationStatus.Sent,
-            Channel = DeliveryChannel.Email,
-        });
+        var log1 = NotificationLog.Create(user.Id, DeliveryChannel.Email, windowStart.AddSeconds(40), new NewsletterId(42));
+        log1.MarkAsSent();
+        ctx.NotificationLogs.Add(log1);
         await ctx.SaveChangesAsync();
 
         bool exists = await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(42), windowStart, windowEnd, CancellationToken.None);
@@ -67,30 +62,17 @@ public sealed class HermesDbContextTests
         DateTime windowStart = new(2026, 4, 10, 8, 15, 0, DateTimeKind.Utc);
         DateTime windowEnd = windowStart.AddMinutes(1);
 
-        ctx.NotificationLogs.Add(new NotificationLog
-        {
-            UserId = user.Id,
-            NewsId = new NewsletterId(1),
-            SentAt = windowStart.AddMinutes(-5),
-            Status = NotificationStatus.Sent,
-            Channel = DeliveryChannel.Email,
-        });
-        ctx.NotificationLogs.Add(new NotificationLog
-        {
-            UserId = user.Id,
-            NewsId = new NewsletterId(2),
-            SentAt = windowStart.AddSeconds(20),
-            Status = NotificationStatus.Failed,
-            Channel = DeliveryChannel.Email,
-        });
-        ctx.NotificationLogs.Add(new NotificationLog
-        {
-            UserId = user.Id,
-            NewsId = new NewsletterId(3),
-            SentAt = windowEnd,
-            Status = NotificationStatus.Sent,
-            Channel = DeliveryChannel.Email,
-        });
+        var log2 = NotificationLog.Create(user.Id, DeliveryChannel.Email, windowStart.AddMinutes(-5), new NewsletterId(1));
+        log2.MarkAsSent();
+        ctx.NotificationLogs.Add(log2);
+
+        var log3 = NotificationLog.Create(user.Id, DeliveryChannel.Email, windowStart.AddSeconds(20), new NewsletterId(2));
+        log3.MarkAsFailed("error", null);
+        ctx.NotificationLogs.Add(log3);
+
+        var log4 = NotificationLog.Create(user.Id, DeliveryChannel.Email, windowEnd, new NewsletterId(3));
+        log4.MarkAsSent();
+        ctx.NotificationLogs.Add(log4);
         await ctx.SaveChangesAsync();
 
         Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(1), windowStart, windowEnd, CancellationToken.None));
@@ -105,23 +87,19 @@ public sealed class HermesDbContextTests
         var tokens = new RefreshTokenRepository(ctx, TimeProvider.System);
         User user = await SeedUserAsync(ctx);
 
-        RefreshToken oldToken = new()
-        {
-            UserId = user.Id,
-            TokenHash = "hash-old-test",
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            CreatedAt = DateTime.UtcNow,
-        };
+        RefreshToken oldToken = RefreshToken.Create(
+            user.Id,
+            "hash-old-test",
+            DateTime.UtcNow.AddDays(7),
+            DateTime.UtcNow);
         ctx.RefreshTokens.Add(oldToken);
         await ctx.SaveChangesAsync();
 
-        RefreshToken newToken = new()
-        {
-            UserId = user.Id,
-            TokenHash = "hash-new-test",
-            ExpiresAt = DateTime.UtcNow.AddDays(14),
-            CreatedAt = DateTime.UtcNow,
-        };
+        RefreshToken newToken = RefreshToken.Create(
+            user.Id,
+            "hash-new-test",
+            DateTime.UtcNow.AddDays(14),
+            DateTime.UtcNow);
 
         bool ok = await tokens.CompleteRefreshRotationAsync(oldToken, newToken, CancellationToken.None);
 

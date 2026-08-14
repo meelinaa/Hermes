@@ -1,6 +1,6 @@
 using Hermes.Domain.ValueObjects;
 using Xunit;
-
+using Hermes.Domain.Exceptions;
 namespace Hermes.UnitTests.Domain.ValueObjects;
 
 public sealed class EmailTests
@@ -39,7 +39,7 @@ public sealed class EmailTests
         // Arrange is handled via InlineData
 
         // Act & Assert
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => Email.Parse(input));
+        InvalidEmailException ex = Assert.Throws<InvalidEmailException>(() => Email.Parse(input));
         Assert.Contains("E-mail cannot be empty", ex.Message);
     }
 
@@ -50,7 +50,7 @@ public sealed class EmailTests
         string tooLongEmail = new string('a', 246) + "@test.com"; // Length is 255 (246 + 9)
 
         // Act & Assert
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => Email.Parse(tooLongEmail));
+        InvalidEmailException ex = Assert.Throws<InvalidEmailException>(() => Email.Parse(tooLongEmail));
         Assert.Contains("E-mail is too long", ex.Message);
     }
 
@@ -65,7 +65,7 @@ public sealed class EmailTests
         // Arrange is handled via InlineData
 
         // Act & Assert
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => Email.Parse(invalidEmail));
+        InvalidEmailException ex = Assert.Throws<InvalidEmailException>(() => Email.Parse(invalidEmail));
         Assert.Contains("Invalid e-mail format", ex.Message);
     }
 }

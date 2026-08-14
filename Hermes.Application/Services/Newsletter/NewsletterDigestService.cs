@@ -108,15 +108,11 @@ public sealed class NewsletterDigestService(
                     body),
                 cancellationToken).ConfigureAwait(false);
 
+            var logSuccess = NotificationLog.Create(userId, DeliveryChannel.Email, timeProvider.GetUtcNow().UtcDateTime, newsId);
+            logSuccess.MarkAsSent();
+
             await notificationLogs.SetNotificationLogAsync(
-                new NotificationLog
-                {
-                    UserId = userId,
-                    NewsId = newsId,
-                    SentAt = timeProvider.GetUtcNow().UtcDateTime,
-                    Status = NotificationStatus.Sent,
-                    Channel = DeliveryChannel.Email
-                },
+                logSuccess,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -127,16 +123,10 @@ public sealed class NewsletterDigestService(
         catch (Exception ex)
         {
             logger.LogNewsletterDigestFailed(ex, userId.Value, newsId.Value);
+            var logError = NotificationLog.Create(userId, DeliveryChannel.Email, timeProvider.GetUtcNow().UtcDateTime, newsId);
+            logError.MarkAsFailed(ex.Message, null);
             await notificationLogs.SetNotificationLogAsync(
-                new NotificationLog
-                {
-                    UserId = userId,
-                    NewsId = newsId,
-                    SentAt = timeProvider.GetUtcNow().UtcDateTime,
-                    Status = NotificationStatus.Failed,
-                    Channel = DeliveryChannel.Email,
-                    ErrorMessage = ex.Message
-                },
+                logError,
                 cancellationToken).ConfigureAwait(false);
             throw;
         }

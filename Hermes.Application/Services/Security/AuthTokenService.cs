@@ -34,13 +34,11 @@ public sealed class AuthTokenService(
 
         JwtAccessTokenResultDto access = jwt.Issue(userId, email, name);
         string? plain = CreateRefreshPlain();
-        RefreshToken row = new()
-        {
-            UserId = userId,
-            TokenHash = RefreshTokenHashUtility.Hash(plain),
-            ExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(_o.RefreshTokenDays),
-            CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
-        };
+        RefreshToken row = RefreshToken.Create(
+            userId,
+            RefreshTokenHashUtility.Hash(plain),
+            timeProvider.GetUtcNow().UtcDateTime.AddDays(_o.RefreshTokenDays),
+            timeProvider.GetUtcNow().UtcDateTime);
         await db.AddRefreshTokenAsync(row, cancellationToken).ConfigureAwait(false);
         return new AuthTokensResultDto(
             access.Token,
@@ -72,13 +70,11 @@ public sealed class AuthTokenService(
         }
 
         string? newPlain = CreateRefreshPlain();
-        RefreshToken newRow = new()
-        {
-            UserId = old.UserId,
-            TokenHash = RefreshTokenHashUtility.Hash(newPlain),
-            ExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(_o.RefreshTokenDays),
-            CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
-        };
+        RefreshToken newRow = RefreshToken.Create(
+            old.UserId,
+            RefreshTokenHashUtility.Hash(newPlain),
+            timeProvider.GetUtcNow().UtcDateTime.AddDays(_o.RefreshTokenDays),
+            timeProvider.GetUtcNow().UtcDateTime);
         bool rotated = await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
         if (!rotated)
             return null;

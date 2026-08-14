@@ -83,9 +83,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db, TimeProvider time
         }
 
         await db.RefreshTokens.AddAsync(newToken, cancellationToken).ConfigureAwait(false);
-        trackedOld.RevokedAt = utc;
-        trackedOld.ReplacedByToken = newToken;
-        trackedOld.ReplacedByTokenId = newToken.Id;
+        trackedOld.Revoke(utc, newToken.Id);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -94,7 +92,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db, TimeProvider time
     public async ValueTask RevokeRefreshTokenAsync(RefreshToken trackedToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(trackedToken);
-        trackedToken.RevokedAt = timeProvider.GetUtcNow().UtcDateTime;
+        trackedToken.Revoke(timeProvider.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -115,7 +113,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db, TimeProvider time
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         foreach (RefreshToken activeToken in active)
-            activeToken.RevokedAt = utc;
+            activeToken.Revoke(utc);
         if (active.Count > 0)
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -145,7 +143,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db, TimeProvider time
                     var current = queue.Dequeue();
                     if (current.RevokedAt == null)
                     {
-                        current.RevokedAt = utc;
+                        current.Revoke(utc);
                         changesMade = true;
                     }
 
@@ -185,7 +183,7 @@ public sealed class RefreshTokenRepository(HermesDbContext db, TimeProvider time
                 var current = queue.Dequeue();
                 if (current.RevokedAt == null)
                 {
-                    current.RevokedAt = utc;
+                    current.Revoke(utc);
                     changesMade = true;
                 }
 

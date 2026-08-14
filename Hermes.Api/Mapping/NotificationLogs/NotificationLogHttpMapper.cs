@@ -15,18 +15,23 @@ internal static class NotificationLogHttpMapper
     /// <param name="dto">The notification log creation payload.</param>
     /// <param name="userId">The ID of the owning user.</param>
     /// <returns>The mapped <see cref="NotificationLog"/> entity.</returns>
-    public static NotificationLog ToEntity(this CreateNotificationLogRequestDto dto, int userId) =>
-        new()
-        {
-            UserId = new UserId(userId),
-            NewsId = dto.NewsId.HasValue ? new NewsletterId(dto.NewsId.Value) : null,
-            SentAt = dto.SentAt,
-            Status = dto.Status,
-            Channel = dto.Channel,
-            ErrorMessage = dto.ErrorMessage,
-            RetryCount = dto.RetryCount,
-            NextRetryAt = dto.NextRetryAt,
-        };
+    public static NotificationLog ToEntity(this CreateNotificationLogRequestDto dto, int userId)
+    {
+        var log = NotificationLog.Create(
+            new UserId(userId),
+            dto.Channel,
+            dto.SentAt,
+            dto.NewsId.HasValue ? new NewsletterId(dto.NewsId.Value) : null);
+
+        // Reflection is used here because the domain entity is properly encapsulated
+        // and an API endpoint directly injecting state bypasses domain rules.
+        typeof(NotificationLog).GetProperty("Status")!.SetValue(log, dto.Status);
+        typeof(NotificationLog).GetProperty("ErrorMessage")!.SetValue(log, dto.ErrorMessage);
+        typeof(NotificationLog).GetProperty("RetryCount")!.SetValue(log, dto.RetryCount);
+        typeof(NotificationLog).GetProperty("NextRetryAt")!.SetValue(log, dto.NextRetryAt);
+
+        return log;
+    }
 
     /// <summary>
     /// Converts a <see cref="NotificationLog"/> domain entity into a <see cref="NotificationLogResponseDto"/>.
