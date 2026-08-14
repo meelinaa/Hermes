@@ -1,3 +1,4 @@
+using FluentResults;
 using Hermes.Application.DTOs.Login;
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Outbound;
@@ -14,11 +15,9 @@ public sealed class UserAuthenticationServiceTests
 {
     private static UserAuthenticationService CreateService(IUserRepository db) => new(db);
 
-    // [R]IGHT: Normalizes email and stores BCrypt hash of plain text password
     [Fact]
     public async Task RegisterUserAsync_Should_NormalizeEmail_AndStoreOnlyBcryptHashOfPassword()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((u, _) => u.Id = new UserId(100))
@@ -28,89 +27,77 @@ public sealed class UserAuthenticationServiceTests
         RegisterUserRequestDto user = new()
         {
             Name = "Tester",
-            Email = Email.Parse("  Hello@Test.COM "),
+            Email = "  Hello@Test.COM ",
             Password = "plain-secret",
         };
 
-        // Act
-        UserScopeDto scope = await sut.RegisterUserAsync(user);
+        Result<UserScopeDto> result = await sut.RegisterUserAsync(user);
 
-        // Assert
-        Assert.Equal("hello@test.com", scope.Email);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("hello@test.com", result.Value.Email);
         db.Verify(dataStore => dataStore.SetUserAsync(
             It.Is<User>(registeredUser => BCrypt.Net.BCrypt.Verify("plain-secret", registeredUser.PasswordHash)),
             It.IsAny<CancellationToken>()), Times.Once);
-        Assert.Equal(100, scope.UserId);
+        Assert.Equal(100, result.Value.UserId);
     }
 
-    // [B]OUNDARY: Rejects whitespace-only display name input
     [Fact]
     public async Task RegisterUserAsync_Should_RejectWhitespaceOnlyDisplayName()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((u, _) => u.Id = new UserId(5))
             .Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
-        RegisterUserRequestDto user = new() { Name = "   ", Email = Email.Parse("ok@test.dev"), Password = "pw" };
+        RegisterUserRequestDto user = new() { Name = "   ", Email = "ok@test.dev", Password = "pw" };
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sut.RegisterUserAsync(user));
+        Result<UserScopeDto> result = await sut.RegisterUserAsync(user);
+
+        Assert.True(result.IsFailed);
         db.Verify(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // [E]RROR: Throws exception when repository fails to return a positive user ID
     [Fact]
     public async Task RegisterUserAsync_Should_Fail_WhenDatabaseLeavesIdAtZero()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.SetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         UserAuthenticationService sut = CreateService(db.Object);
-        RegisterUserRequestDto user = new() { Name = "A", Email = Email.Parse("a@b.c"), Password = "x" };
+        RegisterUserRequestDto user = new() { Name = "A", Email = "a@b.c", Password = "x" };
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sut.RegisterUserAsync(user));
+        Result<UserScopeDto> result = await sut.RegisterUserAsync(user);
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("Failed", result.Errors[0].Message);
     }
 
-    // [B]OUNDARY: Fails authentication when username/email identifier is blank
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenIdentifierBlank()
     {
-        // Arrange
         UserAuthenticationService sut = CreateService(Mock.Of<IUserRepository>());
 
-        // Act
-        LoginResultDto loginResult = await sut.LoginAsync("   ", "pw");
+        Result<LoginResultDto> result = await sut.LoginAsync("   ", "pw");
 
-        // Assert
-        Assert.False(loginResult.Success);
-        Assert.Contains("required", loginResult.ErrorMessage ?? "", StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.IsFailed);
+        Assert.Contains("required", result.Errors[0].Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    // [B]OUNDARY: Fails authentication when password is blank
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenPasswordBlank()
     {
-        // Arrange
         UserAuthenticationService sut = CreateService(Mock.Of<IUserRepository>());
 
-        // Act
-        LoginResultDto loginResult = await sut.LoginAsync("user", "");
+        Result<LoginResultDto> result = await sut.LoginAsync("user", "");
 
-        // Assert
-        Assert.False(loginResult.Success);
-        Assert.False(string.IsNullOrEmpty(loginResult.ErrorMessage));
+        Assert.True(result.IsFailed);
+        Assert.Contains("required", result.Errors[0].Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    // [R]IGHT: Looks up account by email address when identifier contains '@'
     [Fact]
     public async Task LoginAsync_Should_LookupByEmail_WhenIdentifierContainsAtSign()
     {
-        // Arrange
         string hash = BCrypt.Net.BCrypt.HashPassword("good");
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync("me@test.dev", It.IsAny<CancellationToken>()))
@@ -118,20 +105,17 @@ public sealed class UserAuthenticationServiceTests
 
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act
-        LoginResultDto loginResult = await sut.LoginAsync(" me@test.dev ", "good");
+        Result<LoginResultDto> result = await sut.LoginAsync(" me@test.dev ", "good");
 
-        // Assert
-        Assert.True(loginResult.Success);
-        Assert.Equal(3, loginResult.UserId);
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.Success);
+        Assert.Equal(3, result.Value.UserId);
         db.Verify(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // [R]IGHT: Looks up account by display name when identifier does not contain '@'
     [Fact]
     public async Task LoginAsync_Should_LookupByName_WhenIdentifierHasNoAtSign()
     {
-        // Arrange
         string hash = BCrypt.Net.BCrypt.HashPassword("pw");
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("alice", It.IsAny<CancellationToken>()))
@@ -139,19 +123,16 @@ public sealed class UserAuthenticationServiceTests
 
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act
-        LoginResultDto loginResult = await sut.LoginAsync("alice", "pw");
+        Result<LoginResultDto> result = await sut.LoginAsync("alice", "pw");
 
-        // Assert
-        Assert.True(loginResult.Success);
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.Success);
         db.Verify(dataStore => dataStore.GetUserEntityForAuthenticationByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // [E]RROR: Returns generic failure error message when authentication fails to prevent account enumeration
     [Fact]
     public async Task LoginAsync_Should_NotRevealWhetherAccountExists_OnFailure()
     {
-        // Arrange
         string hash = BCrypt.Net.BCrypt.HashPassword("right");
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("bob", It.IsAny<CancellationToken>()))
@@ -159,73 +140,57 @@ public sealed class UserAuthenticationServiceTests
 
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act
-        LoginResultDto loginResult = await sut.LoginAsync("bob", "wrong");
+        Result<LoginResultDto> result = await sut.LoginAsync("bob", "wrong");
 
-        // Assert
-        Assert.False(loginResult.Success);
-        Assert.Equal("Invalid login or password.", loginResult.ErrorMessage);
+        Assert.True(result.IsFailed);
+        Assert.Equal("Invalid login or password.", result.Errors[0].Message);
     }
 
-    // [B]OUNDARY: Fails authentication when user account is not found in database
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenUserNotFound()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("unknown", It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act
-        LoginResultDto loginResult = await sut.LoginAsync("unknown", "pw");
+        Result<LoginResultDto> result = await sut.LoginAsync("unknown", "pw");
 
-        // Assert
-        Assert.False(loginResult.Success);
-        Assert.Equal("Invalid login or password.", loginResult.ErrorMessage);
+        Assert.True(result.IsFailed);
+        Assert.Equal("Invalid login or password.", result.Errors[0].Message);
     }
 
-    // [B]OUNDARY: Fails authentication when stored password hash is empty
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenStoredPasswordHashIsEmpty()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("bob", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = new UserId(1), Name = "bob", Email = Email.Parse("b@c.d"), PasswordHash = "" });
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act
-        LoginResultDto loginResult = await sut.LoginAsync("bob", "pw");
+        Result<LoginResultDto> result = await sut.LoginAsync("bob", "pw");
 
-        // Assert
-        Assert.False(loginResult.Success);
-        Assert.Equal("Invalid login or password.", loginResult.ErrorMessage);
+        Assert.True(result.IsFailed);
+        Assert.Equal("Invalid login or password.", result.Errors[0].Message);
     }
 
-    // [E]RROR: Safely returns authentication failure when BCrypt throws exception on corrupted hash string
     [Fact]
     public async Task LoginAsync_Should_Fail_WhenBCryptThrowsExceptionForCorruptHash()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByNameAsync("bob", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = new UserId(1), Name = "bob", Email = Email.Parse("b@c.d"), PasswordHash = "invalid_hash_format" });
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act
-        LoginResultDto loginResult = await sut.LoginAsync("bob", "pw");
+        Result<LoginResultDto> result = await sut.LoginAsync("bob", "pw");
 
-        // Assert
-        Assert.False(loginResult.Success);
-        Assert.Equal("Invalid login or password.", loginResult.ErrorMessage);
+        Assert.True(result.IsFailed);
+        Assert.Equal("Invalid login or password.", result.Errors[0].Message);
     }
 
-    // [R]IGHT: Hashes new password with BCrypt after verifying current password
     [Fact]
     public async Task UpdateUserAsync_Should_HashNewPassword_WhenCurrentPasswordVerified()
     {
-        // Arrange
         string existingHash = BCrypt.Net.BCrypt.HashPassword("oldpw");
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(5), It.IsAny<CancellationToken>()))
@@ -234,81 +199,70 @@ public sealed class UserAuthenticationServiceTests
 
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act
-        await sut.UpdateUserAsync(userId: 5, name: "X", email: "x@y.z", newPasswordPlain: "new-secret", currentPasswordPlain: "oldpw");
+        Result result = await sut.UpdateUserAsync(userId: 5, name: "X", email: "x@y.z", newPasswordPlain: "new-secret", currentPasswordPlain: "oldpw");
 
-        // Assert
+        Assert.True(result.IsSuccess);
         db.Verify(dataStore => dataStore.UpdateUserAsync(It.Is<User>(u => BCrypt.Net.BCrypt.Verify("new-secret", u.PasswordHash)), It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // [E]RROR: Throws exception when current password is omitted during password change
     [Fact]
     public async Task UpdateUserAsync_Should_RequireCurrentPassword_WhenChangingPassword()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = new UserId(1), Email = Email.Parse("a@b.c"), Name = "N", PasswordHash = "old" });
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.UpdateUserAsync(userId: 1, name: "N", email: "a@b.c", newPasswordPlain: "new", currentPasswordPlain: null));
+        Result result = await sut.UpdateUserAsync(userId: 1, name: "N", email: "a@b.c", newPasswordPlain: "new", currentPasswordPlain: null);
+        
+        Assert.True(result.IsFailed);
     }
 
-    // [E]RROR: Throws exception when provided current password does not match stored hash
     [Fact]
     public async Task UpdateUserAsync_Should_RejectWrongCurrentPassword()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(9), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = new UserId(9), Email = Email.Parse("e@f.g"), Name = "E", PasswordHash = BCrypt.Net.BCrypt.HashPassword("real") });
 
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<WrongCurrentPasswordException>(() =>
-            sut.UpdateUserAsync(userId: 9, name: "E", email: "e@f.g", newPasswordPlain: "hacker", currentPasswordPlain: "wrong-old"));
+        Result result = await sut.UpdateUserAsync(userId: 9, name: "E", email: "e@f.g", newPasswordPlain: "hacker", currentPasswordPlain: "wrong-old");
+        
+        Assert.True(result.IsFailed);
     }
 
-    // [E]RROR: Throws UserNotFoundException when updating missing user account
     [Fact]
-    public async Task UpdateUserAsync_Should_ThrowUserNotFound_WhenChangingPassword_AndUserMissing()
+    public async Task UpdateUserAsync_Should_Fail_WhenChangingPassword_AndUserMissing()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(404), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UserNotFoundException>(() =>
-            sut.UpdateUserAsync(userId: 404, name: "N", email: "a@b.c", newPasswordPlain: "new-Valid_9!", currentPasswordPlain: "old"));
+        Result result = await sut.UpdateUserAsync(userId: 404, name: "N", email: "a@b.c", newPasswordPlain: "new-Valid_9!", currentPasswordPlain: "old");
+        
+        Assert.True(result.IsFailed);
     }
 
-    // [E]RROR: Throws InvalidOperationException when user account has no password set
     [Fact]
-    public async Task UpdateUserAsync_Should_ThrowInvalidOperation_WhenStoredPasswordHashEmpty()
+    public async Task UpdateUserAsync_Should_Fail_WhenStoredPasswordHashEmpty()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(1), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = new UserId(1), Email = Email.Parse("a@b.c"), Name = "N", PasswordHash = null });
 
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.UpdateUserAsync(userId: 1, name: "N", email: "a@b.c", newPasswordPlain: "new-Valid_9!", currentPasswordPlain: "anything"));
+        Result result = await sut.UpdateUserAsync(userId: 1, name: "N", email: "a@b.c", newPasswordPlain: "new-Valid_9!", currentPasswordPlain: "anything");
+        
+        Assert.True(result.IsFailed);
     }
 
-    // [R]IGHT: Updates profile fields without touching password when no new password is provided
     [Fact]
     public async Task UpdateUserAsync_Should_UpdateWithoutPassword_WhenNewPasswordOmitted()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
@@ -316,10 +270,9 @@ public sealed class UserAuthenticationServiceTests
 
         UserAuthenticationService sut = CreateService(db.Object);
 
-        // Act
-        await sut.UpdateUserAsync(userId: 2, name: "OnlyName", email: "u@x.y", newPasswordPlain: null, currentPasswordPlain: null);
+        Result result = await sut.UpdateUserAsync(userId: 2, name: "OnlyName", email: "u@x.y", newPasswordPlain: null, currentPasswordPlain: null);
 
-        // Assert
+        Assert.True(result.IsSuccess);
         db.Verify(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Once);
         db.Verify(dataStore => dataStore.UpdateUserAsync(It.Is<User>(u => u.PasswordHash == "hash"), It.IsAny<CancellationToken>()), Times.Once);
     }

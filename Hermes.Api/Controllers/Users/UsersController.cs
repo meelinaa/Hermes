@@ -11,7 +11,7 @@ using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.ValueObjects;
-
+using FluentResults;
 namespace Hermes.Api.Controllers.Users;
 
 /// <summary>
@@ -37,8 +37,11 @@ public class UsersController(
     [HttpPost]
     public async Task<ActionResult<UserResponseDto>> SetNewUser([FromBody] RegisterUserRequestDto request, CancellationToken cancellationToken)
     {
-        UserScopeDto userScope = await authService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
-        return Ok(userScope.ToUserResponse());
+        Result<UserScopeDto> registerResult = await authService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
+        if (registerResult.IsFailed)
+            return this.BadRequestProblem(registerResult.Errors.First().Message);
+
+        return Ok(registerResult.Value.ToUserResponse());
     }
 
     /// <summary>
@@ -52,10 +55,12 @@ public class UsersController(
         if (this.WhenCannotAccessUser(request.Id) is { } denied)
             return denied;
 
-        await authService.UpdateUserAsync(request.Id, request.Name, request.Email, request.NewPassword, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
+        Result updateResult = await authService.UpdateUserAsync(request.Id, request.Name, request.Email, request.NewPassword, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
+        if (updateResult.IsFailed)
+            return this.BadRequestProblem(updateResult.Errors.First().Message);
 
-        UserScopeDto? updated = await userService.GetUserByIdAsync(new UserId(request.Id), cancellationToken).ConfigureAwait(false);
-        return updated is null ? this.NotFoundProblem() : Ok(updated.ToUserResponse());
+        Result<UserScopeDto> updatedResult = await userService.GetUserByIdAsync(new UserId(request.Id), cancellationToken).ConfigureAwait(false);
+        return updatedResult.IsFailed ? this.NotFoundProblem() : Ok(updatedResult.Value.ToUserResponse());
     }
 
     /// <summary>
@@ -67,11 +72,11 @@ public class UsersController(
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteUser(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
-        if (user is null)
+        Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
+        if (userResult.IsFailed)
             return this.NotFoundProblem();
 
-        await userService.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
+        await userService.DeleteUserAsync(userResult.Value, cancellationToken).ConfigureAwait(false);
         return Ok();
     }
 
@@ -83,8 +88,8 @@ public class UsersController(
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
-        return user is null ? this.NotFoundProblem() : Ok(user.ToUserResponse());
+        Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
+        return userResult.IsFailed ? this.NotFoundProblem() : Ok(userResult.Value.ToUserResponse());
     }
 
     /// <summary>
@@ -97,14 +102,14 @@ public class UsersController(
         if (string.IsNullOrWhiteSpace(email))
             return this.BadRequestProblem("Path segment 'email' is required.");
 
-        UserScopeDto? user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
-        if (user is null)
+        Result<UserScopeDto> userResult = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        if (userResult.IsFailed)
             return this.NotFoundProblem();
 
-        if (this.WhenCannotAccessUser(user.UserId) is { } denied)
+        if (this.WhenCannotAccessUser(userResult.Value.UserId) is { } denied)
             return denied;
 
-        return Ok(user.ToUserResponse());
+        return Ok(userResult.Value.ToUserResponse());
     }
 
     /// <summary>
@@ -116,16 +121,16 @@ public class UsersController(
     [HttpPost("{id:int}/verify")]
     public async Task<ActionResult<SendVerificationMailResponseDto>> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
-        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+        Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
+        if (userResult.IsFailed || string.IsNullOrWhiteSpace(userResult.Value.Email))
             return this.NotFoundProblem();
 
         if (TryGetVerificationMailCooldownResponse(id) is { } cooldownResult)
             return cooldownResult;
 
-        await verificationService.SendVerificationMailAsync(user.Email, cancellationToken).ConfigureAwait(false);
+        await verificationService.SendVerificationMailAsync(userResult.Value.Email, cancellationToken).ConfigureAwait(false);
         RegisterVerificationMailSend(id);
-        return Ok(new SendVerificationMailResponseDto(id, user.Email));
+        return Ok(new SendVerificationMailResponseDto(id, userResult.Value.Email));
     }
 
     /// <summary>
@@ -141,8 +146,8 @@ public class UsersController(
 
         await verificationService.CheckVerificationCodeAsync(new UserId(request.UserId), request.Code, cancellationToken).ConfigureAwait(false);
 
-        UserScopeDto? refreshed = await userService.GetUserByIdAsync(new UserId(request.UserId), cancellationToken).ConfigureAwait(false);
-        return refreshed is null ? this.NotFoundProblem() : Ok(refreshed.ToUserResponse());
+        Result<UserScopeDto> refreshedResult = await userService.GetUserByIdAsync(new UserId(request.UserId), cancellationToken).ConfigureAwait(false);
+        return refreshedResult.IsFailed ? this.NotFoundProblem() : Ok(refreshedResult.Value.ToUserResponse());
     }
 
     /// <summary>

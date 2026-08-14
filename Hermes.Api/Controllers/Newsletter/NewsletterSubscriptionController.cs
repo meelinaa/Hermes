@@ -1,3 +1,4 @@
+using FluentResults;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -95,15 +96,18 @@ public class NewsletterSubscriptionController(
             search,
             category);
 
-        NewsletterSubscriptionListResultDto result = await newsService.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
+        Result<NewsletterSubscriptionListResultDto> result = await newsService.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
+        if (result.IsFailed)
+            return this.BadRequestProblem(result.Errors.First().Message);
+
         return Ok(new PagedNewsletterSubscriptionListResponseDto(
-            result.Items.Select(static n => n.ToResponse()).ToList(),
-            result.Page,
-            result.PageSize,
-            result.TotalCount,
-            result.TotalPages,
-            result.HasNextPage,
-            result.NextAfterId));
+            result.Value.Items.Select(static n => n.ToResponse()).ToList(),
+            result.Value.Page,
+            result.Value.PageSize,
+            result.Value.TotalCount,
+            result.Value.TotalPages,
+            result.Value.HasNextPage,
+            result.Value.NextAfterId));
     }
 
     /// <summary>
@@ -135,8 +139,8 @@ public class NewsletterSubscriptionController(
     [HttpGet("{userId:int}/newsletter-subscriptions/{newsId:int}")]
     public async Task<ActionResult<NewsletterSubscriptionResponseDto>> GetNewsById(int userId, int newsId, CancellationToken cancellationToken)
     {
-        NewsletterSubscription? news = await newsService.GetNewsByIdAsync(new UserId(userId), new NewsletterId(newsId), cancellationToken).ConfigureAwait(false);
-        return news is null ? this.NotFoundProblem() : Ok(news.ToResponse());
+        Result<NewsletterSubscription> newsResult = await newsService.GetNewsByIdAsync(new UserId(userId), new NewsletterId(newsId), cancellationToken).ConfigureAwait(false);
+        return newsResult.IsFailed ? this.NotFoundProblem() : Ok(newsResult.Value.ToResponse());
     }
 
     /// <summary>
@@ -153,7 +157,11 @@ public class NewsletterSubscriptionController(
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
         NewsletterSubscription entity = request.ToEntity(new UserId(currentUserId));
-        int newsId = (await newsService.SetNewsAsync(entity, cancellationToken).ConfigureAwait(false)).Value;
+        Result<NewsletterId> setNewsResult = await newsService.SetNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+        if (setNewsResult.IsFailed)
+            return this.BadRequestProblem(setNewsResult.Errors.First().Message);
+            
+        int newsId = setNewsResult.Value.Value;
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         return Ok(new CreateNewsletterSubscriptionResponseDto(currentUserId, newsId));
     }
@@ -171,12 +179,14 @@ public class NewsletterSubscriptionController(
         if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing or invalid user identity in token.");
 
-        NewsletterSubscription? existing = await newsService.FindNewsByIdAsync(new NewsletterId(request.Id), cancellationToken).ConfigureAwait(false);
-        if (existing is null)
+        Result<NewsletterSubscription> existingResult = await newsService.FindNewsByIdAsync(new NewsletterId(request.Id), cancellationToken).ConfigureAwait(false);
+        if (existingResult.IsFailed)
             return this.NotFoundProblem();
 
-        NewsletterSubscription entity = request.ToEntity(new UserId(currentUserId), existing);
-        await newsService.UpdateNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+        NewsletterSubscription entity = request.ToEntity(new UserId(currentUserId), existingResult.Value);
+        Result updateResult = await newsService.UpdateNewsAsync(entity, cancellationToken).ConfigureAwait(false);
+        if (updateResult.IsFailed)
+            return this.BadRequestProblem(updateResult.Errors.First().Message);
 
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         return Ok();
@@ -191,7 +201,8 @@ public class NewsletterSubscriptionController(
     [HttpDelete("{userId:int}/newsletter-subscriptions/all")]
     public async Task<ActionResult<DeleteAllNewsletterSubscriptionResponseDto>> DeleteAllNews(int userId, CancellationToken cancellationToken)
     {
-        int deleted = await newsService.DeleteAllNewsByUserAsync(new UserId(userId), cancellationToken).ConfigureAwait(false);
+        Result<int> deleteResult = await newsService.DeleteAllNewsByUserAsync(new UserId(userId), cancellationToken).ConfigureAwait(false);
+        int deleted = deleteResult.IsSuccess ? deleteResult.Value : 0;
         return Ok(new DeleteAllNewsletterSubscriptionResponseDto(deleted));
     }
 
@@ -204,11 +215,11 @@ public class NewsletterSubscriptionController(
     [HttpDelete("{userId:int}/newsletter-subscriptions/{newsId:int}")]
     public async Task<ActionResult> DeleteNews(int userId, int newsId, CancellationToken cancellationToken)
     {
-        NewsletterSubscription? deleteNews = await newsService.GetNewsByIdAsync(new UserId(userId), new NewsletterId(newsId), cancellationToken).ConfigureAwait(false);
-        if (deleteNews is null)
+        Result<NewsletterSubscription> deleteResult = await newsService.GetNewsByIdAsync(new UserId(userId), new NewsletterId(newsId), cancellationToken).ConfigureAwait(false);
+        if (deleteResult.IsFailed)
             return this.NotFoundProblem();
 
-        await newsService.DeleteNewsAsync(deleteNews, cancellationToken).ConfigureAwait(false);
+        await newsService.DeleteNewsAsync(deleteResult.Value, cancellationToken).ConfigureAwait(false);
         newsletterSchedulerRunTrigger.RequestRunAfterNewsMutation();
         return Ok();
     }

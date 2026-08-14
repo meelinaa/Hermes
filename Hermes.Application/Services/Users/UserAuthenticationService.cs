@@ -1,3 +1,4 @@
+using FluentResults;
 using Hermes.Application.DTOs.Login;
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Inbound;
@@ -13,33 +14,47 @@ namespace Hermes.Application.Services.Users;
 /// </summary>
 public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthenticationService
 {
-    /// <summary>
-    /// Registers a new user account by validating input, normalizing email format, hashing the plain password with BCrypt, and persisting the user record.
-    /// </summary>
-    /// <param name="request">The registration DTO containing user display name, email, and plain text password.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
-    /// <returns>A <see cref="UserScopeDto"/> containing the newly created user's basic profile details.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="request"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when name/email is missing or persistence fails.</exception>
-    public async Task<UserScopeDto> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<Result<UserScopeDto>> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        if (request is null)
+            return Result.Fail("Request cannot be null.");
 
         string name = request.Name?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(name))
-            throw new InvalidOperationException("User name is required.");
+            return Result.Fail("User name is required.");
 
         if (string.IsNullOrWhiteSpace(request.Email))
-            throw new InvalidOperationException("User email is required.");
-        Email email = Email.Parse(request.Email);
+            return Result.Fail("User email is required.");
+            
+        Email email;
+        try
+        {
+            email = Email.Parse(request.Email);
+        }
+        catch (DomainValidationException ex)
+        {
+            return Result.Fail(ex.Message);
+        }
         
+        UserScopeDto? existing = await db.GetUserByEmailAsync(email.Value, cancellationToken).ConfigureAwait(false);
+        if (existing is not null)
+            return Result.Fail("A user with this email already exists.");
+            
         string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "");
         
-        User user = User.Create(name, email, passwordHash);
+        User user;
+        try
+        {
+            user = User.Create(name, email, passwordHash);
+        }
+        catch (DomainValidationException ex)
+        {
+            return Result.Fail(ex.Message);
+        }
         
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id.Value <= 0)
-            throw new InvalidOperationException("Failed to create user.");
+            return Result.Fail("Failed to create user.");
         
         UserScopeDto userScope = new()
         {
@@ -48,22 +63,15 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             UserId = user.Id.Value,
             IsEmailVerified = false
         };
-        return userScope;
+        return Result.Ok(userScope);
     }
 
-    /// <summary>
-    /// Authenticates a user by username or email address and verifies the provided password against the BCrypt hash stored in the repository.
-    /// </summary>
-    /// <param name="nameOrEmail">The user's account display name or email address.</param>
-    /// <param name="password">The plain text password attempt.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
-    /// <returns>A <see cref="LoginResultDto"/> indicating authentication success or failure with generic error message.</returns>
-    public async Task<LoginResultDto> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
+    public async Task<Result<LoginResultDto>> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(nameOrEmail))
-            return new LoginResultDto(false, "Name or email is required.", null);
+            return Result.Fail("Name or email is required.");
         if (string.IsNullOrEmpty(password))
-            return new LoginResultDto(false, "Password is required.", null);
+            return Result.Fail("Password is required.");
 
         string? key = nameOrEmail.Trim();
         User? user = key.Contains('@', StringComparison.Ordinal)
@@ -71,7 +79,7 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             : await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
         if (user is null || string.IsNullOrEmpty(user.PasswordHash))
-            return new LoginResultDto(false, "Invalid login or password.", null);
+            return Result.Fail("Invalid login or password.");
 
         bool valid;
         try
@@ -84,43 +92,40 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
         }
 
         if (!valid)
-            return new LoginResultDto(false, "Invalid login or password.", null);
+            return Result.Fail("Invalid login or password.");
 
-        return new LoginResultDto(true, null, user.Id.Value, user.Email.Value, user.Name);
+        return Result.Ok(new LoginResultDto(true, null, user.Id.Value, user.Email.Value, user.Name));
     }
 
-    /// <summary>
-    /// Updates user account details (name, email) and optionally changes password after verifying current credentials.
-    /// </summary>
-    /// <param name="user">The updated user entity.</param>
-    /// <param name="currentPasswordPlain">Optional current password required when changing to a new password.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="user"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when required fields or current password are missing.</exception>
-    /// <exception cref="UserNotFoundException">Thrown when user ID is not found.</exception>
-    /// <exception cref="WrongCurrentPasswordException">Thrown when current password verification fails.</exception>
-    public async Task UpdateUserAsync(int userId, string name, string email, string? newPasswordPlain, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)
+    public async Task<Result> UpdateUserAsync(int userId, string name, string email, string? newPasswordPlain, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Name is required.", nameof(name));
+            return Result.Fail("Name is required.");
         if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("Email is required.", nameof(email));
+            return Result.Fail("Email is required.");
 
         UserId uid = new UserId(userId);
         User? existing = await db.GetUserEntityByIdAsync(uid, cancellationToken).ConfigureAwait(false);
         if (existing is null)
-            throw new UserNotFoundException($"User with id {userId} was not found.");
+            return Result.Fail($"User with id {userId} was not found.");
 
-        existing.Rename(name);
-        existing.ChangePrimaryEmail(Email.Parse(email));
+        try
+        {
+            existing.Rename(name);
+            existing.ChangePrimaryEmail(Email.Parse(email));
+        }
+        catch (DomainValidationException ex)
+        {
+            return Result.Fail(ex.Message);
+        }
 
         if (!string.IsNullOrWhiteSpace(newPasswordPlain))
         {
             if (string.IsNullOrWhiteSpace(currentPasswordPlain))
-                throw new ArgumentException("Current password is required when setting a new password.", nameof(currentPasswordPlain));
+                return Result.Fail("Current password is required when setting a new password.");
 
             if (string.IsNullOrEmpty(existing.PasswordHash))
-                throw new InvalidOperationException("Cannot change password: no password is set for this account.");
+                return Result.Fail("Cannot change password: no password is set for this account.");
 
             bool valid;
             try
@@ -133,11 +138,19 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             }
 
             if (!valid)
-                throw new WrongCurrentPasswordException();
+                return Result.Fail("Current password verification failed.");
 
-            existing.ReplacePasswordHash(BCrypt.Net.BCrypt.HashPassword(newPasswordPlain.Trim()));
+            try
+            {
+                existing.ReplacePasswordHash(BCrypt.Net.BCrypt.HashPassword(newPasswordPlain.Trim()));
+            }
+            catch (DomainValidationException ex)
+            {
+                return Result.Fail(ex.Message);
+            }
         }
 
         await db.UpdateUserAsync(existing, cancellationToken).ConfigureAwait(false);
+        return Result.Ok();
     }
 }

@@ -4,6 +4,7 @@ using Hermes.Application.DTOs.Security;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services.Security;
 using Hermes.Domain.ValueObjects;
+using FluentResults;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -30,7 +31,11 @@ public class AuthController(IUserAuthenticationService authService) : Controller
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        LoginResultDto result = await authService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
+        Result<LoginResultDto> loginResult = await authService.LoginAsync(request.NameOrEmail, request.Password, cancellationToken).ConfigureAwait(false);
+        if (loginResult.IsFailed)
+            return this.UnauthorizedProblem(loginResult.Errors.First().Message);
+
+        LoginResultDto result = loginResult.Value;
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
 

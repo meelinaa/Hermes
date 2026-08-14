@@ -1,46 +1,23 @@
+using FluentResults;
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
 using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Ports.Inbound;
 
-/// <summary>
-/// Service interface for managing newsletter subscriptions in the application layer.
-/// </summary>
 public interface INewsletterSubscriptionService
 {
-    /// <summary>
-    /// Creates or sets a newsletter subscription.
-    /// </summary>
-    ValueTask<NewsletterId> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default);
+    ValueTask<Result<NewsletterId>> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Updates an existing newsletter subscription.
-    /// </summary>
-    ValueTask UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default);
+    ValueTask<Result> UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Deletes a specific newsletter subscription.
-    /// </summary>
-    ValueTask DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default);
+    ValueTask<Result> DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Retrieves a newsletter subscription by ID for a specific user.
-    /// </summary>
-    ValueTask<NewsletterSubscription?> GetNewsByIdAsync(UserId userId, NewsletterId id, CancellationToken cancellationToken = default);
+    ValueTask<Result<NewsletterSubscription>> GetNewsByIdAsync(UserId userId, NewsletterId id, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Finds a newsletter subscription by its ID.
-    /// </summary>
-    ValueTask<NewsletterSubscription?> FindNewsByIdAsync(NewsletterId id, CancellationToken cancellationToken = default);
+    ValueTask<Result<NewsletterSubscription>> FindNewsByIdAsync(NewsletterId id, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Retrieves a paged list of newsletter subscriptions matching the query criteria.
-    /// </summary>
-    ValueTask<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default);
+    ValueTask<Result<NewsletterSubscriptionListResultDto>> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Deletes all newsletter subscriptions belonging to a user.
-    /// </summary>
-    ValueTask<int> DeleteAllNewsByUserAsync(UserId userId, CancellationToken cancellationToken = default);
+    ValueTask<Result<int>> DeleteAllNewsByUserAsync(UserId userId, CancellationToken cancellationToken = default);
 }
