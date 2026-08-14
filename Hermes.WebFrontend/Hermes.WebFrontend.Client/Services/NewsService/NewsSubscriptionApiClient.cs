@@ -9,7 +9,7 @@ namespace Hermes.WebFrontend.Client.Services.NewsService;
 /// Loads paged news list responses from the API. <see cref="Invalidate"/> is a no-op kept for logout hooks;
 /// list data is not cached between calls.
 /// </summary>
-public sealed class NewsSubscriptionApiClient
+public sealed class NewsSubscriptionApiClient(ILogger<NewsSubscriptionApiClient> logger)
 {
     /// <summary>Clears any client-side list state (hook for logout; no in-memory list cache).</summary>
     public void Invalidate()
@@ -44,6 +44,7 @@ public sealed class NewsSubscriptionApiClient
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to fetch news list.");
             return (null, $"Laden fehlgeschlagen: {ex.Message}");
         }
     }
@@ -70,7 +71,7 @@ public sealed class NewsSubscriptionApiClient
         return sb.ToString();
     }
 
-    private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
+    private async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
     {
         try
         {
@@ -79,8 +80,9 @@ public sealed class NewsSubscriptionApiClient
             if (doc.RootElement.TryGetProperty("detail", out System.Text.Json.JsonElement d) && d.ValueKind == System.Text.Json.JsonValueKind.String)
                 return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogWarning(ex, "Failed to read error details from response.");
         }
 
         return $"Anfrage fehlgeschlagen ({(int)response.StatusCode}).";

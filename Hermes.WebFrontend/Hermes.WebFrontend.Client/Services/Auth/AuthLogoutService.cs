@@ -9,7 +9,7 @@ namespace Hermes.WebFrontend.Client.Services.Auth;
 /// <summary>
 /// Revokes server sessions, clears stored tokens, drops readable cookies, and hard-navigates to login.
 /// </summary>
-public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, NewsSubscriptionApiClient newsListCache, IJSRuntime js, NavigationManager nav)
+public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, NewsSubscriptionApiClient newsListCache, IJSRuntime js, NavigationManager nav, ILogger<AuthLogoutService> logger)
 {
     private static readonly JsonSerializerOptions _jsonWeb = JsonSerializerOptions.Web;
 
@@ -24,8 +24,9 @@ public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, Ne
                 .ConfigureAwait(false);
             _ = response;
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogWarning(ex, "Failed to call logout API, but proceeding with local logout.");
         }
 
         await tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
@@ -35,8 +36,9 @@ public sealed class AuthLogoutService(HttpClient http, AuthTokenStore tokens, Ne
         {
             await js.InvokeVoidAsync("hermesAuth.signOutAndReload", "/login");
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogWarning(ex, "JS interop failed for hermesAuth.signOutAndReload. Falling back to NavigationManager.");
             nav.NavigateTo("/login", forceLoad: true);
         }
     }

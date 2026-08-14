@@ -49,12 +49,8 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     public async Task<ActionResult<NotificationLogResponseDto>> Post(
         int userId,
         [FromBody] CreateNotificationLogRequestDto request,
-        [FromServices] IValidator<CreateNotificationLogRequestDto> validator,
         CancellationToken cancellationToken)
     {
-        ValidationResult fv = await validator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!fv.IsValid)
-            return fv.ToValidationProblem(this);
 
         NotificationLog entity = request.ToEntity(userId);
         await notificationLogService.SetNotificationLogAsync(entity, cancellationToken).ConfigureAwait(false);

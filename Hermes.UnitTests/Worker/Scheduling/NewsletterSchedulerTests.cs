@@ -33,7 +33,7 @@ public sealed class NewsletterSchedulerTests
         };
 
     [Fact]
-    public async Task RunAsync_Should_QueryDueProfilesOnce_AndSkipMail_WhenNothingDue_AndMailHogDisabled()
+    public async Task RunAsync_Should_QueryDueProfilesOnce_WhenNothingDue()
     {
         Mock<INewsletterScheduleService> schedule = new();
         schedule.Setup(scheduleService => scheduleService.GetDueItemsAsync(
@@ -43,15 +43,10 @@ public sealed class NewsletterSchedulerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<(NewsletterId NewsId, UserId UserId)>());
 
-        Mock<IEmailProvider> emailSender = new();
-
         NewsletterSchedulerWorkerService sut = new(
             schedule.Object,
             new Mock<global::Hangfire.IBackgroundJobClient>().Object,
             NullLogger<NewsletterSchedulerWorkerService>.Instance,
-            emailSender.Object,
-            CreateEmailOptions(),
-            Options.Create(new MailHogOptions { SendSchedulerTestMailEachMinute = false }),
             Options.Create(new NewsletterOptions()));
         await sut.RunAsync();
         schedule.Verify(
@@ -61,9 +56,6 @@ public sealed class NewsletterSchedulerTests
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
-        emailSender.Verify(
-            sender => sender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
-            Times.Never);
     }
 
     [Fact]
@@ -83,9 +75,6 @@ public sealed class NewsletterSchedulerTests
             schedule.Object,
             new Mock<global::Hangfire.IBackgroundJobClient>().Object,
             NullLogger<NewsletterSchedulerWorkerService>.Instance,
-            Mock.Of<IEmailProvider>(),
-            CreateEmailOptions(),
-            Options.Create(new MailHogOptions()),
             Options.Create(new NewsletterOptions()));
 
         using CancellationTokenSource cts = new();
@@ -109,9 +98,6 @@ public sealed class NewsletterSchedulerTests
             schedule.Object,
             jobClient.Object,
             NullLogger<NewsletterSchedulerWorkerService>.Instance,
-            Mock.Of<IEmailProvider>(),
-            CreateEmailOptions(),
-            Options.Create(new MailHogOptions { SendSchedulerTestMailEachMinute = false }),
             Options.Create(new NewsletterOptions()));
 
         // Act
@@ -123,88 +109,5 @@ public sealed class NewsletterSchedulerTests
                 It.Is<global::Hangfire.Common.Job>(j => j.Type == typeof(Hermes.Application.Services.NotificationLogs.NotificationJobService) && j.Method.Name == nameof(Hermes.Application.Services.NotificationLogs.NotificationJobService.SendNewsDigestAsync)),
                 It.IsAny<global::Hangfire.States.EnqueuedState>()),
             Times.Exactly(2));
-    }
-    [Fact]
-    public async Task RunAsync_Should_SendTestMail_WhenMailHogIsEnabled()
-    {
-        // Arrange
-        Mock<INewsletterScheduleService> schedule = new();
-        schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<(NewsletterId, UserId)>());
-
-        Mock<IEmailProvider> emailSender = new();
-
-        NewsletterSchedulerWorkerService sut = new(
-            schedule.Object,
-            Mock.Of<global::Hangfire.IBackgroundJobClient>(),
-            NullLogger<NewsletterSchedulerWorkerService>.Instance,
-            emailSender.Object,
-            CreateEmailOptions(),
-            Options.Create(new MailHogOptions { SendSchedulerTestMailEachMinute = true }),
-            Options.Create(new NewsletterOptions()));
-
-        // Act
-        await sut.RunAsync();
-
-        // Assert
-        emailSender.Verify(
-            x => x.SendAsync(It.Is<EmailMessageDto>(m => m.Subject.Contains("[Hermes/MailHog] Scheduler-Test")), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task RunAsync_Should_CatchOperationCanceledException_WhenMailHogIsEnabled()
-    {
-        // Arrange
-        Mock<INewsletterScheduleService> schedule = new();
-        schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<(NewsletterId, UserId)>());
-
-        Mock<IEmailProvider> emailSender = new();
-        emailSender.Setup(x => x.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new OperationCanceledException());
-
-        NewsletterSchedulerWorkerService sut = new(
-            schedule.Object,
-            Mock.Of<global::Hangfire.IBackgroundJobClient>(),
-            NullLogger<NewsletterSchedulerWorkerService>.Instance,
-            emailSender.Object,
-            CreateEmailOptions(),
-            Options.Create(new MailHogOptions { SendSchedulerTestMailEachMinute = true }),
-            Options.Create(new NewsletterOptions()));
-
-        // Act
-        Exception? exception = await Record.ExceptionAsync(() => sut.RunAsync(new CancellationToken()));
-
-        // Assert
-        Assert.Null(exception); // Must not throw
-    }
-
-    [Fact]
-    public async Task RunAsync_Should_CatchGenericException_WhenMailHogIsEnabled()
-    {
-        // Arrange
-        Mock<INewsletterScheduleService> schedule = new();
-        schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<(NewsletterId, UserId)>());
-
-        Mock<IEmailProvider> emailSender = new();
-        emailSender.Setup(x => x.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("Simulated error"));
-
-        NewsletterSchedulerWorkerService sut = new(
-            schedule.Object,
-            Mock.Of<global::Hangfire.IBackgroundJobClient>(),
-            NullLogger<NewsletterSchedulerWorkerService>.Instance,
-            emailSender.Object,
-            CreateEmailOptions(),
-            Options.Create(new MailHogOptions { SendSchedulerTestMailEachMinute = true }),
-            Options.Create(new NewsletterOptions()));
-
-        // Act
-        Exception? exception = await Record.ExceptionAsync(() => sut.RunAsync());
-
-        // Assert
-        Assert.Null(exception); // Must not throw
     }
 }

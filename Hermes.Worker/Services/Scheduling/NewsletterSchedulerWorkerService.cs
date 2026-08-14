@@ -1,12 +1,8 @@
 using Hangfire;
-using Hermes.Application.Options.Email;
 using Hermes.Application.Options.Newsletter;
 using Hermes.Application.Ports.Inbound;
-using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Newsletter;
 using Hermes.Application.Services.NotificationLogs;
-using Hermes.Notifications.Receiving.Options;
-using Hermes.Worker.Services.MailHog;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Hermes.Domain.ValueObjects;
@@ -21,9 +17,6 @@ public sealed class NewsletterSchedulerWorkerService(
     INewsletterScheduleService newsletterScheduleService,
     IBackgroundJobClient backgroundJobClient,
     ILogger<NewsletterSchedulerWorkerService> logger,
-    IEmailProvider emailSender,
-    EmailOptions EmailOptions,
-    IOptions<MailHogOptions> mailHogOptions,
     IOptions<NewsletterOptions> newsletterOptions)
 {
     private readonly TimeZoneInfo _newsletterTimeZone =
@@ -39,7 +32,6 @@ public sealed class NewsletterSchedulerWorkerService(
         DateTime wallNow = NewsletterSchedulingProvider.GetWallClockNow(_newsletterTimeZone);
         DateTime slotStartWall = NewsletterSchedulingProvider.GetWallClockMinuteStart(_newsletterTimeZone);
         DateTime slotStartUtc = NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
-        DateTimeOffset wallStamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _newsletterTimeZone);
 
         logger.LogRunStart(_newsletterTimeZone.Id, wallNow, slotStartWall, slotStartUtc);
 
@@ -62,27 +54,5 @@ public sealed class NewsletterSchedulerWorkerService(
         }
 
         logger.LogRunEnd(slotStartUtc, due.Count);
-
-        if (mailHogOptions.Value.SendSchedulerTestMailEachMinute)
-        {
-            try
-            {
-                await MailHogSchedulerTestMailService.SendAsync(
-                        emailSender,
-                        EmailOptions,
-                        wallStamp,
-                        logger,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                logger.LogTestMailCanceled();
-            }
-            catch (Exception ex)
-            {
-                logger.LogTestMailFailed(ex);
-            }
-        }
     }
 }
