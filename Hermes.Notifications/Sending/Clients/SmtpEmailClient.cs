@@ -1,19 +1,21 @@
-using System.Net;
-using System.Net.Mail;
-using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.Options.Email;
 using Hermes.Application.Ports.Outbound;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
 using Polly;
-using Polly.Retry;
 using Polly.Registry;
 
 namespace Hermes.Notifications.Sending.Providers;
 
 /// <summary>
-/// Sends e-mail via <see cref="SmtpClient"/> using <see cref="EmailOptions"/>.
+/// Sends e-mail via MailKit <see cref="SmtpClient"/> using <see cref="EmailOptions"/>.
 /// </summary>
 /// <param name="settings">The configured email options.</param>
+/// <param name="pipelineProvider">The Polly resilience pipeline provider.</param>
 public sealed class SmtpEmailClient(EmailOptions settings, ResiliencePipelineProvider<string> pipelineProvider) : IEmailProvider
 {
     private readonly ResiliencePipeline _pipeline = pipelineProvider.GetPipeline("smtp-retry");
@@ -23,58 +25,54 @@ public sealed class SmtpEmailClient(EmailOptions settings, ResiliencePipelinePro
     {
         await _pipeline.ExecuteAsync(async ct =>
         {
-            using SmtpClient smtp = CreateSmtpClient();
-            using MailMessage mail = CreateMailMessage(message);
-            await smtp.SendMailAsync(mail, ct).ConfigureAwait(false);
+            using MimeMessage mail = CreateMimeMessage(message);
+            using SmtpClient smtp = new();
+            
+            SecureSocketOptions secureSocketOptions = settings.EnableSsl 
+                ? SecureSocketOptions.Auto 
+                : SecureSocketOptions.None;
+
+            await smtp.ConnectAsync(settings.Host, settings.Port, secureSocketOptions, ct).ConfigureAwait(false);
+
+            if (!string.IsNullOrWhiteSpace(settings.Username))
+            {
+                await smtp.AuthenticateAsync(settings.Username, settings.Password ?? string.Empty, ct).ConfigureAwait(false);
+            }
+
+            await smtp.SendAsync(mail, ct).ConfigureAwait(false);
+            await smtp.DisconnectAsync(true, ct).ConfigureAwait(false);
         }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Creates and configures an SMTP client instance from configured settings.
-    /// </summary>
-    /// <returns>A configured SmtpClient instance.</returns>
-    private SmtpClient CreateSmtpClient()
-    {
-        SmtpClient client = new(settings.Host, settings.Port)
-        {
-            EnableSsl = settings.EnableSsl,
-        };
-
-        if (!string.IsNullOrWhiteSpace(settings.Username))
-            client.Credentials = new NetworkCredential(settings.Username, settings.Password);
-
-        return client;
-    }
-
-    /// <summary>
-    /// Builds a mail message with headers, reply-to, and optional attachments.
+    /// Builds a MimeKit message with headers, reply-to, and optional attachments.
     /// </summary>
     /// <param name="message">The email message DTO.</param>
-    /// <returns>A populated MailMessage object.</returns>
-    private MailMessage CreateMailMessage(EmailMessageDto message)
+    /// <returns>A populated MimeMessage object.</returns>
+    private MimeMessage CreateMimeMessage(EmailMessageDto message)
     {
-        MailAddress from = new(settings.DefaultFromAddress, settings.DefaultFromName);
-        MailAddress to = new(message.To.Address, message.To.DisplayName ?? string.Empty);
-
-        MailMessage mail = new(from, to)
-        {
-            Subject = message.Subject,
-            Body = message.Body,
-            IsBodyHtml = true,
-            Priority = MailPriority.Normal,
-            SubjectEncoding = Encoding.UTF8,
-            BodyEncoding = Encoding.UTF8,
-            HeadersEncoding = Encoding.UTF8
-        };
-
+        MimeMessage mail = new();
+        mail.From.Add(new MailboxAddress(settings.DefaultFromName, settings.DefaultFromAddress));
+        mail.To.Add(new MailboxAddress(message.To.DisplayName ?? string.Empty, message.To.Address));
+        
+        mail.Subject = message.Subject;
         mail.Headers.Add("X-Mailer", settings.XMailer);
-        mail.ReplyToList.Add(new MailAddress(settings.DefaultReplyToAddress, settings.DefaultReplyToName));
+        mail.ReplyTo.Add(new MailboxAddress(settings.DefaultReplyToName, settings.DefaultReplyToAddress));
+
+        var builder = new BodyBuilder
+        {
+            HtmlBody = message.Body
+        };
 
         if (message.Attachments is not null)
         {
             foreach (EmailAttachmentDto attachment in message.Attachments)
-                mail.Attachments.Add(new Attachment(attachment.Content, attachment.FileName, attachment.ContentType));
+            {
+                builder.Attachments.Add(attachment.FileName, attachment.Content, ContentType.Parse(attachment.ContentType));
+            }
         }
+
+        mail.Body = builder.ToMessageBody();
 
         return mail;
     }
