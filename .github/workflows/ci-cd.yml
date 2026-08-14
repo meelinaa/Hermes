@@ -7,7 +7,7 @@ on:
       - 'feat/**'
       - 'test/**'
       - 'fix/**'
-      - 'refactor/**'
+      - 'refactor**'
 
   pull_request:
     branches:

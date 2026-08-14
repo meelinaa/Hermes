@@ -32,7 +32,7 @@ try
             JobStorage.Current = storage;
     }
 
-    host.LogMailHogDevHints();
+    host.LogSmtpDevHints();
 
     RecurringJob.AddOrUpdate<NewsletterSchedulerWorkerService>(
         RecurringJobConstants.ID,

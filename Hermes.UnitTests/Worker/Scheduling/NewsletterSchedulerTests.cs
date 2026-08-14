@@ -1,12 +1,6 @@
-using Hermes.Application.DTOs.Email;
-using Hermes.Application.Options.Email;
 using Hermes.Application.Options.Newsletter;
-using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
-using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Services;
 using Hermes.Domain.ValueObjects;
-using Hermes.Notifications.Receiving.Options;
 using Hermes.Worker.Services.Scheduling;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -17,21 +11,6 @@ namespace Hermes.UnitTests.Worker.Scheduling;
 
 public sealed class NewsletterSchedulerTests
 {
-    private static EmailOptions CreateEmailOptions() =>
-        new()
-        {
-            Host = "localhost",
-            Port = 1025,
-            EnableSsl = false,
-            Username = null,
-            Password = null,
-            DefaultFromAddress = "from@test.local",
-            DefaultFromName = "Hermes",
-            DefaultReplyToAddress = "reply@test.local",
-            DefaultReplyToName = "Reply",
-            XMailer = "Hermes.UnitTests"
-        };
-
     [Fact]
     public async Task RunAsync_Should_QueryDueProfilesOnce_WhenNothingDue()
     {

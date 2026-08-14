@@ -15,10 +15,4 @@ public static partial class SchedulerLogExtensions
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "[NewsletterSchedulerWorkerService] === Run END === slotUtc={Slot:o} | due jobs={DueCount}")]
     public static partial void LogRunEnd(this ILogger logger, DateTime slot, int dueCount);
-
-    [LoggerMessage(EventId = 5, Level = LogLevel.Information, Message = "[NewsletterSchedulerWorkerService] Testmail-Versand aufgrund von Cancellation abgebrochen.")]
-    public static partial void LogTestMailCanceled(this ILogger logger);
-
-    [LoggerMessage(EventId = 6, Level = LogLevel.Warning, Message = "[NewsletterSchedulerWorkerService] MailHog-Scheduler-Testmail fehlgeschlagen.")]
-    public static partial void LogTestMailFailed(this ILogger logger, Exception ex);
 }

@@ -1,5 +1,5 @@
 using Hangfire;
-using Hangfire.Redis.StackExchange;
+using Hangfire.MySql;
 using Polly;
 using Polly.Retry;
 using StackExchange.Redis;
@@ -16,7 +16,6 @@ using Hermes.Application.Services.Users;
 using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Providers;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
-using Hermes.Notifications.Receiving.Options;
 using Hermes.Notifications.Sending.HtmlLayout.Services;
 using Hermes.Notifications.Sending.Providers;
 using Hermes.Worker.Filters.Hangfire;
@@ -51,8 +50,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddOptions<EmailOptions>().BindConfiguration(EmailOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value);
         builder.Services.AddSingleton<IEmailProvider, SmtpEmailClient>();
-        builder.Services.AddOptions<MailHogOptions>().BindConfiguration("MailHog").ValidateDataAnnotations().ValidateOnStart();
-        
+
         string? redisConnectionString = builder.Configuration.GetConnectionString("Redis");
         if (string.IsNullOrWhiteSpace(redisConnectionString))
             throw new InvalidOperationException("Configure ConnectionStrings:Redis.");
@@ -96,23 +94,20 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddHangfire(configuration => configuration
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseRedisStorage(redisConnectionString, new Hangfire.Redis.StackExchange.RedisStorageOptions
+            .UseStorage(new MySqlStorage(hangfireConnection, new MySqlStorageOptions
             {
-                Prefix = "Hangfire:"
-            })
+                TablesPrefix = "Hangfire"
+            }))
             .UseFilter(new CorrelationIdServerFilter()));
 
         builder.Services.AddHangfireServer();
     }
 
-    public static void LogMailHogDevHints(this IHost host)
+    /// <summary>Logs SMTP connection details on startup for developer visibility.</summary>
+    public static void LogSmtpDevHints(this IHost host)
     {
         ILogger logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Hermes.Worker");
         EmailOptions smtp = host.Services.GetRequiredService<EmailOptions>();
         logger.LogSmtpInfo(smtp.Host, smtp.Port, smtp.EnableSsl, smtp.DefaultFromAddress);
-
-        MailHogOptions? mailHog = host.Services.GetService<Microsoft.Extensions.Options.IOptions<MailHogOptions>>()?.Value;
-        if (mailHog is not null && !string.IsNullOrWhiteSpace(mailHog.BaseUrl))
-            logger.LogMailHogWebUi(mailHog.BaseUrl.TrimEnd('/'));
     }
 }
