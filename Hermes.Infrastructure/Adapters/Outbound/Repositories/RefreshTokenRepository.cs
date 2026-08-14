@@ -119,84 +119,17 @@ public sealed class RefreshTokenRepository(HermesDbContext db, TimeProvider time
     }
 
     /// <inheritdoc />
-    public async ValueTask RevokeTokenFamilyAsync(RefreshToken compromisedToken, CancellationToken cancellationToken = default)
+    public async ValueTask<List<RefreshToken>> GetAllRefreshTokensForUserAsync(UserId userId, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(compromisedToken);
-        if (db.Database.IsRelational())
-        {
-            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
+        return await db.RefreshTokens
+            .Where(t => t.UserId == userId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
 
-                List<RefreshToken> userTokens = await db.RefreshTokens
-                    .Where(t => t.UserId == compromisedToken.UserId)
-                    .ToListAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-                var queue = new Queue<RefreshToken>();
-                queue.Enqueue(compromisedToken);
-
-                bool changesMade = false;
-                while (queue.Count > 0)
-                {
-                    var current = queue.Dequeue();
-                    if (current.RevokedAt == null)
-                    {
-                        current.Revoke(utc);
-                        changesMade = true;
-                    }
-
-                    if (current.ReplacedByTokenId is { } successorId)
-                    {
-                        RefreshToken? successor = userTokens.FirstOrDefault(t => t.Id == successorId);
-                        if (successor != null)
-                            queue.Enqueue(successor);
-                    }
-                }
-
-                if (changesMade)
-                    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
-                throw;
-            }
-        }
-        else
-        {
-            DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
-
-            List<RefreshToken> userTokens = await db.RefreshTokens
-                .Where(t => t.UserId == compromisedToken.UserId)
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            var queue = new Queue<RefreshToken>();
-            queue.Enqueue(compromisedToken);
-
-            bool changesMade = false;
-            while (queue.Count > 0)
-            {
-                var current = queue.Dequeue();
-                if (current.RevokedAt == null)
-                {
-                    current.Revoke(utc);
-                    changesMade = true;
-                }
-
-                if (current.ReplacedByTokenId is { } successorId)
-                {
-                    RefreshToken? successor = userTokens.FirstOrDefault(t => t.Id == successorId);
-                    if (successor != null)
-                        queue.Enqueue(successor);
-                }
-            }
-
-            if (changesMade)
-                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
+    /// <inheritdoc />
+    public async ValueTask UpdateTokensAsync(CancellationToken cancellationToken = default)
+    {
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

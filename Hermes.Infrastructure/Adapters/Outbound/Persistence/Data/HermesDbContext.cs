@@ -171,7 +171,17 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
         }
         catch (DbUpdateException ex)
         {
-            throw MySqlDbUpdateExceptionMapper.Transform(ex);
+            var error = MySqlDbUpdateExceptionMapper.MapToError(ex);
+            if (error != null)
+            {
+                if (error.Message.Contains("unique constraint"))
+                    throw new Hermes.Domain.Exceptions.EmailAlreadyExistsException(error.Message);
+                if (error.Message.Contains("foreign key constraint"))
+                    throw new Hermes.Domain.Exceptions.UserNotFoundException(error.Message);
+                
+                throw new Hermes.Domain.Exceptions.DomainValidationException(error.Message);
+            }
+            throw;
         }
     }
 }

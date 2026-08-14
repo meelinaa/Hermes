@@ -39,7 +39,11 @@ public class AuthController(IUserAuthenticationService authService) : Controller
         if (!result.Success)
             return this.UnauthorizedProblem(result.ErrorMessage);
 
-        AuthTokensResultDto tokens = await authTokens.IssueTokensAsync(new UserId(result.UserId!.Value), result.Email, result.Name, cancellationToken).ConfigureAwait(false);
+        Result<AuthTokensResultDto> tokensResult = await authTokens.IssueTokensAsync(new UserId(result.UserId!.Value), result.Email, result.Name, cancellationToken).ConfigureAwait(false);
+        if (tokensResult.IsFailed)
+            return this.UnauthorizedProblem(tokensResult.Errors.First().Message);
+        
+        AuthTokensResultDto tokens = tokensResult.Value;
         LoginResponseDto body = new(
             Success: true,
             UserId: result.UserId!.Value,
@@ -63,9 +67,11 @@ public class AuthController(IUserAuthenticationService authService) : Controller
         [FromServices] IAuthTokenService authTokens,
         CancellationToken cancellationToken)
     {
-        AuthTokensResultDto? next = await authTokens.RotateAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
-        if (next is null)
+        Result<AuthTokensResultDto> nextResult = await authTokens.RotateAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
+        if (nextResult.IsFailed)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
+            
+        AuthTokensResultDto next = nextResult.Value;
 
         RefreshResponseDto body = new(
             Success: true,
@@ -97,8 +103,8 @@ public class AuthController(IUserAuthenticationService authService) : Controller
             return NoContent();
         }
 
-        bool ok = await authTokens.TryRevokeRefreshForUserAsync(body.RefreshToken, new UserId(userId), cancellationToken).ConfigureAwait(false);
-        if (!ok)
+        Result revokeResult = await authTokens.TryRevokeRefreshForUserAsync(body.RefreshToken, new UserId(userId), cancellationToken).ConfigureAwait(false);
+        if (revokeResult.IsFailed)
             return this.UnauthorizedProblem("Invalid or expired refresh token.");
 
         return NoContent();

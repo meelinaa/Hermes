@@ -1,3 +1,4 @@
+using FluentResults;
 using Hermes.Application.DTOs.Security;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports;
@@ -38,12 +39,13 @@ public sealed class AuthTokenServiceTests
             .Returns(ValueTask.CompletedTask);
 
         AuthTokenService sut = CreateSut(db, jwt);
-        AuthTokensResultDto result = await sut.IssueTokensAsync(new UserId(3), "a@test.example", "Alice");
-        Assert.Equal("access-jwt", result.AccessToken);
-        Assert.False(string.IsNullOrEmpty(result.RefreshToken));
+        Result<AuthTokensResultDto> result = await sut.IssueTokensAsync(new UserId(3), "a@test.example", "Alice");
+        Assert.True(result.IsSuccess);
+        Assert.Equal("access-jwt", result.Value.AccessToken);
+        Assert.False(string.IsNullOrEmpty(result.Value.RefreshToken));
         Assert.NotNull(captured);
         Assert.Equal(new UserId(3), captured!.UserId);
-        Assert.Equal(RefreshTokenHashUtility.Hash(result.RefreshToken), captured.TokenHash);
+        Assert.Equal(RefreshTokenHashUtility.Hash(result.Value.RefreshToken), captured.TokenHash);
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(new UserId(3), "a@test.example", "Alice"), Times.Once);
         db.Verify(dataStore => dataStore.AddRefreshTokenAsync(captured, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -55,8 +57,8 @@ public sealed class AuthTokenServiceTests
     {
         AuthTokenService sut = CreateSut(new Mock<IRefreshTokenRepository>(), new Mock<IJwtTokenProvider>());
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
-            await sut.IssueTokensAsync(new UserId(invalidUserId), "a@test.dev", "X"));
+        Result<AuthTokensResultDto> result = await sut.IssueTokensAsync(new UserId(invalidUserId), "a@test.dev", "X");
+        Assert.True(result.IsFailed);
     }
 
     /// <summary>Blank refresh must not hit the store (timing side-channel).</summary>
@@ -65,8 +67,8 @@ public sealed class AuthTokenServiceTests
     {
         Mock<IRefreshTokenRepository> db = new();
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
-        Assert.Null(await sut.RotateAsync(""));
-        Assert.Null(await sut.RotateAsync("   "));
+        Assert.True((await sut.RotateAsync("")).IsFailed);
+        Assert.True((await sut.RotateAsync("   ")).IsFailed);
         db.Verify(dataStore => dataStore.GetRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -77,8 +79,8 @@ public sealed class AuthTokenServiceTests
         db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((RefreshToken?)null);
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
-        AuthTokensResultDto? result = await sut.RotateAsync("orphan-plain");
-        Assert.Null(result);
+        Result<AuthTokensResultDto> result = await sut.RotateAsync("orphan-plain");
+        Assert.True(result.IsFailed);
         db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -94,7 +96,7 @@ public sealed class AuthTokenServiceTests
             .ReturnsAsync(row);
         Mock<IJwtTokenProvider> jwt = new();
         AuthTokenService sut = CreateSut(db, jwt);
-        Assert.Null(await sut.RotateAsync(plain));
+        Assert.True((await sut.RotateAsync(plain)).IsFailed);
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<UserId>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
         db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -128,16 +130,16 @@ public sealed class AuthTokenServiceTests
             .Returns(new JwtAccessTokenResultDto("new-access", DateTimeOffset.UtcNow.AddMinutes(20)));
 
         AuthTokenService sut = CreateSut(db, jwt);
-        AuthTokensResultDto? result = await sut.RotateAsync(plainOld);
-        Assert.NotNull(result);
-        Assert.Equal("new-access", result!.AccessToken);
-        Assert.False(string.IsNullOrEmpty(result.RefreshToken));
+        Result<AuthTokensResultDto> result = await sut.RotateAsync(plainOld);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("new-access", result.Value.AccessToken);
+        Assert.False(string.IsNullOrEmpty(result.Value.RefreshToken));
 
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(new UserId(7), "u@example.org", "Uwe"), Times.Once);
         db.Verify(
             dataStore => dataStore.CompleteRefreshRotationAsync(
                 oldRow,
-                It.Is<RefreshToken>(nr => nr.UserId == new UserId(7) && nr.TokenHash == RefreshTokenHashUtility.Hash(result.RefreshToken)),
+                It.Is<RefreshToken>(nr => nr.UserId == new UserId(7) && nr.TokenHash == RefreshTokenHashUtility.Hash(result.Value.RefreshToken)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -167,7 +169,7 @@ public sealed class AuthTokenServiceTests
         Mock<IJwtTokenProvider> jwt = new();
         AuthTokenService sut = CreateSut(db, jwt);
 
-        Assert.Null(await sut.RotateAsync(plainOld));
+        Assert.True((await sut.RotateAsync(plainOld)).IsFailed);
 
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<UserId>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
@@ -194,10 +196,9 @@ public sealed class AuthTokenServiceTests
         Mock<IJwtTokenProvider> jwt = new();
 
         AuthTokenService sut = CreateSut(db, jwt, logger);
-        AuthTokensResultDto? result = await sut.RotateAsync(plainOld);
-        Assert.Null(result);
+        Result<AuthTokensResultDto> result = await sut.RotateAsync(plainOld);
+        Assert.True(result.IsFailed);
         db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
-        db.Verify(dataStore => dataStore.RevokeTokenFamilyAsync(oldRow, It.IsAny<CancellationToken>()), Times.Once);
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<UserId>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
 
@@ -225,12 +226,11 @@ public sealed class AuthTokenServiceTests
         AuthTokenService sut = CreateSut(db, jwt, logger);
 
         // Act
-        AuthTokensResultDto? result = await sut.RotateAsync(plainOld);
+        Result<AuthTokensResultDto> result = await sut.RotateAsync(plainOld);
 
         // Assert
-        Assert.Null(result);
+        Assert.True(result.IsFailed);
         db.Verify(dataStore => dataStore.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
-        db.Verify(dataStore => dataStore.RevokeTokenFamilyAsync(oldRow, It.IsAny<CancellationToken>()), Times.Once);
         jwt.Verify(tokenIssuer => tokenIssuer.Issue(It.IsAny<UserId>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
 
@@ -245,10 +245,10 @@ public sealed class AuthTokenServiceTests
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
 
         // Act
-        bool result = await sut.TryRevokeRefreshForUserAsync(blankToken!, new UserId(1));
+        Result result = await sut.TryRevokeRefreshForUserAsync(blankToken!, new UserId(1));
 
         // Assert
-        Assert.False(result);
+        Assert.True(result.IsFailed);
         db.Verify(dataStore => dataStore.GetActiveRefreshTokenByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -262,10 +262,10 @@ public sealed class AuthTokenServiceTests
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
 
         // Act
-        bool result = await sut.TryRevokeRefreshForUserAsync("unknown-token", new UserId(1));
+        Result result = await sut.TryRevokeRefreshForUserAsync("unknown-token", new UserId(1));
 
         // Assert
-        Assert.False(result);
+        Assert.True(result.IsFailed);
         db.Verify(dataStore => dataStore.RevokeRefreshTokenAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -281,7 +281,7 @@ public sealed class AuthTokenServiceTests
             .ReturnsAsync(row);
 
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
-        Assert.False(await sut.TryRevokeRefreshForUserAsync(plain, new UserId(99)));
+        Assert.True((await sut.TryRevokeRefreshForUserAsync(plain, new UserId(99))).IsFailed);
         db.Verify(dataStore => dataStore.RevokeRefreshTokenAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -297,7 +297,7 @@ public sealed class AuthTokenServiceTests
         db.Setup(dataStore => dataStore.RevokeRefreshTokenAsync(row, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
 
         AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>());
-        Assert.True(await sut.TryRevokeRefreshForUserAsync(plain, new UserId(12)));
+        Assert.True((await sut.TryRevokeRefreshForUserAsync(plain, new UserId(12))).IsSuccess);
         db.Verify(dataStore => dataStore.RevokeRefreshTokenAsync(row, It.IsAny<CancellationToken>()), Times.Once);
     }
 

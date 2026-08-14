@@ -3,6 +3,7 @@ using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 using Hermes.Domain.ValueObjects;
+using Hermes.Domain.Exceptions;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Validators;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,9 @@ public sealed class NotificationLogRepository(HermesDbContext db) : INotificatio
         if (log.Id != 0)
             throw new ArgumentException("New notification logs must have id 0 before insert.", nameof(log));
 
-        await UserExistenceValidator.EnsureExistsAsync(db, log.UserId, cancellationToken).ConfigureAwait(false);
+        var existsResult = await UserExistenceValidator.EnsureExistsAsync(db, log.UserId, cancellationToken).ConfigureAwait(false);
+        if (existsResult.IsFailed)
+            throw new UserNotFoundException(existsResult.Errors[0].Message);
         await db.NotificationLogs.AddAsync(log, cancellationToken).ConfigureAwait(false);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

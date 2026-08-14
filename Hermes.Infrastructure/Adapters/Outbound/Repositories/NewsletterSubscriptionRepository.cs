@@ -27,7 +27,9 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (news.Id.Value != 0)
             throw new ArgumentException("Insert requires news id 0; use update for an existing row.", nameof(news));
 
-        await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        var existsResult = await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        if (existsResult.IsFailed)
+            throw new UserNotFoundException(existsResult.Errors[0].Message);
         await db.NewsletterSubscriptions.AddAsync(news, cancellationToken).ConfigureAwait(false);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -51,7 +53,9 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (existing.UserId != news.UserId)
             throw new NewsletterSubscriptionAccessDeniedException("This news entry belongs to another user.");
 
-        await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        var existsResult = await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        if (existsResult.IsFailed)
+            throw new UserNotFoundException(existsResult.Errors[0].Message);
         db.NewsletterSubscriptions.Update(news);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -90,7 +94,9 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (query.PageSize < 1)
             throw new ArgumentOutOfRangeException(nameof(query.PageSize), query.PageSize, "Page size must be at least 1.");
 
-        await UserExistenceValidator.EnsureExistsAsync(db, new UserId(query.UserId), cancellationToken).ConfigureAwait(false);
+        var existsResult = await UserExistenceValidator.EnsureExistsAsync(db, new UserId(query.UserId), cancellationToken).ConfigureAwait(false);
+        if (existsResult.IsFailed)
+            throw new UserNotFoundException(existsResult.Errors[0].Message);
 
         IQueryable<NewsletterSubscription> filtered = db.NewsletterSubscriptions.AsNoTracking().Where(n => n.UserId == new UserId(query.UserId));
 
