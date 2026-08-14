@@ -1,8 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
-
-using Microsoft.Extensions.Logging;
-using Hermes.Application.Logging;
+using FluentResults;
 using Microsoft.Extensions.Options;
 
 using Hermes.Application.DTOs.Email;
@@ -17,22 +15,14 @@ using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Users;
 
-/// <summary>
-/// Generates cryptographically secure 6-digit OTP verification codes, persists active verification challenges (optionally hashed),
-/// delegates template rendering to <see cref="IVerificationHtmlService"/>, and dispatches activation emails.
-/// </summary>
 public sealed class VerificationDigestService(
     IUserRepository users,
     IEmailProvider emailSender,
     IVerificationHtmlService verificationRenderer,
     IOptions<HermesSiteUrlsOptions> siteUrlsOptions,
     IOptions<SecurityOptions> securityOptions,
-    TimeProvider timeProvider,
-    ILogger<VerificationDigestService> logger) : IVerificationDigestService
+    TimeProvider timeProvider) : IVerificationDigestService
 {
-    /// <summary>
-    /// The validity duration of a generated verification OTP code in minutes (15 minutes).
-    /// </summary>
     public const int VERIFICATION_CODE_VALIDITY_MINUTES = 15;
 
     private const string DefaultPublicBaseUrl = "https://hermes.de";
@@ -43,27 +33,19 @@ public sealed class VerificationDigestService(
     private const int MaxOtpValueExclusive = 1_000_000;
 
     private readonly IEmailProvider _emailSender = emailSender ?? throw new ArgumentNullException(nameof(emailSender));
-    private readonly ILogger<VerificationDigestService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IOptions<SecurityOptions> _securityOptions = securityOptions ?? throw new ArgumentNullException(nameof(securityOptions));
     private readonly IOptions<HermesSiteUrlsOptions> _siteUrlsOptions = siteUrlsOptions ?? throw new ArgumentNullException(nameof(siteUrlsOptions));
     private readonly IUserRepository _users = users ?? throw new ArgumentNullException(nameof(users));
     private readonly IVerificationHtmlService _verificationRenderer = verificationRenderer ?? throw new ArgumentNullException(nameof(verificationRenderer));
 
-    /// <summary>
-    /// Generates a cryptographically random 6-digit OTP, persists the active verification challenge (optionally hashed)
-    /// with a 15-minute expiration window, renders the HTML email body, and sends the account activation message.
-    /// </summary>
-    /// <param name="userId">The unique identifier of the target user requesting email verification.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="userId"/> is less than or equal to zero.</exception>
-    public async Task SendAsync(UserId userId, CancellationToken cancellationToken = default)
+    public async Task<Result<bool>> SendAsync(UserId userId, CancellationToken cancellationToken = default)
     {
         if (userId.Value <= 0)
-            throw new ArgumentOutOfRangeException(nameof(userId), "User ID must be positive.");
+            return Result.Fail("User ID must be positive.");
 
         User? user = await _users.GetUserEntityByIdAsync(userId, cancellationToken).ConfigureAwait(false);
         if (user is null || string.IsNullOrWhiteSpace(user.Email.Value))
-            return;
+            return Result.Ok(false);
 
         string? code = GenerateNumericVerificationCode();
         DateTime expiresAt = timeProvider.GetUtcNow().UtcDateTime.AddMinutes(VERIFICATION_CODE_VALIDITY_MINUTES);
@@ -94,34 +76,18 @@ public sealed class VerificationDigestService(
 
         string emailSubject = VerificationEmailSubject;
 
-        try
-        {
-            await _emailSender
-                .SendAsync(
-                    new EmailMessageDto(
-                        new EmailRecipientDto(user.Email!.Value.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
-                        emailSubject,
-                        emailBody),
-                    cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogVerificationCanceled(userId.Value);
-            throw;
-        }
-        catch (Exception exception)
-        {
-            _logger.LogVerificationFailed(exception, userId.Value);
-            throw;
-        }
+        await _emailSender
+            .SendAsync(
+                new EmailMessageDto(
+                    new EmailRecipientDto(user.Email!.Value.Trim(), string.IsNullOrWhiteSpace(user.Name) ? null : user.Name),
+                    emailSubject,
+                    emailBody),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result.Ok(true);
     }
 
-    /// <summary>
-    /// Generates a cryptographically random six-digit numeric code using <see cref="RandomNumberGenerator"/>
-    /// to prevent predictable OTP challenge generation.
-    /// </summary>
-    /// <returns>A formatted 6-digit numeric string (padded with leading zeros if necessary).</returns>
     private static string GenerateNumericVerificationCode()
     {
         int randomNumber = RandomNumberGenerator.GetInt32(0, MaxOtpValueExclusive);

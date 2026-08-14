@@ -82,8 +82,12 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddSingleton<INewsletterHtmlService, NewsletterHtmlService>();
         builder.Services.AddSingleton<IVerificationHtmlService, VerificationHtmlService>();
         builder.Services.AddScoped<IArticleFetchingService, ArticleFetchingService>();
-        builder.Services.AddScoped<INewsletterDigestService, NewsletterDigestService>();
-        builder.Services.AddScoped<IVerificationDigestService, VerificationDigestService>();
+        builder.Services.AddScoped<NewsletterDigestService>();
+        builder.Services.AddScoped<INewsletterDigestService>(provider => 
+            ActivatorUtilities.CreateInstance<NewsletterDigestLoggingDecorator>(provider, provider.GetRequiredService<NewsletterDigestService>()));
+        builder.Services.AddScoped<VerificationDigestService>();
+        builder.Services.AddScoped<IVerificationDigestService>(provider => 
+            ActivatorUtilities.CreateInstance<VerificationDigestLoggingDecorator>(provider, provider.GetRequiredService<VerificationDigestService>()));
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();
         builder.Services.AddScoped<NotificationJobService>();
         builder.Services.AddScoped<NewsletterSchedulerWorkerService>();

@@ -1,8 +1,9 @@
-namespace Hermes.Application.Ports.Inbound;
-
+using FluentResults;
 using Hermes.Domain.ValueObjects;
+
+namespace Hermes.Application.Ports.Inbound;
 
 public interface IVerificationDigestService
 {
-    Task SendAsync(UserId userId, CancellationToken cancellationToken = default);
+    Task<Result<bool>> SendAsync(UserId userId, CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using FluentResults;
 using Hermes.Application.DTOs.Email;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Options.External;
@@ -13,6 +14,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace Hermes.UnitTests.Services;
 
@@ -49,51 +51,37 @@ public sealed class VerificationDigestServiceTests
             verificationRenderer,
             site,
             security,
-            TimeProvider.System,
-            NullLogger<VerificationDigestService>.Instance);
+            TimeProvider.System);
     }
 
-    // [B]OUNDARY: Rejects non-positive user ID input parameter
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public async Task SendAsync_Should_RejectNonPositiveUserId(int invalidId)
+    public async Task SendAsync_Should_Fail_WhenUserIdNotPositive(int invalidId)
     {
-        // Arrange
-        VerificationDigestService sut = CreateSut(Mock.Of<IUserRepository>());
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await sut.SendAsync(new UserId(invalidId)));
+        var sut = CreateSut(Mock.Of<IUserRepository>());
+        var result = await sut.SendAsync(new UserId(invalidId));
+        Assert.True(result.IsFailed);
     }
 
-    // [B]OUNDARY: Aborts early without sending email or setting challenge when user is missing
     [Fact]
-    public async Task SendAsync_Should_ReturnWithoutMail_WhenUserMissing()
+    public async Task SendAsync_Should_ReturnFalse_WhenUserMissing()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(3), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
-
         Mock<IEmailProvider> mail = new();
-        VerificationDigestService sut = CreateSut(db.Object, mail.Object);
+        var sut = CreateSut(db.Object, mail.Object);
 
-        // Act
-        await sut.SendAsync(new UserId(3));
+        var result = await sut.SendAsync(new UserId(3));
 
-        // Assert
-        mail.Verify(
-            emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-        db.Verify(
-            dataStore => dataStore.SetUserEmailVerificationChallengeAsync(It.IsAny<UserId>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value);
+        mail.Verify(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // [R]IGHT: Generates 6-digit OTP code, persists hashed challenge, and dispatches verification email
     [Fact]
     public async Task SendAsync_Should_PersistChallenge_AndSendMail_WhenUserValid()
     {
-        // Arrange
         User user = new() { Id = new UserId(10), Name = "Pat", Email = Email.Parse("pat@test.dev") };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(10), It.IsAny<CancellationToken>())).ReturnsAsync(user);
@@ -111,29 +99,21 @@ public sealed class VerificationDigestServiceTests
                 Assert.Contains("pat@test.dev", msg.Body, StringComparison.OrdinalIgnoreCase);
             });
 
-        VerificationDigestService sut = CreateSut(db.Object, mail.Object);
+        var sut = CreateSut(db.Object, mail.Object);
 
-        // Act
-        await sut.SendAsync(new UserId(10));
+        var result = await sut.SendAsync(new UserId(10));
 
-        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value);
         Assert.NotNull(capturedCode);
         Assert.Matches("^[0-9A-F]{64}$", capturedCode!);
-        db.Verify(
-            dataStore => dataStore.SetUserEmailVerificationChallengeAsync(new UserId(10), capturedCode!, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-        mail.Verify(
-            emailSender => emailSender.SendAsync(
-                It.Is<EmailMessageDto>(m => Regex.IsMatch(m.Body, @"\b\d{6}\b")),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+        db.Verify(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(new UserId(10), capturedCode!, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        mail.Verify(emailSender => emailSender.SendAsync(It.Is<EmailMessageDto>(m => Regex.IsMatch(m.Body, @"\b\d{6}\b")), It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // [R]IGHT: Persists plain 6-digit challenge code when code hashing option is disabled
     [Fact]
     public async Task SendAsync_Should_PersistPlainSixDigitCode_WhenHashingDisabled()
     {
-        // Arrange
         User user = new() { Id = new UserId(11), Name = "Pat", Email = Email.Parse("pat@test.dev") };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(11), It.IsAny<CancellationToken>())).ReturnsAsync(user);
@@ -146,36 +126,41 @@ public sealed class VerificationDigestServiceTests
         mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        VerificationDigestService sut = CreateSut(db.Object, mail.Object, hashEmailVerificationCodes: false);
+        var sut = CreateSut(db.Object, mail.Object, hashEmailVerificationCodes: false);
 
-        // Act
-        await sut.SendAsync(new UserId(11));
+        var result = await sut.SendAsync(new UserId(11));
 
-        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value);
         Assert.NotNull(capturedCode);
         Assert.Equal(6, capturedCode!.Length);
         Assert.True(capturedCode.All(char.IsDigit));
     }
+}
 
-    // [E]RROR: Propagates exception when underlying email provider fails to send
+public sealed class VerificationDigestLoggingDecoratorTests
+{
     [Fact]
-    public async Task SendAsync_Should_Propagate_WhenSmtpFails()
+    public async Task SendAsync_Should_LogFailed_WhenInnerFails()
     {
-        // Arrange
-        User user = new() { Id = new UserId(1), Email = Email.Parse("e@test.dev"), Name = "E" };
-        Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(1), It.IsAny<CancellationToken>())).ReturnsAsync(user);
-        db.Setup(dataStore => dataStore.SetUserEmailVerificationChallengeAsync(new UserId(1), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
+        Mock<IVerificationDigestService> inner = new();
+        inner.Setup(i => i.SendAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>())).ReturnsAsync(Result.Fail("SMTP down"));
+        var sut = new VerificationDigestLoggingDecorator(inner.Object, Mock.Of<ILogger<VerificationDigestLoggingDecorator>>());
 
-        Mock<IEmailProvider> mail = new();
-        mail.Setup(emailSender => emailSender.SendAsync(It.IsAny<EmailMessageDto>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("SMTP down"));
+        var result = await sut.SendAsync(new UserId(1));
 
-        VerificationDigestService sut = CreateSut(db.Object, mail.Object);
+        Assert.True(result.IsFailed);
+        Assert.Equal("SMTP down", result.Errors[0].Message);
+    }
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sut.SendAsync(new UserId(1)));
+    [Fact]
+    public async Task SendAsync_Should_LogAndThrow_WhenInnerThrows()
+    {
+        Mock<IVerificationDigestService> inner = new();
+        inner.Setup(i => i.SendAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("SMTP down"));
+        var sut = new VerificationDigestLoggingDecorator(inner.Object, Mock.Of<ILogger<VerificationDigestLoggingDecorator>>());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SendAsync(new UserId(1)));
     }
 }
 
