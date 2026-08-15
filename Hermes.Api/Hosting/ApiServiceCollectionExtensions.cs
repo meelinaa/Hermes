@@ -16,6 +16,7 @@ using Serilog.Enrichers.Span;
 using Hermes.Api.Filters;
 using Hermes.Api.Middleware;
 using Hermes.Infrastructure.Adapters.Outbound.Hangfire;
+using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Providers;
 using Hermes.Api.Validators.Auth;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Options.Common;
@@ -71,6 +72,9 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsletterSubscriptionService, NewsletterSubscriptionService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
+        services.AddOptions<NewsDataIoOptions>().BindConfiguration("NewsDataIo");
+        services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
+        services.AddScoped<IArticleFetchingService, ArticleFetchingService>();
         services.AddOptions<HermesSiteUrlsOptions>().BindConfiguration(HermesSiteUrlsOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<PaginationOptions>().BindConfiguration(PaginationOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<NewsletterOptions>().BindConfiguration(NewsletterOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();

@@ -24,6 +24,7 @@ builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<AuthLogoutService>();
 builder.Services.AddSingleton<UserProfileRefreshStore>();
 builder.Services.AddScoped<NewsSubscriptionApiClient>();
+builder.Services.AddScoped<INewsFeedApiClient, NewsFeedApiClient>();
 builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
 builder.Services.AddScoped<IUserApiClient, UserApiClient>();
 builder.Services.AddScoped<LoginViewModel>();
@@ -32,6 +33,7 @@ builder.Services.AddScoped<UserSettingsViewModel>();
 builder.Services.AddScoped<NewsSettingsViewModel>();
 builder.Services.AddTransient<NewsSubscriptionCardViewModel>();
 builder.Services.AddScoped<HomeViewModel>();
+builder.Services.AddScoped<LiveFeedViewModel>();
 
 builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
 

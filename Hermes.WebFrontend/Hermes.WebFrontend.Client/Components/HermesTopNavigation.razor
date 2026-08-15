@@ -13,11 +13,14 @@
         <NavLink href="/home" class="hermes-top-nav__item" Match="NavLinkMatch.All">
             Home
         </NavLink>
-        <NavLink href="/user-settings" class="hermes-top-nav__item" Match="NavLinkMatch.Prefix">
-            Benutzer
+        <NavLink href="/feed" class="hermes-top-nav__item" Match="NavLinkMatch.Prefix">
+            Feed
         </NavLink>
         <NavLink href="/news-settings" class="hermes-top-nav__item" Match="NavLinkMatch.Prefix">
             News
+        </NavLink>
+        <NavLink href="/user-settings" class="hermes-top-nav__item" Match="NavLinkMatch.Prefix">
+            Benutzer
         </NavLink>
         <ThemeToggle />
         <button type="button" class="hermes-top-nav__logout" @onclick="OnLogoutAsync" disabled="@logoutBusy">
