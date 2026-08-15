@@ -183,6 +183,9 @@ public class NewsletterSubscriptionController(
         if (existingResult.IsFailed)
             return this.NotFoundProblem();
 
+        if (existingResult.Value.UserId.Value != currentUserId)
+            return this.ForbiddenProblem("You can only access resources for your own account.");
+
         NewsletterSubscription entity = request.ToEntity(new UserId(currentUserId), existingResult.Value);
         Result updateResult = await newsService.UpdateNewsAsync(entity, cancellationToken).ConfigureAwait(false);
         if (updateResult.IsFailed)

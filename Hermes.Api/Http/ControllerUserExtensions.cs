@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,7 +27,7 @@ public static class ControllerUserExtensions
     public static bool TryGetUserId(this ClaimsPrincipal principal, out int userId)
     {
         userId = 0;
-        string? id = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        string? id = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
         return !string.IsNullOrEmpty(id) && int.TryParse(id, out userId) && userId > 0;
     }
 

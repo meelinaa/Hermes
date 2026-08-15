@@ -10,10 +10,18 @@ using Hermes.Domain.ValueObjects;
 namespace Hermes.Application.Services.Users;
 
 /// <summary>
-/// Service implementation for user account registration, authentication via BCrypt password verification, and credential updates.
+/// Service implementation for user account registration, authentication via BCrypt password verification, credential updates, and session token invalidation.
 /// </summary>
-public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthenticationService
+public sealed class UserAuthenticationService(
+    IUserRepository db,
+    IRefreshTokenRepository refreshTokenRepository) : IUserAuthenticationService
 {
+    /// <summary>
+    /// Registers a new user account with BCrypt password hashing and persists it in the database.
+    /// </summary>
+    /// <param name="request">The registration request details containing username, email, and plain password.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A result containing the user scope DTO upon success, or validation/persistence errors on failure.</returns>
     public async Task<Result<UserScopeDto>> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
         if (request is null)
@@ -66,6 +74,13 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
         return Result.Ok(userScope);
     }
 
+    /// <summary>
+    /// Authenticates a user by username or email and validates the supplied password against the stored BCrypt hash.
+    /// </summary>
+    /// <param name="nameOrEmail">The user's username or email address.</param>
+    /// <param name="password">The plain-text password to verify.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A result containing the login result DTO if credentials are valid, or an error if invalid.</returns>
     public async Task<Result<LoginResultDto>> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(nameOrEmail))
@@ -97,6 +112,16 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
         return Result.Ok(new LoginResultDto(true, null, user.Id.Value, user.Email.Value, user.Name));
     }
 
+    /// <summary>
+    /// Updates user account details including name, email, and password. Revokes all active refresh tokens if the password is changed.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user to update.</param>
+    /// <param name="name">The new display name.</param>
+    /// <param name="email">The new primary email address.</param>
+    /// <param name="newPasswordPlain">Optional new plain password.</param>
+    /// <param name="currentPasswordPlain">The current plain password, required if setting a new password.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A result indicating success or detailing validation/authentication failures.</returns>
     public async Task<Result> UpdateUserAsync(int userId, string name, string email, string? newPasswordPlain, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -119,6 +144,7 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             return Result.Fail(ex.Message);
         }
 
+        bool passwordChanged = false;
         if (!string.IsNullOrWhiteSpace(newPasswordPlain))
         {
             if (string.IsNullOrWhiteSpace(currentPasswordPlain))
@@ -143,6 +169,7 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
             try
             {
                 existing.ReplacePasswordHash(BCrypt.Net.BCrypt.HashPassword(newPasswordPlain.Trim()));
+                passwordChanged = true;
             }
             catch (DomainValidationException ex)
             {
@@ -151,6 +178,12 @@ public sealed class UserAuthenticationService(IUserRepository db) : IUserAuthent
         }
 
         await db.UpdateUserAsync(existing, cancellationToken).ConfigureAwait(false);
+
+        if (passwordChanged)
+        {
+            await refreshTokenRepository.RevokeAllRefreshTokensForUserAsync(uid, cancellationToken).ConfigureAwait(false);
+        }
+
         return Result.Ok();
     }
 }

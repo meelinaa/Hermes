@@ -57,9 +57,8 @@ public sealed class JwtTokenIssuerTests
         Assert.Equal(o.Audience, jwt.Audiences.Single());
         Assert.Equal("42", jwt.Payload[JwtRegisteredClaimNames.Sub]?.ToString());
         Assert.Equal("42", principal.FindFirstValue(JwtRegisteredClaimNames.Sub));
-        Assert.Equal("42", principal.FindFirstValue(ClaimTypes.NameIdentifier));
-        Assert.Equal("user@site.test", principal.FindFirstValue(ClaimTypes.Email));
-        Assert.Equal("Name", principal.FindFirstValue(ClaimTypes.Name));
+        Assert.Equal("user@site.test", principal.FindFirstValue(JwtRegisteredClaimNames.Email));
+        Assert.Equal("Name", principal.FindFirstValue(JwtRegisteredClaimNames.Name));
         Assert.False(string.IsNullOrEmpty(principal.FindFirstValue(JwtRegisteredClaimNames.Jti)));
         Assert.False(string.IsNullOrEmpty(principal.FindFirstValue(JwtRegisteredClaimNames.Iat)));
     }
@@ -75,8 +74,8 @@ public sealed class JwtTokenIssuerTests
         JwtSecurityTokenHandler handler = new();
         ClaimsPrincipal principal = handler.ValidateToken(result.Token, CreateValidation(o, handler), out _);
 
-        Assert.Null(principal.FindFirstValue(ClaimTypes.Email));
-        Assert.Null(principal.FindFirstValue(ClaimTypes.Name));
+        Assert.Null(principal.FindFirstValue(JwtRegisteredClaimNames.Email));
+        Assert.Null(principal.FindFirstValue(JwtRegisteredClaimNames.Name));
         Assert.Equal("1", principal.FindFirstValue(JwtRegisteredClaimNames.Sub));
     }
 

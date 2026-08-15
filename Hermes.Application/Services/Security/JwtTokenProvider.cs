@@ -12,7 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace Hermes.Application.Services.Security;
 
 /// <summary>
-/// Issues JWT access tokens signed with the configured HMAC-SHA256 key.
+/// Issues JWT access tokens signed with the configured HMAC-SHA256 key using standard OpenID Connect claims.
 /// </summary>
 public sealed class JwtTokenProvider(IOptions<JwtOptions> options, TimeProvider timeProvider) : IJwtTokenProvider
 {
@@ -34,15 +34,14 @@ public sealed class JwtTokenProvider(IOptions<JwtOptions> options, TimeProvider 
         List<Claim> claims =
         [
             new(JwtRegisteredClaimNames.Sub, id),
-            new(ClaimTypes.NameIdentifier, id),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new(JwtRegisteredClaimNames.Iat, timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
         ];
 
         if (!string.IsNullOrWhiteSpace(email))
-            claims.Add(new Claim(ClaimTypes.Email, email.Trim()));
+            claims.Add(new Claim(JwtRegisteredClaimNames.Email, email.Trim()));
         if (!string.IsNullOrWhiteSpace(name))
-            claims.Add(new Claim(ClaimTypes.Name, name.Trim()));
+            claims.Add(new Claim(JwtRegisteredClaimNames.Name, name.Trim()));
 
         SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(jwtOptions.SigningKey));
         SigningCredentials creds = new(key, SecurityAlgorithms.HmacSha256);

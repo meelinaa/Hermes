@@ -13,7 +13,8 @@ namespace Hermes.UnitTests.Services;
 
 public sealed class UserAuthenticationServiceTests
 {
-    private static UserAuthenticationService CreateService(IUserRepository db) => new(db);
+    private static UserAuthenticationService CreateService(IUserRepository db, IRefreshTokenRepository? refreshTokens = null) =>
+        new(db, refreshTokens ?? new Mock<IRefreshTokenRepository>().Object);
 
     [Fact]
     public async Task RegisterUserAsync_Should_NormalizeEmail_AndStoreOnlyBcryptHashOfPassword()
@@ -275,6 +276,57 @@ public sealed class UserAuthenticationServiceTests
         Assert.True(result.IsSuccess);
         db.Verify(dataStore => dataStore.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Once);
         db.Verify(dataStore => dataStore.UpdateUserAsync(It.Is<User>(u => u.PasswordHash == "hash"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_Should_RevokeAllRefreshTokens_WhenPasswordChanged()
+    {
+        string currentHash = BCrypt.Net.BCrypt.HashPassword("current-secret-123");
+        Mock<IUserRepository> db = new();
+        Mock<IRefreshTokenRepository> refreshTokens = new();
+
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(5), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = new UserId(5), Email = Email.Parse("u@test.dev"), Name = "User5", PasswordHash = currentHash });
+        db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+        refreshTokens.Setup(repo => repo.RevokeAllRefreshTokensForUserAsync(new UserId(5), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        UserAuthenticationService sut = CreateService(db.Object, refreshTokens.Object);
+
+        Result result = await sut.UpdateUserAsync(
+            userId: 5,
+            name: "User5",
+            email: "u@test.dev",
+            newPasswordPlain: "new-secret-456",
+            currentPasswordPlain: "current-secret-123");
+
+        Assert.True(result.IsSuccess);
+        refreshTokens.Verify(repo => repo.RevokeAllRefreshTokensForUserAsync(new UserId(5), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_Should_NotRevokeRefreshTokens_WhenPasswordNotChanged()
+    {
+        Mock<IUserRepository> db = new();
+        Mock<IRefreshTokenRepository> refreshTokens = new();
+
+        db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(5), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = new UserId(5), Email = Email.Parse("u@test.dev"), Name = "User5", PasswordHash = "hash" });
+        db.Setup(dataStore => dataStore.UpdateUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        UserAuthenticationService sut = CreateService(db.Object, refreshTokens.Object);
+
+        Result result = await sut.UpdateUserAsync(
+            userId: 5,
+            name: "NewName",
+            email: "u@test.dev",
+            newPasswordPlain: null,
+            currentPasswordPlain: null);
+
+        Assert.True(result.IsSuccess);
+        refreshTokens.Verify(repo => repo.RevokeAllRefreshTokensForUserAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
 

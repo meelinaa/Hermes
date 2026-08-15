@@ -61,6 +61,7 @@ public static class JwtAuthenticationExtensions
                     ValidAudience = jwt.Audience,
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromMinutes(1),
+                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
                     NameClaimType = ClaimTypes.NameIdentifier,
                 };
             });

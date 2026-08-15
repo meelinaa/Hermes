@@ -203,6 +203,37 @@ public sealed class AuthTokenServiceTests
     }
 
     [Fact]
+    public async Task RotateAsync_Should_NotRevokeFamily_WhenRecentlyRotatedWithinGracePeriod()
+    {
+        string plainOld = "recently-rotated-plain";
+        string hashOld = RefreshTokenHashUtility.Hash(plainOld);
+        RefreshToken oldRow = RefreshToken.Create(
+            new UserId(7),
+            hashOld,
+            DateTime.UtcNow.AddDays(1),
+            DateTime.UtcNow.AddMinutes(-1));
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(oldRow, 10);
+        oldRow.Revoke(DateTime.UtcNow.AddSeconds(-5), 42); // Rotated 5 seconds ago with successor ID 42
+        typeof(RefreshToken).GetProperty("User")!.SetValue(oldRow, new User { Id = new UserId(7), Email = Email.Parse("u@example.org"), Name = "Uwe" });
+
+        Mock<IRefreshTokenRepository> db = new();
+        db.Setup(dataStore => dataStore.GetRefreshTokenByHashAsync(hashOld, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldRow);
+
+        Mock<ILogger<AuthTokenService>> logger = new();
+        Mock<IJwtTokenProvider> jwt = new();
+
+        AuthTokenService sut = CreateSut(db, jwt, logger);
+        Result<AuthTokensResultDto> result = await sut.RotateAsync(plainOld);
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("recently rotated", result.Errors.First().Message, StringComparison.OrdinalIgnoreCase);
+        // Verify family was NOT revoked
+        db.Verify(dataStore => dataStore.GetAllRefreshTokensForUserAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()), Times.Never);
+        db.Verify(dataStore => dataStore.UpdateTokensAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task RotateAsync_Should_RevokeFamily_WhenExpired_ButNotExplicitlyRevoked()
     {
         // Arrange

@@ -93,8 +93,8 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Looks up a user account by email address.
-    /// Used during administrative flows or invite-acceptance processes where the internal ID is not yet known.
+    /// Looks up a user account by email address for the currently authenticated caller.
+    /// Returns 404 if the user is not found or does not match the authenticated caller to prevent account enumeration.
     /// </summary>
     [HttpGet("by-email/{email}")]
     public async Task<ActionResult<UserResponseDto>> GetUserByEmail(string email, CancellationToken cancellationToken)
@@ -102,12 +102,12 @@ public class UsersController(
         if (string.IsNullOrWhiteSpace(email))
             return this.BadRequestProblem("Path segment 'email' is required.");
 
-        Result<UserScopeDto> userResult = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
-        if (userResult.IsFailed)
-            return this.NotFoundProblem();
+        if (!this.TryGetCurrentUserId(out int currentUserId))
+            return this.UnauthorizedProblem("Missing user identity.");
 
-        if (this.WhenCannotAccessUser(userResult.Value.UserId) is { } denied)
-            return denied;
+        Result<UserScopeDto> userResult = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        if (userResult.IsFailed || userResult.Value.UserId != currentUserId)
+            return this.NotFoundProblem();
 
         return Ok(userResult.Value.ToUserResponse());
     }

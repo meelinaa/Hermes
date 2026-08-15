@@ -20,8 +20,8 @@ public sealed class JwtOptions
     public string SigningKey { get; set; } = null!;
 
     [Range(1, 10080)]
-    public int AccessTokenMinutes { get; set; }
+    public int AccessTokenMinutes { get; set; } = 15;
 
     [Range(1, 365)]
-    public int RefreshTokenDays { get; set; }
+    public int RefreshTokenDays { get; set; } = 14;
 }

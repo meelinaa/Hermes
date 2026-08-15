@@ -48,9 +48,12 @@ public sealed class AuthTokenService(
             new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero)));
     }
 
+    private static readonly TimeSpan _rotationGracePeriod = TimeSpan.FromSeconds(30);
+
     /// <summary>
     /// Rotates an existing refresh token, issuing a new pair and revoking the old one.
-    /// Returns failure when the token is invalid, expired or a replay attack is detected.
+    /// Returns failure when the token is invalid, expired, or was previously rotated.
+    /// If an old revoked token is reused outside the 30-second grace window, a replay attack is detected and the token family is revoked.
     /// </summary>
     public async ValueTask<Result<AuthTokensResultDto>> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
@@ -62,8 +65,20 @@ public sealed class AuthTokenService(
         if (old is null || old.User is null)
             return Result.Fail("Invalid token or user.");
 
-        if (old.RevokedAt != null || old.ExpiresAt <= timeProvider.GetUtcNow().UtcDateTime)
+        DateTime nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+
+        if (old.ExpiresAt <= nowUtc)
+            return Result.Fail("Refresh token expired.");
+
+        if (old.RevokedAt != null)
         {
+            bool withinGracePeriod = old.RevokedAt.Value >= nowUtc - _rotationGracePeriod && old.ReplacedByTokenId.HasValue;
+            if (withinGracePeriod)
+            {
+                logger.LogInformation("Refresh token was recently rotated within the grace period for user {UserId}", old.UserId.Value);
+                return Result.Fail("Refresh token was recently rotated.");
+            }
+
             string shortHash = hash.Length > 8 ? hash[..8] + "..." : hash;
             logger.LogReplayDetected(old.UserId.Value, shortHash);
             await RevokeTokenFamilyAsync(old, cancellationToken).ConfigureAwait(false);
@@ -74,8 +89,8 @@ public sealed class AuthTokenService(
         RefreshToken newRow = RefreshToken.Create(
             old.UserId,
             RefreshTokenHashUtility.Hash(newPlain),
-            timeProvider.GetUtcNow().UtcDateTime.AddDays(_o.RefreshTokenDays),
-            timeProvider.GetUtcNow().UtcDateTime);
+            nowUtc.AddDays(_o.RefreshTokenDays),
+            nowUtc);
         bool rotated = await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
         if (!rotated)
             return Result.Fail("Token rotation conflict.");
@@ -115,6 +130,12 @@ public sealed class AuthTokenService(
         return Result.Ok();
     }
 
+    /// <summary>
+    /// Traverses the descendant token replacement chain for a compromised token and invalidates all successor tokens.
+    /// Prevents stolen tokens from being used by malicious actors.
+    /// </summary>
+    /// <param name="compromisedToken">The compromised refresh token entity.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
     private async Task RevokeTokenFamilyAsync(RefreshToken compromisedToken, CancellationToken cancellationToken)
     {
         DateTime utc = timeProvider.GetUtcNow().UtcDateTime;

@@ -21,7 +21,8 @@ builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (s
 builder.Services.AddScoped(sp =>
 {
     AuthTokenStore store = sp.GetRequiredService<AuthTokenStore>();
-    AuthMessageMiddleware pipeline = new(store) { InnerHandler = new HttpClientHandler() };
+    AuthSessionService session = sp.GetRequiredService<AuthSessionService>();
+    AuthMessageMiddleware pipeline = new(store, session) { InnerHandler = new HttpClientHandler() };
     HttpClient client = new(pipeline);
     HermesApiHttp.ConfigureBaseAddress(client, sp);
     return client;
