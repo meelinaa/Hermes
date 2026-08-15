@@ -1,6 +1,7 @@
 using FluentResults;
 using Hermes.Application.DTOs.Login;
 using Hermes.Application.DTOs.User;
+using Hermes.Application.Errors;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
@@ -25,14 +26,14 @@ public sealed class UserAuthenticationService(
     public async Task<Result<UserScopeDto>> RegisterUserAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
         if (request is null)
-            return Result.Fail("Request cannot be null.");
+            return Result.Fail(new ValidationError("Request cannot be null."));
 
         string name = request.Name?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(name))
-            return Result.Fail("User name is required.");
+            return Result.Fail(new ValidationError("User name is required."));
 
         if (string.IsNullOrWhiteSpace(request.Email))
-            return Result.Fail("User email is required.");
+            return Result.Fail(new ValidationError("User email is required."));
             
         Email email;
         try
@@ -41,12 +42,12 @@ public sealed class UserAuthenticationService(
         }
         catch (DomainValidationException ex)
         {
-            return Result.Fail(ex.Message);
+            return Result.Fail(new ValidationError(ex.Message));
         }
         
         UserScopeDto? existing = await db.GetUserByEmailAsync(email.Value, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
-            return Result.Fail("A user with this email already exists.");
+            return Result.Fail(new DuplicateEmailError(email.Value));
             
         string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "");
         
@@ -57,12 +58,12 @@ public sealed class UserAuthenticationService(
         }
         catch (DomainValidationException ex)
         {
-            return Result.Fail(ex.Message);
+            return Result.Fail(new ValidationError(ex.Message));
         }
         
         await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id.Value <= 0)
-            return Result.Fail("Failed to create user.");
+            return Result.Fail(new ValidationError("Failed to create user."));
         
         UserScopeDto userScope = new()
         {
@@ -84,9 +85,9 @@ public sealed class UserAuthenticationService(
     public async Task<Result<LoginResultDto>> LoginAsync(string nameOrEmail, string password, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(nameOrEmail))
-            return Result.Fail("Name or email is required.");
+            return Result.Fail(new ValidationError("Name or email is required."));
         if (string.IsNullOrEmpty(password))
-            return Result.Fail("Password is required.");
+            return Result.Fail(new ValidationError("Password is required."));
 
         string? key = nameOrEmail.Trim();
         User? user = key.Contains('@', StringComparison.Ordinal)
@@ -94,7 +95,7 @@ public sealed class UserAuthenticationService(
             : await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
         if (user is null || string.IsNullOrEmpty(user.PasswordHash))
-            return Result.Fail("Invalid login or password.");
+            return Result.Fail(new InvalidCredentialsError());
 
         bool valid;
         try
@@ -107,7 +108,7 @@ public sealed class UserAuthenticationService(
         }
 
         if (!valid)
-            return Result.Fail("Invalid login or password.");
+            return Result.Fail(new InvalidCredentialsError());
 
         return Result.Ok(new LoginResultDto(true, null, user.Id.Value, user.Email.Value, user.Name));
     }
@@ -125,14 +126,14 @@ public sealed class UserAuthenticationService(
     public async Task<Result> UpdateUserAsync(int userId, string name, string email, string? newPasswordPlain, string? currentPasswordPlain = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return Result.Fail("Name is required.");
+            return Result.Fail(new ValidationError("Name is required."));
         if (string.IsNullOrWhiteSpace(email))
-            return Result.Fail("Email is required.");
+            return Result.Fail(new ValidationError("Email is required."));
 
         UserId uid = new UserId(userId);
         User? existing = await db.GetUserEntityByIdAsync(uid, cancellationToken).ConfigureAwait(false);
         if (existing is null)
-            return Result.Fail($"User with id {userId} was not found.");
+            return Result.Fail(new UserNotFoundError(userId));
 
         try
         {
@@ -141,17 +142,17 @@ public sealed class UserAuthenticationService(
         }
         catch (DomainValidationException ex)
         {
-            return Result.Fail(ex.Message);
+            return Result.Fail(new ValidationError(ex.Message));
         }
 
         bool passwordChanged = false;
         if (!string.IsNullOrWhiteSpace(newPasswordPlain))
         {
             if (string.IsNullOrWhiteSpace(currentPasswordPlain))
-                return Result.Fail("Current password is required when setting a new password.");
+                return Result.Fail(new ValidationError("Current password is required when setting a new password."));
 
             if (string.IsNullOrEmpty(existing.PasswordHash))
-                return Result.Fail("Cannot change password: no password is set for this account.");
+                return Result.Fail(new ValidationError("Cannot change password: no password is set for this account."));
 
             bool valid;
             try
@@ -164,7 +165,7 @@ public sealed class UserAuthenticationService(
             }
 
             if (!valid)
-                return Result.Fail("Current password verification failed.");
+                return Result.Fail(new InvalidCurrentPasswordError());
 
             try
             {
@@ -173,7 +174,7 @@ public sealed class UserAuthenticationService(
             }
             catch (DomainValidationException ex)
             {
-                return Result.Fail(ex.Message);
+                return Result.Fail(new ValidationError(ex.Message));
             }
         }
 

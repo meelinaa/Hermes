@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using FluentResults;
 using Hermes.Application.DTOs.Security;
+using Hermes.Application.Errors;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports;
 using Hermes.Application.Ports.Inbound;
@@ -58,24 +59,24 @@ public sealed class AuthTokenService(
     public async ValueTask<Result<AuthTokensResultDto>> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
-            return Result.Fail("Refresh token cannot be empty.");
+            return Result.Fail(new InvalidCredentialsError());
 
         string? hash = RefreshTokenHashUtility.Hash(refreshTokenPlain.Trim());
         RefreshToken? old = await db.GetRefreshTokenByHashAsync(hash, cancellationToken).ConfigureAwait(false);
         if (old is null || old.User is null)
-            return Result.Fail("Invalid token or user.");
+            return Result.Fail(new InvalidCredentialsError());
 
         DateTime nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         if (old.ExpiresAt <= nowUtc)
-            return Result.Fail("Refresh token expired.");
+            return Result.Fail(new InvalidCredentialsError());
 
         if (old.RevokedAt != null)
         {
             string shortHash = hash.Length > 8 ? hash[..8] + "..." : hash;
             logger.LogReplayDetected(old.UserId.Value, shortHash);
             await RevokeTokenFamilyAsync(old, cancellationToken).ConfigureAwait(false);
-            return Result.Fail("Invalid token state. Token family revoked.");
+            return Result.Fail(new TokenCompromisedError("Invalid token state. Token family revoked."));
         }
 
         string? newPlain = CreateRefreshPlain();
@@ -86,7 +87,7 @@ public sealed class AuthTokenService(
             nowUtc);
         bool rotated = await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
         if (!rotated)
-            return Result.Fail("Token rotation conflict.");
+            return Result.Fail(new TokenCompromisedError("Token rotation conflict."));
 
         JwtAccessTokenResultDto access = jwt.Issue(old.User.Id, old.User.Email.Value, old.User.Name);
         return Result.Ok(new AuthTokensResultDto(

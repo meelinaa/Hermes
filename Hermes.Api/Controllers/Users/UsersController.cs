@@ -40,13 +40,7 @@ public class UsersController(
     {
         Result<UserScopeDto> registerResult = await authService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
         if (registerResult.IsFailed)
-        {
-            string errorMessage = registerResult.Errors.First().Message;
-            if (errorMessage.Contains("already exists", StringComparison.OrdinalIgnoreCase))
-                return this.ConflictProblem(errorMessage);
-
-            return this.BadRequestProblem(errorMessage);
-        }
+            return this.ToProblemResult(registerResult.Errors.First());
 
         return Ok(registerResult.Value.ToUserResponse());
     }
@@ -65,16 +59,10 @@ public class UsersController(
 
         Result updateResult = await authService.UpdateUserAsync(request.Id, request.Name, request.Email, request.NewPassword, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
         if (updateResult.IsFailed)
-        {
-            string errorMessage = updateResult.Errors.First().Message;
-            if (errorMessage.Contains("Current password", StringComparison.OrdinalIgnoreCase))
-                return this.WrongCurrentPasswordProblem(errorMessage);
-
-            return this.BadRequestProblem(errorMessage);
-        }
+            return this.ToProblemResult(updateResult.Errors.First());
 
         Result<UserScopeDto> updatedResult = await userService.GetUserByIdAsync(new UserId(request.Id), cancellationToken).ConfigureAwait(false);
-        return updatedResult.IsFailed ? this.NotFoundProblem() : Ok(updatedResult.Value.ToUserResponse());
+        return updatedResult.IsFailed ? this.ToProblemResult(updatedResult.Errors.First()) : Ok(updatedResult.Value.ToUserResponse());
     }
 
     /// <summary>
@@ -88,7 +76,7 @@ public class UsersController(
     {
         Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
         if (userResult.IsFailed)
-            return this.NotFoundProblem();
+            return this.ToProblemResult(userResult.Errors.First());
 
         await userService.DeleteUserAsync(userResult.Value, cancellationToken).ConfigureAwait(false);
         return Ok();
@@ -103,7 +91,7 @@ public class UsersController(
     public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
     {
         Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
-        return userResult.IsFailed ? this.NotFoundProblem() : Ok(userResult.Value.ToUserResponse());
+        return userResult.IsFailed ? this.ToProblemResult(userResult.Errors.First()) : Ok(userResult.Value.ToUserResponse());
     }
 
     /// <summary>
