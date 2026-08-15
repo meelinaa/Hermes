@@ -30,6 +30,7 @@ public static class ApiApplicationPipelineExtensions
     public static void UseHermesApiPipeline(this WebApplication app)
     {
         app.UseMiddleware<CorrelationIdMiddleware>();
+        app.UseMiddleware<SecurityHeadersMiddleware>();
 
         app.UseRequestTimeouts();
 
