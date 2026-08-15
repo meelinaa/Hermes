@@ -1,7 +1,10 @@
 @inherits LayoutComponentBase
 @using Hermes.WebFrontend.Client.Components.Notifications
+@using Hermes.WebFrontend.Client.Components.UI
 
 <div class="auth-layout-root">
-    @Body
+    <HermesErrorBoundary>
+        @Body
+    </HermesErrorBoundary>
     <ToastContainer />
 </div>
