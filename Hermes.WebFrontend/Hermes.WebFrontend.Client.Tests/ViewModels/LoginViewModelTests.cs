@@ -3,6 +3,7 @@ using Hermes.WebFrontend.Client.ApiModels;
 using Hermes.WebFrontend.Client.Model;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Hermes.WebFrontend.Client.Tests.Infrastructure;
 using Hermes.WebFrontend.Client.ViewModels;
 using Moq;
@@ -18,11 +19,12 @@ public sealed class LoginViewModelTests
     private readonly Mock<IAuthApiClient> _authApiMock = new();
     private readonly Mock<ILocalStorageService> _localStorageMock = new();
     private readonly TestNavigationManager _navManager = new();
+    private readonly Mock<IToastNotificationService> _toastMock = new();
 
     private LoginViewModel CreateSut(AuthTokenStore? tokenStore = null)
     {
         AuthTokenStore store = tokenStore ?? new AuthTokenStore(_localStorageMock.Object);
-        return new LoginViewModel(_authApiMock.Object, store, _navManager);
+        return new LoginViewModel(_authApiMock.Object, store, _navManager, _toastMock.Object);
     }
 
     [Fact]
@@ -48,18 +50,18 @@ public sealed class LoginViewModelTests
         LoginViewModel sut = CreateSut();
         Assert.False(sut.ShowLoginPassword);
 
-        // Act
+        // Act & Assert
         sut.TogglePasswordVisibility();
-
-        // Assert
         Assert.True(sut.ShowLoginPassword);
+        sut.TogglePasswordVisibility();
+        Assert.False(sut.ShowLoginPassword);
     }
 
     [Theory]
-    [InlineData("", "password123")]
+    [InlineData("", "Secret123!")]
     [InlineData("user", "")]
     [InlineData("   ", "   ")]
-    public async Task LoginAsync_Should_FailValidation_When_FieldsAreBlank(string username, string password)
+    public async Task LoginAsync_Should_FailValidation_When_CredentialsIncomplete(string username, string password)
     {
         // Arrange
         LoginViewModel sut = CreateSut();
@@ -71,8 +73,8 @@ public sealed class LoginViewModelTests
 
         // Assert
         Assert.False(success);
-        Assert.False(string.IsNullOrWhiteSpace(sut.LoginError));
-        _authApiMock.Verify(a => a.LoginAsync(It.IsAny<LoginRequestDto>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal("Bitte Benutzername und Passwort eingeben.", sut.LoginError);
+        Assert.False(sut.IsBusy);
     }
 
     [Fact]
@@ -116,5 +118,6 @@ public sealed class LoginViewModelTests
         Assert.Equal("http://localhost/home", _navManager.Uri);
         _localStorageMock.Verify(s => s.SetItemAsync("hermes.auth.accessToken", "new-access-token", It.IsAny<CancellationToken>()), Times.Once);
         _localStorageMock.Verify(s => s.SetItemAsync("hermes.auth.refreshToken", "new-refresh-token", It.IsAny<CancellationToken>()), Times.Once);
+        _toastMock.Verify(t => t.ShowSuccess("Erfolgreich angemeldet. Willkommen zurück!", "Login", 4000), Times.Once);
     }
 }

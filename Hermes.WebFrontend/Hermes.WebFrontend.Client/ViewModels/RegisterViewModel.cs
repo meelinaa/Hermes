@@ -3,6 +3,7 @@ using Hermes.WebFrontend.Client.ApiModels;
 using Hermes.WebFrontend.Client.Model;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Microsoft.AspNetCore.Components;
 
 namespace Hermes.WebFrontend.Client.ViewModels;
@@ -13,7 +14,8 @@ namespace Hermes.WebFrontend.Client.ViewModels;
 public sealed class RegisterViewModel(
     IAuthApiClient authApi,
     AuthTokenStore tokenStore,
-    NavigationManager navigation)
+    NavigationManager navigation,
+    IToastNotificationService toastService)
 {
     private static readonly EmailAddressAttribute _emailValidator = new();
 
@@ -109,6 +111,7 @@ public sealed class RegisterViewModel(
             }
 
             await tokenStore.PersistAsync(loginResult.Value.AccessToken, loginResult.Value.RefreshToken, cancellationToken).ConfigureAwait(false);
+            toastService.ShowSuccess("Konto erfolgreich erstellt! Willkommen bei Hermes.", "Registrierung");
             navigation.NavigateTo("/home");
             return true;
         }

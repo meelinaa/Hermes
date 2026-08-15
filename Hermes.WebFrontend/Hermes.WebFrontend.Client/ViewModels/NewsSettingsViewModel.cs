@@ -6,6 +6,7 @@ using Hermes.WebFrontend.Client.Enums;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
 using Hermes.WebFrontend.Client.Services.NewsService;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Hermes.WebFrontend.Client.Services.User;
 
 namespace Hermes.WebFrontend.Client.ViewModels;
@@ -16,7 +17,8 @@ namespace Hermes.WebFrontend.Client.ViewModels;
 public sealed class NewsSettingsViewModel(
     NewsSubscriptionApiClient newsListCache,
     HttpClient http,
-    AuthTokenStore authTokens)
+    AuthTokenStore authTokens,
+    IToastNotificationService toastService)
 {
     /// <summary>Event raised whenever ViewModel state changes to trigger UI updates.</summary>
     public event Action? StateChanged;
@@ -278,6 +280,8 @@ public sealed class NewsSettingsViewModel(
             if (response.IsSuccessStatusCode)
             {
                 newsListCache.Invalidate();
+                string statusText = targetEnabled ? "aktiviert" : "deaktiviert";
+                toastService.ShowInfo($"Abonnement #{n.Id} {statusText}.", "News-Abonnements");
                 await LoadListAsync(cancellationToken).ConfigureAwait(false);
             }
             else
@@ -313,6 +317,7 @@ public sealed class NewsSettingsViewModel(
             if (response.IsSuccessStatusCode)
             {
                 newsListCache.Invalidate();
+                toastService.ShowSuccess($"Abonnement #{n.Id} erfolgreich gelöscht.", "News-Abonnements");
                 await LoadListAsync(cancellationToken).ConfigureAwait(false);
             }
             else

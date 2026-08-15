@@ -2,6 +2,7 @@ using Hermes.WebFrontend.Client.ApiModels;
 using Hermes.WebFrontend.Client.Model;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Microsoft.AspNetCore.Components;
 
 namespace Hermes.WebFrontend.Client.ViewModels;
@@ -12,7 +13,8 @@ namespace Hermes.WebFrontend.Client.ViewModels;
 public sealed class LoginViewModel(
     IAuthApiClient authApi,
     AuthTokenStore tokenStore,
-    NavigationManager navigation)
+    NavigationManager navigation,
+    IToastNotificationService toastService)
 {
     /// <summary>Gets or sets the entered username or email address.</summary>
     public string UserName { get; set; } = string.Empty;
@@ -70,6 +72,7 @@ public sealed class LoginViewModel(
             }
 
             await tokenStore.PersistAsync(result.Value.AccessToken, result.Value.RefreshToken, cancellationToken).ConfigureAwait(false);
+            toastService.ShowSuccess("Erfolgreich angemeldet. Willkommen zurück!", "Login");
             navigation.NavigateTo("/home");
             return true;
         }

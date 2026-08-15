@@ -1,14 +1,16 @@
+using System.Net;
 using Blazored.LocalStorage;
 using Hermes.WebFrontend.Client.ApiModels;
 using Hermes.WebFrontend.Client.ApiModels.Enums;
 using Hermes.WebFrontend.Client.Enums;
 using Hermes.WebFrontend.Client.Services.Auth;
 using Hermes.WebFrontend.Client.Services.NewsService;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Hermes.WebFrontend.Client.ViewModels;
-using Moq;
-using Xunit;
-
 using Microsoft.Extensions.Logging;
+using Moq;
+using Moq.Protected;
+using Xunit;
 
 namespace Hermes.WebFrontend.Client.Tests.ViewModels;
 
@@ -17,14 +19,20 @@ namespace Hermes.WebFrontend.Client.Tests.ViewModels;
 /// </summary>
 public sealed class NewsSettingsViewModelTests
 {
+    private const string ValidTestJwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsIm5hbWUiOiJ0ZXN0ZXIifQ.dummy";
+
     private readonly Mock<ILocalStorageService> _localStorageMock = new();
     private readonly NewsSubscriptionApiClient _newsClient = new(new Mock<ILogger<NewsSubscriptionApiClient>>().Object);
+    private readonly Mock<IToastNotificationService> _toastMock = new();
 
-    private NewsSettingsViewModel CreateSut(HttpClient? httpClient = null)
+    private NewsSettingsViewModel CreateSut(HttpMessageHandler? handler = null)
     {
+        _localStorageMock.Setup(s => s.GetItemAsync<string>("hermes.auth.accessToken", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ValidTestJwtToken);
         AuthTokenStore store = new(_localStorageMock.Object);
-        HttpClient client = httpClient ?? new HttpClient();
-        return new NewsSettingsViewModel(_newsClient, client, store);
+        HttpClient client = handler != null ? new HttpClient(handler) : new HttpClient();
+        client.BaseAddress = new Uri("http://localhost/");
+        return new NewsSettingsViewModel(_newsClient, client, store, _toastMock.Object);
     }
 
     [Fact]
@@ -83,5 +91,53 @@ public sealed class NewsSettingsViewModelTests
         sut.StartEdit(dto);
         Assert.True(sut.ShowForm);
         Assert.Equal(42, sut.EditModel?.Id);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_Should_ShowSuccessToast_When_Successful()
+    {
+        // Arrange
+        Mock<HttpMessageHandler> handlerMock = new();
+        HttpResponseMessage httpResponse = new(HttpStatusCode.NoContent);
+
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        NewsSettingsViewModel sut = CreateSut(handlerMock.Object);
+        NewsSubscriptionDto dto = new() { Id = 77 };
+
+        // Act
+        await sut.DeleteAsync(dto);
+
+        // Assert
+        _toastMock.Verify(t => t.ShowSuccess("Abonnement #77 erfolgreich gelöscht.", "News-Abonnements", 4000), Times.Once);
+    }
+
+    [Fact]
+    public async Task ToggleEnabledAsync_Should_ShowInfoToast_When_Successful()
+    {
+        // Arrange
+        Mock<HttpMessageHandler> handlerMock = new();
+        HttpResponseMessage httpResponse = new(HttpStatusCode.NoContent);
+
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        NewsSettingsViewModel sut = CreateSut(handlerMock.Object);
+        NewsSubscriptionDto dto = new() { Id = 88, IsEnabled = false };
+
+        // Act
+        await sut.ToggleEnabledAsync(dto, targetEnabled: true);
+
+        // Assert
+        _toastMock.Verify(t => t.ShowInfo("Abonnement #88 aktiviert.", "News-Abonnements", 4000), Times.Once);
     }
 }

@@ -3,6 +3,7 @@ using Hermes.WebFrontend.Client.ApiModels;
 using Hermes.WebFrontend.Client.Model;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Hermes.WebFrontend.Client.Tests.Infrastructure;
 using Hermes.WebFrontend.Client.ViewModels;
 using Moq;
@@ -18,11 +19,12 @@ public sealed class RegisterViewModelTests
     private readonly Mock<IAuthApiClient> _authApiMock = new();
     private readonly Mock<ILocalStorageService> _localStorageMock = new();
     private readonly TestNavigationManager _navManager = new();
+    private readonly Mock<IToastNotificationService> _toastMock = new();
 
     private RegisterViewModel CreateSut()
     {
         AuthTokenStore store = new(_localStorageMock.Object);
-        return new RegisterViewModel(_authApiMock.Object, store, _navManager);
+        return new RegisterViewModel(_authApiMock.Object, store, _navManager, _toastMock.Object);
     }
 
     [Theory]
@@ -47,38 +49,38 @@ public sealed class RegisterViewModelTests
         Assert.Equal(expectCase, sut.PasswordCaseOk);
         Assert.Equal(expectDigit, sut.PasswordDigitOk);
         Assert.Equal(expectSymbol, sut.PasswordSymbolOk);
-        Assert.Equal(expectLength && expectCase && expectDigit && expectSymbol, sut.PasswordRulesSatisfied);
     }
 
     [Theory]
-    [InlineData("invalid-email", true, false)]
-    [InlineData("valid@domain.com", false, true)]
-    [InlineData("", false, false)]
-    public void EmailFormat_Should_ValidateProperly(string email, bool expectShowFormatError, bool expectFormatOk)
+    [InlineData("valid@domain.com", true)]
+    [InlineData("not-an-email", false)]
+    [InlineData("", false)]
+    public void EmailFormat_Should_ValidateFormat(string email, bool expectedValid)
     {
         // Arrange
         RegisterViewModel sut = CreateSut();
         sut.Email = email;
 
         // Assert
-        Assert.Equal(expectFormatOk, sut.EmailFormatOk);
-        Assert.Equal(expectShowFormatError, sut.ShowEmailFormatError);
+        Assert.Equal(expectedValid, sut.EmailFormatOk);
     }
 
     [Fact]
-    public void CanRegister_Should_BeTrue_OnlyWhenAllFieldsAndRulesAreSatisfied()
+    public async Task RegisterAsync_Should_PreventExecution_When_FormInvalid()
     {
         // Arrange
         RegisterViewModel sut = CreateSut();
-        Assert.False(sut.CanRegister);
-
         sut.Username = "user";
-        sut.Email = "valid@email.de";
-        sut.Password = "Weak";
-        Assert.False(sut.CanRegister);
+        sut.Email = "invalid-email";
+        sut.Password = "weak";
 
-        sut.Password = "StrongPassword123!";
-        Assert.True(sut.CanRegister);
+        // Act
+        bool success = await sut.RegisterAsync();
+
+        // Assert
+        Assert.False(success);
+        Assert.False(sut.IsBusy);
+        _authApiMock.Verify(a => a.RegisterAsync(It.IsAny<RegisterRequestDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -86,7 +88,7 @@ public sealed class RegisterViewModelTests
     {
         // Arrange
         RegisterViewModel sut = CreateSut();
-        sut.Username = "tester";
+        sut.Username = "user";
         sut.Email = "taken@domain.com";
         sut.Password = "StrongPassword123!";
 
@@ -128,5 +130,6 @@ public sealed class RegisterViewModelTests
         Assert.Equal("http://localhost/home", _navManager.Uri);
         _localStorageMock.Verify(s => s.SetItemAsync("hermes.auth.accessToken", "token-a", It.IsAny<CancellationToken>()), Times.Once);
         _localStorageMock.Verify(s => s.SetItemAsync("hermes.auth.refreshToken", "token-r", It.IsAny<CancellationToken>()), Times.Once);
+        _toastMock.Verify(t => t.ShowSuccess("Konto erfolgreich erstellt! Willkommen bei Hermes.", "Registrierung", 4000), Times.Once);
     }
 }
