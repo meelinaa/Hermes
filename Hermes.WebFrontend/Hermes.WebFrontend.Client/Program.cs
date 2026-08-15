@@ -29,6 +29,7 @@ builder.Services.AddScoped<RegisterViewModel>();
 builder.Services.AddScoped<UserSettingsViewModel>();
 builder.Services.AddScoped<NewsSettingsViewModel>();
 builder.Services.AddTransient<NewsSubscriptionCardViewModel>();
+builder.Services.AddScoped<HomeViewModel>();
 
 builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
 
