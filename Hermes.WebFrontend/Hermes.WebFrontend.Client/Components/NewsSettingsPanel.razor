@@ -10,7 +10,7 @@
 
         @if (Model.Loading)
         {
-            <p class="news-settings-muted">Lade Konfigurationen…</p>
+            <NewsCardSkeleton Count="3" />
         }
         else if (!string.IsNullOrEmpty(Model.LoadError))
         {
