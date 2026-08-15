@@ -50,7 +50,7 @@ public sealed class ArticleFetchingService(
             ? request.Languages.Select(LanguageIsoCodeMapper.ToIso639Code).ToList()
             : null;
         List<string>? categories = request.Categories is { Count: > 0 }
-            ? request.Categories.Select(category => category.ToString().ToLowerInvariant()).ToList()
+            ? request.Categories.Select(NewsCategoryMapper.ToApiString).ToList()
             : null;
 
         string? keywordsQuery = null;
@@ -109,8 +109,8 @@ public sealed class ArticleFetchingService(
         // 3. Category Filter (e.g. sports, technology, business)
         if (request.Categories is { Count: > 0 })
         {
-            var catNames = request.Categories.Select(c => c.ToString().ToLowerInvariant()).ToHashSet();
-            filtered = filtered.Where(item => item.Article.Category != null && item.Article.Category.Any(c => catNames.Contains(c.ToLowerInvariant())));
+            var catNames = request.Categories.Select(NewsCategoryMapper.ToApiString).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            filtered = filtered.Where(item => item.Article.Category != null && item.Article.Category.Any(c => catNames.Contains(c)));
         }
 
         // 4. Keyword Search Filter
@@ -186,7 +186,7 @@ public sealed class ArticleFetchingService(
             ? subscription.Languages.Select(LanguageIsoCodeMapper.ToIso639Code).ToList()
             : null;
         List<string>? categories = subscription.Category is { Count: > 0 }
-            ? subscription.Category.Select(category => category.ToString().ToLowerInvariant()).ToList()
+            ? subscription.Category.Select(NewsCategoryMapper.ToApiString).ToList()
             : null;
 
         string? keywordsQuery = null;
