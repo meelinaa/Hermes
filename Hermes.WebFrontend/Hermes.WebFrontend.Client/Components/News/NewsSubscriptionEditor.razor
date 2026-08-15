@@ -1,0 +1,14 @@
+@using Hermes.WebFrontend.Client.Components
+@using Hermes.WebFrontend.Client.ViewModels
+
+@if (Model.ShowForm)
+{
+    <NewsSubscriptionCard InitialModel="Model.EditModel"
+                          ShowBackButton="true"
+                          OnReturnToList="listChanged => Model.HandleReturnFromFormAsync(listChanged)" />
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public NewsSettingsViewModel Model { get; set; } = null!;
+}

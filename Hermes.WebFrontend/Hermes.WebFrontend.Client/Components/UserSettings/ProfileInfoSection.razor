@@ -1,0 +1,51 @@
+@using Hermes.WebFrontend.Client.ViewModels
+
+<div class="user-profile-field">
+    <label class="user-profile-label" for="pf-name">Name</label>
+    <div class="user-profile-input-wrap">
+        <span class="user-profile-input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4Z"/></svg>
+        </span>
+        <input id="pf-name" class="user-profile-input" type="text" autocomplete="name"
+               placeholder="Name" @bind="Model.ProfileName" @bind:event="oninput" />
+    </div>
+</div>
+
+<div class="user-profile-field">
+    <div class="user-profile-label-row">
+        <label class="user-profile-label" for="pf-email">E-Mail</label>
+        @if (Model.ProfileEmailVerified)
+        {
+            <span class="user-profile-email-badge user-profile-email-badge--verified">Verifiziert</span>
+        }
+        else
+        {
+            <span class="user-profile-email-badge user-profile-email-badge--unverified">Nicht verifiziert</span>
+        }
+    </div>
+    <div class="user-profile-input-wrap">
+        <span class="user-profile-input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z"/></svg>
+        </span>
+        <input id="pf-email" class="user-profile-input" type="email" autocomplete="email"
+               placeholder="email@example.com" @bind="Model.ProfileEmail" @bind:event="oninput" />
+    </div>
+</div>
+
+@if (!Model.ProfileEmailVerified)
+{
+    <div class="user-profile-verify-warning" role="status">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2 1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16v2h2v-2h-2zm0-6v4h2v-4h-2z"/></svg>
+        <span>Ihre E-Mail ist nicht verifiziert. Daher können keine Newsletter oder Sicherheitsbenachrichtigungen gesendet werden.</span>
+    </div>
+
+    <button type="button" class="user-profile-verify-btn--cta" @onclick="() => Model.OpenEmailVerificationModalAsync()"
+            disabled="@(Model.ModalOpenBusy || string.IsNullOrWhiteSpace(Model.ProfileEmail))">
+        @(Model.ModalOpenBusy ? "Wird geöffnet…" : "E-Mail verifizieren")
+    </button>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public UserSettingsViewModel Model { get; set; } = null!;
+}

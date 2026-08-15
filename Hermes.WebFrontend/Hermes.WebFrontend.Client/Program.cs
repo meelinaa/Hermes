@@ -1,7 +1,9 @@
 using Blazored.LocalStorage;
+using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
 using Hermes.WebFrontend.Client.Services.NewsService;
 using Hermes.WebFrontend.Client.Services.User;
+using Hermes.WebFrontend.Client.ViewModels;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
 WebAssemblyHostBuilder? builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -15,6 +17,12 @@ builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<AuthLogoutService>();
 builder.Services.AddSingleton<UserProfileRefreshStore>();
 builder.Services.AddScoped<NewsSubscriptionApiClient>();
+builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
+builder.Services.AddScoped<IUserApiClient, UserApiClient>();
+builder.Services.AddScoped<LoginViewModel>();
+builder.Services.AddScoped<RegisterViewModel>();
+builder.Services.AddScoped<UserSettingsViewModel>();
+builder.Services.AddScoped<NewsSettingsViewModel>();
 
 builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
 

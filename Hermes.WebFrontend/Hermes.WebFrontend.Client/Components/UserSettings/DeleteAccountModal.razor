@@ -1,0 +1,48 @@
+@using Hermes.WebFrontend.Client.ViewModels
+
+@if (Model.ShowDeleteAccountModal)
+{
+    <div class="verify-email-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-account-dialog-title">
+        <div class="verify-email-overlay__backdrop" aria-hidden="true"></div>
+        <div class="verify-email-overlay__dialog" @onclick:stopPropagation>
+            <div class="verify-email-dialog__header">
+                <h3 id="delete-account-dialog-title" class="verify-email-dialog__title">Benutzerkonto löschen</h3>
+                <button type="button" class="verify-email-dialog__close"
+                        @onclick="Model.CloseDeleteAccountModal"
+                        disabled="@Model.DeleteAccountBusy"
+                        aria-label="Dialog schließen">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                        <path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <p class="verify-email-dialog__delete-question">
+                Bist du dir sicher, dass du diesen Account unwiderruflich löschen willst?
+            </p>
+
+            <div class="verify-email-dialog__delete-actions">
+                <button type="button" class="verify-email-dialog__delete-cancel"
+                        disabled="@Model.DeleteAccountBusy"
+                        @onclick="Model.CloseDeleteAccountModal">
+                    Nein
+                </button>
+                <button type="button" class="verify-email-dialog__delete-confirm"
+                        disabled="@Model.DeleteAccountBusy"
+                        @onclick="() => Model.ConfirmDeleteAccountAsync()">
+                    @(Model.DeleteAccountBusy ? "Wird gelöscht…" : "Ja")
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.DeleteAccountError))
+            {
+                <p class="verify-email-dialog__feedback" role="alert">@Model.DeleteAccountError</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public UserSettingsViewModel Model { get; set; } = null!;
+}

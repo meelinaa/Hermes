@@ -1,81 +1,24 @@
-@using System.Globalization
-@using System.Net.Http.Json
-@using System.Text.Json
 @using Hermes.WebFrontend.Client.ApiModels
-@using Hermes.WebFrontend.Client.ApiModels.Enums
-@using Hermes.WebFrontend.Client.Enums
-@using Hermes.WebFrontend.Client.Services
-@using Hermes.WebFrontend.Client.Services.Auth
-@using Hermes.WebFrontend.Client.Services.NewsService
-@using Hermes.WebFrontend.Client.Services.User
-@inject HttpClient Http
-@inject AuthTokenStore AuthTokens
-@inject NewsSubscriptionApiClient NewsListCache
+@using Hermes.WebFrontend.Client.Components.News
+@using Hermes.WebFrontend.Client.ViewModels
+@inject NewsSettingsViewModel Model
 
 <div class="news-settings-panel">
-    @if (!showForm)
+    @if (!Model.ShowForm)
     {
-        <div class="news-settings-toolbar">
-            <button type="button" class="news-settings-add" @onclick="StartCreate" aria-label="Neue News-Einstellung" title="Neue News-Einstellung">
-                <span aria-hidden="true">+</span>
-            </button>
-            <button type="button"
-                    class="@FilterToggleClass"
-                    @onclick="ToggleFilters"
-                    aria-expanded="@showFilters"
-                    aria-controls="news-settings-filters"
-                    aria-label="@(showFilters ? "Filter ausblenden" : "Filter anzeigen")"
-                    title="@(showFilters ? "Filter ausblenden" : "Such- und Listenfilter")">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4.25 5.61C6.27 8.2 10 13 10 13v6c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-6s3.72-4.8 5.74-7.39c.49-.61.12-1.61-.75-1.61H5.46c-.87 0-1.24 1-.75 1.61z"/></svg>
-            </button>
-        </div>
+        <NewsFilterToolbar Model="Model" />
 
-        <div id="news-settings-filters" class="news-settings-filters" hidden="@(!showFilters)">
-            <label class="news-settings-field">
-                <span class="news-settings-label">Suche (Schlagworte)</span>
-                <input class="news-settings-input" type="search" @bind="searchInput" @bind:event="oninput" placeholder="Textfilter…" maxlength="200" />
-            </label>
-            <label class="news-settings-field">
-                <span class="news-settings-label">Kategorie</span>
-                <select class="news-settings-select" value="@CategorySelectValue" @onchange="OnCategoryChange">
-                    <option value="">Alle</option>
-                    @foreach (NewsCategory c in Enum.GetValues<NewsCategory>())
-                    {
-                        <option value="@((int)c)">@NewsEnumGermanDisplayConstants.CategoryDe(c)</option>
-                    }
-                </select>
-            </label>
-            <label class="news-settings-field">
-                <span class="news-settings-label">Sortierung</span>
-                <select class="news-settings-select" value="@(sortDescending ? "-id" : "id")" @onchange="OnSortChange">
-                    <option value="id">ID aufsteigend</option>
-                    <option value="-id">ID absteigend</option>
-                </select>
-            </label>
-            <label class="news-settings-field">
-                <span class="news-settings-label">Pro Seite</span>
-                <select class="news-settings-select" value="@pageSize.ToString(CultureInfo.InvariantCulture)" @onchange="OnPageSizeChange">
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                </select>
-            </label>
-            <div class="news-settings-filters-actions">
-                <button type="button" class="news-settings-btn news-settings-btn--primary" @onclick="ApplyFiltersAsync">Suchen</button>
-            </div>
-        </div>
-
-        @if (loading)
+        @if (Model.Loading)
         {
             <p class="news-settings-muted">Lade Konfigurationen…</p>
         }
-        else if (!string.IsNullOrEmpty(loadError))
+        else if (!string.IsNullOrEmpty(Model.LoadError))
         {
-            <p class="user-profile-feedback" role="alert">@loadError</p>
+            <p class="user-profile-feedback" role="alert">@Model.LoadError</p>
         }
-        else if (items.Count == 0)
+        else if (Model.Items.Count == 0)
         {
-            @if (HasActiveFilters)
+            @if (Model.HasActiveFilters)
             {
                 <p class="news-settings-muted">Keine Einträge für die aktuellen Filter.</p>
             }
@@ -87,362 +30,83 @@
         else
         {
             <ul class="news-settings-list">
-                @foreach (NewsSubscriptionDto n in items)
+                @foreach (NewsSubscriptionDto n in Model.Items)
                 {
                     <li class="news-settings-card">
                         <div class="news-settings-card-head">
-                            <h3 class="news-settings-card-title">@TitleFor(n)</h3>
+                            <h3 class="news-settings-card-title">@NewsSettingsViewModel.TitleFor(n)</h3>
                             <div class="news-settings-card-actions">
-                                <label class="hermes-toggle-switch @(deletingId.HasValue || togglingId == n.Id ? "hermes-toggle-switch--disabled" : string.Empty)">
+                                <label class="hermes-toggle-switch @(Model.DeletingId.HasValue || Model.TogglingId == n.Id ? "hermes-toggle-switch--disabled" : string.Empty)">
                                     <input type="checkbox"
                                            class="hermes-toggle-switch__input"
                                            role="switch"
                                            aria-label="E-Mail-Versand umschalten"
                                            checked="@n.IsEnabled"
-                                           disabled="@(deletingId.HasValue || togglingId == n.Id)"
-                                           @onchange="e => OnToggleEnabledChangeAsync(n, e)" />
+                                           disabled="@(Model.DeletingId.HasValue || Model.TogglingId == n.Id)"
+                                           @onchange="e => OnToggleEnabled(n, e)" />
                                     <span class="hermes-toggle-switch__track" aria-hidden="true"></span>
                                 </label>
                                 <button type="button" class="news-settings-icon news-settings-icon--danger" title="Löschen"
-                                        disabled="@(deletingId.HasValue || togglingId == n.Id)" @onclick="() => DeleteAsync(n)">
+                                        disabled="@(Model.DeletingId.HasValue || Model.TogglingId == n.Id)" @onclick="() => Model.DeleteAsync(n)">
                                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9m0 5h2v9H9V8m4 0h2v9h-2V8Z"/></svg>
                                 </button>
                                 <button type="button" class="news-settings-icon news-settings-icon--primary" title="Bearbeiten"
-                                        disabled="@(deletingId.HasValue || togglingId == n.Id)"
-                                        @onclick="() => StartEdit(n)">
+                                        disabled="@(Model.DeletingId.HasValue || Model.TogglingId == n.Id)"
+                                        @onclick="() => Model.StartEdit(n)">
                                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg>
                                 </button>
                             </div>
                         </div>
                         <dl class="news-settings-dl">
-                            <div><dt>Schlagworte</dt><dd>@FormatKeywords(n)</dd></div>
-                            <div><dt>Kategorien</dt><dd>@FormatCategories(n)</dd></div>
-                            <div><dt>Sprachen</dt><dd>@FormatLanguages(n)</dd></div>
-                            <div><dt>Länder</dt><dd>@FormatCountries(n)</dd></div>
-                            <div><dt>Sende-Tage</dt><dd>@FormatWeekdays(n)</dd></div>
-                            <div><dt>Sende-Zeitpunkt</dt><dd>@FormatTimes(n)</dd></div>
+                            <div><dt>Schlagworte</dt><dd>@NewsSettingsViewModel.FormatKeywords(n)</dd></div>
+                            <div><dt>Kategorien</dt><dd>@NewsSettingsViewModel.FormatCategories(n)</dd></div>
+                            <div><dt>Sprachen</dt><dd>@NewsSettingsViewModel.FormatLanguages(n)</dd></div>
+                            <div><dt>Länder</dt><dd>@NewsSettingsViewModel.FormatCountries(n)</dd></div>
+                            <div><dt>Sende-Tage</dt><dd>@NewsSettingsViewModel.FormatWeekdays(n)</dd></div>
+                            <div><dt>Sende-Zeitpunkt</dt><dd>@NewsSettingsViewModel.FormatTimes(n)</dd></div>
                         </dl>
                     </li>
                 }
             </ul>
 
-            @if (totalPages is int tp && totalCount is int tc)
+            @if (Model.TotalPages is int tp && Model.TotalCount is int tc)
             {
                 <div class="news-settings-pagination" role="navigation" aria-label="Seiten">
-                    <button type="button" class="news-settings-btn" disabled="@(currentPage <= 1 || deletingId.HasValue || togglingId.HasValue)" @onclick="PrevPageAsync">Zurück</button>
-                    <span class="news-settings-pageinfo">Seite @currentPage von @tp (@tc Einträge)</span>
-                    <button type="button" class="news-settings-btn" disabled="@(!hasNextPage || deletingId.HasValue || togglingId.HasValue)" @onclick="NextPageAsync">Weiter</button>
+                    <button type="button" class="news-settings-btn" disabled="@(Model.CurrentPage <= 1 || Model.DeletingId.HasValue || Model.TogglingId.HasValue)" @onclick="() => Model.PrevPageAsync()">Zurück</button>
+                    <span class="news-settings-pageinfo">Seite @Model.CurrentPage von @tp (@tc Einträge)</span>
+                    <button type="button" class="news-settings-btn" disabled="@(!Model.HasNextPage || Model.DeletingId.HasValue || Model.TogglingId.HasValue)" @onclick="() => Model.NextPageAsync()">Weiter</button>
                 </div>
             }
-            else if (hasNextPage || currentPage > 1)
+            else if (Model.HasNextPage || Model.CurrentPage > 1)
             {
                 <div class="news-settings-pagination" role="navigation" aria-label="Seiten">
-                    <button type="button" class="news-settings-btn" disabled="@(currentPage <= 1 || deletingId.HasValue || togglingId.HasValue)" @onclick="PrevPageAsync">Zurück</button>
-                    <span class="news-settings-pageinfo">@(totalCount is int t ? $"{t} Einträge · " : "")Seite @currentPage</span>
-                    <button type="button" class="news-settings-btn" disabled="@(!hasNextPage || deletingId.HasValue || togglingId.HasValue)" @onclick="NextPageAsync">Weiter</button>
+                    <button type="button" class="news-settings-btn" disabled="@(Model.CurrentPage <= 1 || Model.DeletingId.HasValue || Model.TogglingId.HasValue)" @onclick="() => Model.PrevPageAsync()">Zurück</button>
+                    <span class="news-settings-pageinfo">@(Model.TotalCount is int t ? $"{t} Einträge · " : "")Seite @Model.CurrentPage</span>
+                    <button type="button" class="news-settings-btn" disabled="@(!Model.HasNextPage || Model.DeletingId.HasValue || Model.TogglingId.HasValue)" @onclick="() => Model.NextPageAsync()">Weiter</button>
                 </div>
             }
         }
     }
     else
     {
-        <NewsSubscriptionCard InitialModel="editModel"
-                              ShowBackButton="true"
-                              OnReturnToList="HandleReturnFromForm" />
+        <NewsSubscriptionEditor Model="Model" />
     }
 </div>
 
 @code {
     [Parameter] public bool StartInCreateMode { get; set; }
 
-    private List<NewsSubscriptionDto> items = new();
-    private bool showForm;
-    private NewsSubscriptionDto? editModel;
-    private bool loading = true;
-    private string? loadError;
-    private int? deletingId;
-    private int? togglingId;
-
-    private int currentPage = 1;
-    private int pageSize = 20;
-    private bool showFilters;
-    private bool sortDescending;
-    private string searchInput = string.Empty;
-    private NewsCategory? categoryFilter;
-    private int? totalCount;
-    private int? totalPages;
-    private bool hasNextPage;
-
-    private bool HasActiveFilters =>
-        !string.IsNullOrWhiteSpace(searchInput) || categoryFilter is not null;
-
-    private string CategorySelectValue => categoryFilter is NewsCategory c ? ((int)c).ToString(CultureInfo.InvariantCulture) : string.Empty;
-
-    private string FilterToggleClass =>
-        "news-settings-filter-toggle"
-        + (showFilters ? " news-settings-filter-toggle--open" : string.Empty)
-        + (HasActiveFilters ? " news-settings-filter-toggle--active" : string.Empty);
-
-    private void ToggleFilters() => showFilters = !showFilters;
-
     protected override async Task OnInitializedAsync()
     {
-        await LoadListAsync().ConfigureAwait(false);
-        if (StartInCreateMode)
-            StartCreate();
+        Model.StateChanged += OnModelStateChanged;
+        await Model.InitializeAsync(StartInCreateMode);
     }
 
-    private Task OnCategoryChange(ChangeEventArgs e)
+    private void OnModelStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task OnToggleEnabled(NewsSubscriptionDto n, ChangeEventArgs e)
     {
-        string? v = e.Value?.ToString();
-        categoryFilter = string.IsNullOrEmpty(v) ? null : (NewsCategory)int.Parse(v, CultureInfo.InvariantCulture);
-        currentPage = 1;
-        return LoadListAsync();
-    }
-
-    private Task OnSortChange(ChangeEventArgs e)
-    {
-        string? v = e.Value?.ToString();
-        sortDescending = string.Equals(v, "-id", StringComparison.Ordinal);
-        currentPage = 1;
-        return LoadListAsync();
-    }
-
-    private Task OnPageSizeChange(ChangeEventArgs e)
-    {
-        string? v = e.Value?.ToString();
-        if (int.TryParse(v, CultureInfo.InvariantCulture, out int next) && next is 10 or 20 or 50)
-        {
-            pageSize = next;
-            currentPage = 1;
-        }
-        return LoadListAsync();
-    }
-
-    private Task ApplyFiltersAsync()
-    {
-        currentPage = 1;
-        return LoadListAsync();
-    }
-
-    private async Task PrevPageAsync()
-    {
-        if (currentPage <= 1)
-            return;
-        currentPage--;
-        await LoadListAsync().ConfigureAwait(false);
-    }
-
-    private async Task NextPageAsync()
-    {
-        if (!hasNextPage)
-            return;
-        currentPage++;
-        await LoadListAsync().ConfigureAwait(false);
-    }
-
-    private async Task LoadListAsync()
-    {
-        loading = true;
-        loadError = null;
-        await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = AuthTokens.AccessToken.TryGetUserId();
-        if (userId is null)
-        {
-            loadError = "Bitte erneut anmelden.";
-            items = new List<NewsSubscriptionDto>();
-            totalCount = null;
-            totalPages = null;
-            hasNextPage = false;
-            loading = false;
-            return;
-        }
-
-        string? q = string.IsNullOrWhiteSpace(searchInput) ? null : searchInput.Trim();
-        (NewsListPageDto? data, string? err) = await NewsListCache.FetchAsync(
-            userId.Value,
-            Http,
-            currentPage,
-            pageSize,
-            sortDescending,
-            q,
-            categoryFilter,
-            afterId: null).ConfigureAwait(false);
-
-        if (err is not null)
-        {
-            items = new List<NewsSubscriptionDto>();
-            totalCount = null;
-            totalPages = null;
-            hasNextPage = false;
-            loadError = err;
-        }
-        else if (data is not null)
-        {
-            items = data.Items ?? new List<NewsSubscriptionDto>();
-            totalCount = data.TotalCount;
-            totalPages = data.TotalPages;
-            hasNextPage = data.HasNextPage;
-            currentPage = data.Page;
-        }
-
-        loading = false;
-    }
-
-    private void StartCreate()
-    {
-        editModel = null;
-        showForm = true;
-    }
-
-    private void StartEdit(NewsSubscriptionDto n)
-    {
-        editModel = n;
-        showForm = true;
-    }
-
-    private async Task HandleReturnFromForm(bool listChanged)
-    {
-        showForm = false;
-        editModel = null;
-        if (listChanged)
-        {
-            NewsListCache.Invalidate();
-            currentPage = 1;
-            await LoadListAsync().ConfigureAwait(false);
-        }
-    }
-
-    private async Task OnToggleEnabledChangeAsync(NewsSubscriptionDto n, ChangeEventArgs e)
-    {
-        if (e.Value is not bool targetEnabled)
-            return;
-        if (n.IsEnabled == targetEnabled)
-            return;
-
-        await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = AuthTokens.AccessToken.TryGetUserId();
-        if (userId is null)
-        {
-            loadError = "Bitte erneut anmelden.";
-            return;
-        }
-
-        togglingId = n.Id;
-        loadError = null;
-        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
-        try
-        {
-            var payload = new UpdateNewsletterSubscriptionPayloadDto
-            {
-                Id = n.Id,
-                Keywords = n.Keywords,
-                Category = n.Category,
-                Languages = n.Languages,
-                Countries = n.Countries,
-                SendOnWeekdays = n.SendOnWeekdays,
-                SendAtTimes = n.SendAtTimes,
-                IsEnabled = targetEnabled,
-            };
-
-            HttpResponseMessage response = await Http.PutAsJsonAsync("api/v1/users/newsletter-subscriptions", payload, HermesNewsJsonMapper.Options).ConfigureAwait(false);
-            if (response.IsSuccessStatusCode)
-            {
-                NewsListCache.Invalidate();
-                await LoadListAsync().ConfigureAwait(false);
-            }
-            else
-                loadError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
-        }
-        finally
-        {
-            togglingId = null;
-            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
-        }
-    }
-
-    private async Task DeleteAsync(NewsSubscriptionDto n)
-    {
-        await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = AuthTokens.AccessToken.TryGetUserId();
-        if (userId is null)
-            return;
-
-        deletingId = n.Id;
-        try
-        {
-            HttpResponseMessage response = await Http.DeleteAsync(
-                $"api/v1/users/{userId.Value}/newsletter-subscriptions/{n.Id}").ConfigureAwait(false);
-            if (response.IsSuccessStatusCode)
-            {
-                NewsListCache.Invalidate();
-                await LoadListAsync().ConfigureAwait(false);
-            }
-            else
-                loadError = await ReadErrorDetailAsync(response).ConfigureAwait(false);
-        }
-        finally
-        {
-            deletingId = null;
-        }
-    }
-
-    private static string TitleFor(NewsSubscriptionDto n) =>
-        n.Keywords is { Count: > 0 } ? string.Join(", ", n.Keywords) : "Ohne Schlagworte";
-
-    private static string FormatKeywords(NewsSubscriptionDto n) =>
-        n.Keywords is { Count: > 0 } ? string.Join(", ", n.Keywords) : "—";
-
-    private static string FormatCategories(NewsSubscriptionDto n) =>
-        n.Category is { Count: > 0 }
-            ? string.Join(", ", n.Category.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplayConstants.CategoryDe(c)))
-            : "—";
-
-    private static string FormatLanguages(NewsSubscriptionDto n) =>
-        n.Languages is { Count: > 0 }
-            ? string.Join(", ", n.Languages.OrderBy(l => l.ToString()).Select(l => NewsEnumGermanDisplayConstants.LanguageDe(l)))
-            : "—";
-
-    private static string FormatCountries(NewsSubscriptionDto n) =>
-        n.Countries is { Count: > 0 }
-            ? string.Join(", ", n.Countries.OrderBy(c => c.ToString()).Select(c => NewsEnumGermanDisplayConstants.CountryDe(c)))
-            : "—";
-
-    private static string FormatWeekdays(NewsSubscriptionDto n) =>
-        n.SendOnWeekdays is { Count: > 0 } w
-            ? string.Join(", ", w.OrderBy(d => (int)d).Select(ShortWeekday))
-            : "—";
-
-    private static string ShortWeekday(Weekdays d) => d switch
-    {
-        Weekdays.Monday => "Mo",
-        Weekdays.Tuesday => "Di",
-        Weekdays.Wednesday => "Mi",
-        Weekdays.Thursday => "Do",
-        Weekdays.Friday => "Fr",
-        Weekdays.Saturday => "Sa",
-        Weekdays.Sunday => "So",
-        _ => d.ToString()
-    };
-
-    private static string FormatTimes(NewsSubscriptionDto n) =>
-        n.SendAtTimes is { Count: > 0 } t
-            ? string.Join(", ", t.OrderBy(x => x).Select(x => x.ToString("HH:mm")))
-            : "—";
-
-    private static async Task<string> ReadErrorDetailAsync(HttpResponseMessage response)
-    {
-        try
-        {
-            using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using JsonDocument doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("detail", out JsonElement d) && d.ValueKind == JsonValueKind.String)
-                return d.GetString() ?? $"Fehler ({(int)response.StatusCode}).";
-        }
-        catch
-        {
-        }
-
-        return $"Anfrage fehlgeschlagen ({(int)response.StatusCode}).";
+        if (e.Value is bool targetEnabled)
+            await Model.ToggleEnabledAsync(n, targetEnabled);
     }
 }
