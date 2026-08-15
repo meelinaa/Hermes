@@ -5,6 +5,7 @@ using Hermes.Domain.Events;
 using Hermes.Domain.ValueObjects;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Mappers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Hermes.Application.Ports.Outbound;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
@@ -68,42 +69,48 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             entity.Property(newsEntity => newsEntity.Keywords)
                 .HasConversion(
                     keywordValues => keywordValues == null ? null : JsonSerializer.Serialize(keywordValues, (JsonSerializerOptions?)null),
-                    serializedKeywords => string.IsNullOrEmpty(serializedKeywords) ? null : JsonSerializer.Deserialize<IReadOnlyList<string>>(serializedKeywords, (JsonSerializerOptions?)null));
+                    serializedKeywords => string.IsNullOrEmpty(serializedKeywords) ? null : JsonSerializer.Deserialize<IReadOnlyList<string>>(serializedKeywords, (JsonSerializerOptions?)null))
+                .Metadata.SetValueComparer(CreateNullableReadOnlyListValueComparer<string>());
 
             entity.Property(newsEntity => newsEntity.Category)
                 .HasConversion(
                     categoryValues => categoryValues == null ? null : JsonSerializer.Serialize(categoryValues, HermesJsonOptions._forEnums),
                     serializedCategories => string.IsNullOrEmpty(serializedCategories)
                         ? null
-                        : JsonSerializer.Deserialize<IReadOnlyList<NewsCategory>>(serializedCategories, HermesJsonOptions._forEnums));
+                        : JsonSerializer.Deserialize<IReadOnlyList<NewsCategory>>(serializedCategories, HermesJsonOptions._forEnums))
+                .Metadata.SetValueComparer(CreateNullableReadOnlyListValueComparer<NewsCategory>());
 
             entity.Property(newsEntity => newsEntity.Languages)
                 .HasConversion(
                     languageValues => languageValues == null ? null : JsonSerializer.Serialize(languageValues, HermesJsonOptions._forEnums),
                     serializedLanguages => string.IsNullOrEmpty(serializedLanguages)
                         ? null
-                        : JsonSerializer.Deserialize<IReadOnlyList<Language>>(serializedLanguages, HermesJsonOptions._forEnums));
+                        : JsonSerializer.Deserialize<IReadOnlyList<Language>>(serializedLanguages, HermesJsonOptions._forEnums))
+                .Metadata.SetValueComparer(CreateNullableReadOnlyListValueComparer<Language>());
 
             entity.Property(newsEntity => newsEntity.Countries)
                 .HasConversion(
                     countryValues => countryValues == null ? null : JsonSerializer.Serialize(countryValues, HermesJsonOptions._forEnums),
                     serializedCountries => string.IsNullOrEmpty(serializedCountries)
                         ? null
-                        : JsonSerializer.Deserialize<IReadOnlyList<Country>>(serializedCountries, HermesJsonOptions._forEnums));
+                        : JsonSerializer.Deserialize<IReadOnlyList<Country>>(serializedCountries, HermesJsonOptions._forEnums))
+                .Metadata.SetValueComparer(CreateNullableReadOnlyListValueComparer<Country>());
 
             entity.Property(newsEntity => newsEntity.SendOnWeekdays)
                 .HasConversion(
                     weekdayValues => JsonSerializer.Serialize(weekdayValues ?? new List<Weekdays>(), HermesJsonOptions._forEnums),
                     serializedWeekdays => string.IsNullOrWhiteSpace(serializedWeekdays)
                         ? Array.Empty<Weekdays>()
-                        : JsonSerializer.Deserialize<IReadOnlyList<Weekdays>>(serializedWeekdays, HermesJsonOptions._forEnums) ?? Array.Empty<Weekdays>());
+                        : JsonSerializer.Deserialize<IReadOnlyList<Weekdays>>(serializedWeekdays, HermesJsonOptions._forEnums) ?? Array.Empty<Weekdays>())
+                .Metadata.SetValueComparer(CreateNonNullReadOnlyListValueComparer<Weekdays>());
 
             entity.Property(newsEntity => newsEntity.SendAtTimes)
                 .HasConversion(
                     sendAtTimes => JsonSerializer.Serialize(sendAtTimes ?? new List<TimeOnly>(), (JsonSerializerOptions?)null),
                     serializedSendAtTimes => string.IsNullOrWhiteSpace(serializedSendAtTimes)
                         ? Array.Empty<TimeOnly>()
-                        : JsonSerializer.Deserialize<IReadOnlyList<TimeOnly>>(serializedSendAtTimes, (JsonSerializerOptions?)null) ?? Array.Empty<TimeOnly>());
+                        : JsonSerializer.Deserialize<IReadOnlyList<TimeOnly>>(serializedSendAtTimes, (JsonSerializerOptions?)null) ?? Array.Empty<TimeOnly>())
+                .Metadata.SetValueComparer(CreateNonNullReadOnlyListValueComparer<TimeOnly>());
 
             entity.Property(newsEntity => newsEntity.NextDigestSlotUtc);
             entity.HasIndex(newsEntity => newsEntity.NextDigestSlotUtc);
@@ -270,5 +277,33 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Creates a value comparer for nullable read-only collections serialized to/from JSON.
+    /// Performs element-by-element sequence equality, combined hash calculation, and deep snapshot copies for change tracking.
+    /// </summary>
+    /// <typeparam name="T">The element type of the collection.</typeparam>
+    /// <returns>A configured <see cref="ValueComparer{T}"/> for nullable read-only lists.</returns>
+    private static ValueComparer<IReadOnlyList<T>?> CreateNullableReadOnlyListValueComparer<T>()
+    {
+        return new ValueComparer<IReadOnlyList<T>?>(
+            (c1, c2) => c1 == null && c2 == null || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
+            c => c == null ? 0 : c.Aggregate(0, (a, v) => HashCode.Combine(a, v == null ? 0 : v.GetHashCode())),
+            c => c == null ? null : c.ToList().AsReadOnly());
+    }
+
+    /// <summary>
+    /// Creates a value comparer for non-nullable read-only collections serialized to/from JSON.
+    /// Performs element-by-element sequence equality, combined hash calculation, and deep snapshot copies for change tracking.
+    /// </summary>
+    /// <typeparam name="T">The element type of the collection.</typeparam>
+    /// <returns>A configured <see cref="ValueComparer{T}"/> for non-nullable read-only lists.</returns>
+    private static ValueComparer<IReadOnlyList<T>> CreateNonNullReadOnlyListValueComparer<T>()
+    {
+        return new ValueComparer<IReadOnlyList<T>>(
+            (c1, c2) => c1 == null && c2 == null || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
+            c => c == null ? 0 : c.Aggregate(0, (a, v) => HashCode.Combine(a, v == null ? 0 : v.GetHashCode())),
+            c => c == null ? Array.Empty<T>() : c.ToList().AsReadOnly());
     }
 }
