@@ -1,0 +1,72 @@
+.news-sub-field {
+    margin-bottom: 0;
+}
+
+.news-sub-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--poster-ink, #0d0d0d);
+    margin-bottom: 0.25rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.news-sub-hint {
+    font-size: 0.8rem;
+    color: var(--text-medium, #666666);
+    margin: 0 0 0.5rem;
+}
+
+.news-dow-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.news-dow-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #d4d0c7;
+    background: #ffffff;
+    color: #0d0d0d;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.news-dow-pill:hover {
+    border-color: #0d0d0d;
+}
+
+.news-dow-pill.active {
+    background: #0d0d0d;
+    border-color: #0d0d0d;
+    color: #ffffff;
+}
+
+.news-dow-ico {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+[data-theme="dark"] .news-dow-pill {
+    background: #1e1e26;
+    border-color: #3f3f46;
+    color: #f4f4f5;
+}
+
+[data-theme="dark"] .news-dow-pill:hover {
+    border-color: #71717a;
+}
+
+[data-theme="dark"] .news-dow-pill.active {
+    background: var(--poster-accent, #ff453a);
+    border-color: var(--poster-accent, #ff453a);
+    color: #ffffff;
+}

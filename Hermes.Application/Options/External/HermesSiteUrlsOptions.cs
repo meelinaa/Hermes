@@ -7,7 +7,7 @@ namespace Hermes.Application.Options.External;
 /// </summary>
 public sealed class HermesSiteUrlsOptions
 {
-    public const string SECTION_NAME = "Hermes";
+    public const string SECTION_NAME = "HermesSite";
 
     [Required]
     [Url]

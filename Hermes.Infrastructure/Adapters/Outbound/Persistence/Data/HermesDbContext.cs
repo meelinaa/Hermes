@@ -34,7 +34,9 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
         {
             entity.ToTable("users");
             entity.HasKey(userEntity => userEntity.Id);
-            entity.Property(userEntity => userEntity.Id).HasConversion(id => id.Value, val => new UserId(val));
+            entity.Property(userEntity => userEntity.Id)
+                .HasConversion(id => id.Value, val => new UserId(val))
+                .ValueGeneratedOnAdd();
             entity.Property(userEntity => userEntity.Email).HasConversion(e => e.Value, val => Email.Parse(val));
             entity.HasIndex(userEntity => userEntity.Email).IsUnique();
 
@@ -47,7 +49,9 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
         {
             entity.ToTable("news");
             entity.HasKey(newsEntity => newsEntity.Id);
-            entity.Property(newsEntity => newsEntity.Id).HasConversion(id => id.Value, val => new NewsletterId(val));
+            entity.Property(newsEntity => newsEntity.Id)
+                .HasConversion(id => id.Value, val => new NewsletterId(val))
+                .ValueGeneratedOnAdd();
             entity.Property(newsEntity => newsEntity.UserId).HasConversion(id => id.Value, val => new UserId(val));
             entity.HasIndex(newsEntity => newsEntity.UserId);
 
@@ -146,28 +150,24 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Persists all pending entity changes to the database and dispatches domain events upon successful commit.
+    /// Saves the database changes first so that auto-increment identity keys are assigned to new entities before events are dispatched to handlers or background queues.
+    /// </summary>
+    /// <param name="acceptAllChangesOnSuccess">Indicates whether all changes should be accepted if the operation succeeds.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the save operation to complete.</param>
+    /// <returns>The number of state entries written to the database.</returns>
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
-        var entitiesWithEvents = ChangeTracker.Entries<AggregateRoot>()
-            .Select(e => e.Entity)
-            .Where(e => e.DomainEvents.Any())
+        var entriesWithEvents = ChangeTracker.Entries<AggregateRoot>()
+            .Where(e => e.Entity.DomainEvents.Any())
+            .Select(e => new { Entry = e, e.Entity, Events = e.Entity.DomainEvents.ToList() })
             .ToList();
 
-        var events = entitiesWithEvents.SelectMany(e => e.DomainEvents).ToList();
-        entitiesWithEvents.ForEach(e => e.ClearDomainEvents());
-
-        if (dispatcher is not null)
-        {
-            foreach (var domainEvent in events)
-            {
-                await dispatcher.DispatchAsync(domainEvent, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
+        int result;
         try
         {
-            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+            result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
         }
         catch (DbUpdateException ex)
         {
@@ -183,5 +183,28 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             }
             throw;
         }
+
+        if (dispatcher is not null)
+        {
+            foreach (var item in entriesWithEvents)
+            {
+                item.Entity.ClearDomainEvents();
+                foreach (var domainEvent in item.Events)
+                {
+                    var eventToDispatch = domainEvent switch
+                    {
+                        UserRegisteredEvent ure when ure.UserId.Value <= 0 && item.Entity is User u
+                            => ure with { UserId = u.Id },
+                        UserEmailChangedEvent uec when uec.UserId.Value <= 0 && item.Entity is User u
+                            => uec with { UserId = u.Id },
+                        _ => domainEvent
+                    };
+
+                    await dispatcher.DispatchAsync(eventToDispatch, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+
+        return result;
     }
 }

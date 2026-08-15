@@ -29,7 +29,21 @@ public sealed class LiveFeedViewModelTests
     }
 
     [Fact]
-    public async Task InitializeAsync_Should_Set_Default_Category_And_Load_Articles()
+    public async Task InitializeAsync_Should_Not_Preselect_Categories_Or_Auto_Load_Articles()
+    {
+        // Act
+        await _sut.InitializeAsync();
+
+        // Assert
+        Assert.Empty(_sut.SelectedCategories);
+        Assert.Empty(_sut.Articles);
+        Assert.False(_sut.HasSearched);
+        Assert.False(_sut.IsLoading);
+        Assert.Null(_sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task LoadArticlesAsync_Should_Query_Api_And_Populate_Articles_Matching_Filters()
     {
         // Arrange
         List<NewsArticleDto> articles =
@@ -41,11 +55,13 @@ public sealed class LiveFeedViewModelTests
             .Setup(api => api.GetPreviewArticlesAsync(It.IsAny<NewsPreviewRequestDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<IReadOnlyList<NewsArticleDto>>.Success(articles));
 
+        _sut.SelectedCategories.Add(NewsCategory.Technology);
+
         // Act
-        await _sut.InitializeAsync();
+        await _sut.LoadArticlesAsync();
 
         // Assert
-        Assert.Contains(NewsCategory.Technology, _sut.SelectedCategories);
+        Assert.True(_sut.HasSearched);
         Assert.Single(_sut.Articles);
         Assert.Equal("Tech News", _sut.Articles[0].Title);
         Assert.False(_sut.IsLoading);

@@ -20,61 +20,62 @@ public sealed class NewsDataIoUrlBuilderTests
     }
 
     [Fact]
-    public void Build_StartsWithBaseAndEscapedApiKey()
-    {
-        string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto { ApiKey = "key+with&ampersand" });
-
-        Assert.StartsWith("https://newsdata.io/api/1/latest?", url, StringComparison.Ordinal);
-        Assert.Contains("apikey=key%2Bwith%26ampersand", url, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Build_AppendsCommaSeparatedLists_AndOptionalParameters()
+    public void Build_RoutesToTopHeadlines_WhenCountryAndCategorySpecified()
     {
         string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto
         {
-            ApiKey = "k",
-            Countries = ["de", " at "],
-            Languages = ["en"],
+            ApiKey = "test-key",
+            Countries = ["de"],
             Categories = ["technology"],
-            Timezone = "europe/berlin",
-            Image = 1,
-            RemoveDuplicate = 0,
-            Sort = "pubdateasc",
-            ExcludeField = "a,b",
-            Q = "climate OR energy",
+            Q = "AI"
         });
 
-        Assert.Contains("country=de%2Cat", url, StringComparison.Ordinal);
-        Assert.Contains("language=en", url, StringComparison.Ordinal);
+        Assert.StartsWith("https://newsapi.org/v2/top-headlines?", url, StringComparison.Ordinal);
+        Assert.Contains("apiKey=test-key", url, StringComparison.Ordinal);
+        Assert.Contains("country=de", url, StringComparison.Ordinal);
         Assert.Contains("category=technology", url, StringComparison.Ordinal);
-        Assert.Contains("timezone=europe%2Fberlin", url, StringComparison.Ordinal);
-        Assert.Contains("image=1", url, StringComparison.Ordinal);
-        Assert.Contains("removeduplicate=0", url, StringComparison.Ordinal);
-        Assert.Contains("sort=pubdateasc", url, StringComparison.Ordinal);
-        Assert.Contains("excludefield=a%2Cb", url, StringComparison.Ordinal);
-        Assert.Contains("q=climate%20OR%20energy", url, StringComparison.Ordinal);
+        Assert.Contains("q=AI", url, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Build_SkipsNullOrEmptyCommaSeparatedSegments()
+    public void Build_RoutesToEverything_WhenOnlyKeywordsAndLanguageSpecified()
     {
         string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto
         {
-            ApiKey = "k",
-            Countries = ["", "  ", "fr"],
+            ApiKey = "test-key",
+            Languages = ["en"],
+            Q = "climate change"
         });
 
-        Assert.Contains("country=fr", url, StringComparison.Ordinal);
-        Assert.DoesNotContain("country=%2C", url);
+        Assert.StartsWith("https://newsapi.org/v2/everything?", url, StringComparison.Ordinal);
+        Assert.Contains("apiKey=test-key", url, StringComparison.Ordinal);
+        Assert.Contains("language=en", url, StringComparison.Ordinal);
+        Assert.Contains("q=climate%20change", url, StringComparison.Ordinal);
+        Assert.Contains("sortBy=publishedAt", url, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Build_OmitsOptionalInts_WhenNull()
+    public void Build_MapsDomainCategoriesToNewsApiCategories()
     {
-        string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto { ApiKey = "k", Image = null, RemoveDuplicate = null });
+        string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto
+        {
+            ApiKey = "test-key",
+            Categories = ["breaking"]
+        });
 
-        Assert.DoesNotContain("image=", url);
-        Assert.DoesNotContain("removeduplicate=", url);
+        Assert.StartsWith("https://newsapi.org/v2/top-headlines?", url, StringComparison.Ordinal);
+        Assert.Contains("category=general", url, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Build_RoutesToTopHeadlines_WhenNoFiltersProvided()
+    {
+        string url = NewsDataIoUrlUtility.Build(new ApiUrlPartsDto
+        {
+            ApiKey = "test-key"
+        });
+
+        Assert.StartsWith("https://newsapi.org/v2/top-headlines?", url, StringComparison.Ordinal);
+        Assert.Contains("apiKey=test-key", url, StringComparison.Ordinal);
     }
 }

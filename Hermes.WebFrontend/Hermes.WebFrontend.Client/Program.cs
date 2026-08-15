@@ -1,4 +1,5 @@
 using Blazored.LocalStorage;
+using Hermes.WebFrontend.Client;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
 using Hermes.WebFrontend.Client.Services.NewsService;
@@ -8,44 +9,14 @@ using Hermes.WebFrontend.Client.Services.User;
 using Hermes.WebFrontend.Client.ViewModels;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 WebAssemblyHostBuilder? builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
 builder.Configuration.AddJsonFile($"appsettings.{builder.HostEnvironment.Environment}.json", optional: true, reloadOnChange: false);
 
-builder.Services.AddBlazoredLocalStorage();
-builder.Services.AddAuthorizationCore();
-builder.Services.AddSingleton<IToastNotificationService, ToastNotificationService>();
-builder.Services.AddScoped<IThemeService, ThemeService>();
-builder.Services.AddScoped<AuthTokenStore>();
-builder.Services.AddScoped<AuthenticationStateProvider, HermesAuthenticationStateProvider>();
-builder.Services.AddScoped<AuthSessionService>();
-builder.Services.AddScoped<AuthLogoutService>();
-builder.Services.AddSingleton<UserProfileRefreshStore>();
-builder.Services.AddScoped<NewsSubscriptionApiClient>();
-builder.Services.AddScoped<INewsFeedApiClient, NewsFeedApiClient>();
-builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
-builder.Services.AddScoped<IUserApiClient, UserApiClient>();
-builder.Services.AddScoped<LoginViewModel>();
-builder.Services.AddScoped<RegisterViewModel>();
-builder.Services.AddScoped<UserSettingsViewModel>();
-builder.Services.AddScoped<NewsSettingsViewModel>();
-builder.Services.AddTransient<NewsSubscriptionCardViewModel>();
-builder.Services.AddScoped<HomeViewModel>();
-builder.Services.AddScoped<LiveFeedViewModel>();
-
-builder.Services.AddHttpClient(AuthSessionService.ANONYMOUS_HTTP_CLIENT_NAME, (sp, client) => HermesApiHttp.ConfigureBaseAddress(client, sp));
-
-builder.Services.AddScoped(sp =>
-{
-    AuthTokenStore store = sp.GetRequiredService<AuthTokenStore>();
-    AuthSessionService session = sp.GetRequiredService<AuthSessionService>();
-    AuthMessageMiddleware pipeline = new(store, session) { InnerHandler = new HttpClientHandler() };
-    HttpClient client = new(pipeline);
-    HermesApiHttp.ConfigureBaseAddress(client, sp);
-    return client;
-});
+builder.Services.AddHermesClientServices(builder.Configuration);
 
 await builder.Build().RunAsync();
 

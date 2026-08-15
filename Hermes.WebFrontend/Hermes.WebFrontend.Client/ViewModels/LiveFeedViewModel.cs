@@ -49,6 +49,9 @@ public sealed class LiveFeedViewModel(
     /// <summary>Gets the list of articles retrieved for the current filter criteria.</summary>
     public IReadOnlyList<NewsArticleDto> Articles { get; private set; } = [];
 
+    /// <summary>Gets whether at least one search query has been executed by the user.</summary>
+    public bool HasSearched { get; private set; }
+
     /// <summary>Gets whether articles are currently being fetched.</summary>
     public bool IsLoading { get; private set; }
 
@@ -76,23 +79,22 @@ public sealed class LiveFeedViewModel(
     public bool SubscriptionEnabled { get; set; } = true;
 
     /// <summary>
-    /// Initializes default preview filters and loads initial news articles.
+    /// Initializes ViewModel state without running queries or preselecting categories, keeping search purely user-driven.
     /// </summary>
-    public async Task InitializeAsync()
+    /// <returns>A completed task.</returns>
+    public Task InitializeAsync()
     {
-        if (SelectedCategories.Count == 0 && string.IsNullOrWhiteSpace(Keywords))
-        {
-            SelectedCategories.Add(NewsCategory.Technology);
-        }
-
-        await LoadArticlesAsync().ConfigureAwait(false);
+        // Purely user-driven: do not preselect categories or auto-load articles on page entry
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Queries the API for latest articles matching active search and filter criteria.
     /// </summary>
+    /// <returns>A task representing the asynchronous load operation.</returns>
     public async Task LoadArticlesAsync()
     {
+        HasSearched = true;
         IsLoading = true;
         ErrorMessage = null;
         NotifyStateChanged();
@@ -131,6 +133,8 @@ public sealed class LiveFeedViewModel(
     /// <summary>
     /// Toggles selection of a news category filter.
     /// </summary>
+    /// <param name="category">The news category to toggle.</param>
+    /// <param name="isChecked">True if selected; otherwise false.</param>
     public void ToggleCategory(NewsCategory category, bool isChecked)
     {
         if (isChecked)
@@ -144,6 +148,8 @@ public sealed class LiveFeedViewModel(
     /// <summary>
     /// Toggles selection of a news language filter.
     /// </summary>
+    /// <param name="language">The language to toggle.</param>
+    /// <param name="isChecked">True if selected; otherwise false.</param>
     public void ToggleLanguage(Language language, bool isChecked)
     {
         if (isChecked)
@@ -157,6 +163,8 @@ public sealed class LiveFeedViewModel(
     /// <summary>
     /// Toggles selection of a news country filter.
     /// </summary>
+    /// <param name="country">The country to toggle.</param>
+    /// <param name="isChecked">True if selected; otherwise false.</param>
     public void ToggleCountry(Country country, bool isChecked)
     {
         if (isChecked)
@@ -168,7 +176,7 @@ public sealed class LiveFeedViewModel(
     }
 
     /// <summary>
-    /// Clears all active search keywords and multi-select filter criteria.
+    /// Clears all active search keywords, multi-select filter criteria, and retrieved results.
     /// </summary>
     public void ClearFilters()
     {
@@ -176,6 +184,9 @@ public sealed class LiveFeedViewModel(
         SelectedCategories.Clear();
         SelectedLanguages.Clear();
         SelectedCountries.Clear();
+        Articles = [];
+        HasSearched = false;
+        ErrorMessage = null;
         NotifyStateChanged();
     }
 
@@ -315,7 +326,7 @@ public sealed class LiveFeedViewModel(
             };
 
             HttpResponseMessage response = await http.PostAsJsonAsync(
-                $"api/v1/users/{userId.Value}/newsletter-subscriptions",
+                "api/v1/users/newsletter-subscriptions",
                 payload,
                 HermesNewsJsonMapper.Options).ConfigureAwait(false);
 

@@ -114,7 +114,8 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
 
         if (query.AfterId is int after)
         {
-            IQueryable<NewsletterSubscription> cursorQuery = filtered.OrderBy(n => n.Id).Where(n => n.Id.Value > after);
+            NewsletterId afterId = new(after);
+            IQueryable<NewsletterSubscription> cursorQuery = filtered.OrderBy(n => n.Id).Where(n => n.Id > afterId);
             List<NewsletterSubscription> window = await cursorQuery
                 .Take(query.PageSize + 1)
                 .ToListAsync(cancellationToken)
@@ -163,16 +164,16 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         DateTime slotEnd = DateTime.SpecifyKind(slotEndUtc, DateTimeKind.Utc);
 
         var rawMaterialized = await db.NewsletterSubscriptions.AsNoTracking()
-            .Where(n => n.Id.Value > 0 && n.UserId.Value > 0 && n.IsEnabled
+            .Where(n => n.IsEnabled
                 && n.NextDigestSlotUtc != null
                 && n.NextDigestSlotUtc >= slotStart
                 && n.NextDigestSlotUtc < slotEnd)
             .OrderBy(n => n.Id)
-            .Select(n => new { Id = n.Id.Value, UserId = n.UserId.Value })
+            .Select(n => new { n.Id, n.UserId })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        List<(int Id, int UserId)> materialized = rawMaterialized.Select(x => (x.Id, x.UserId)).ToList();
+        List<(int Id, int UserId)> materialized = rawMaterialized.Select(x => (x.Id.Value, x.UserId.Value)).ToList();
 
         string weekdayLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(weekday, HermesJsonOptions._forEnums))!;
         string timeLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(new TimeOnly(hour, minute)))!;

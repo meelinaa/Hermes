@@ -40,7 +40,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
             .FirstOrDefaultAsync(userEntity => userEntity.Name == name, cancellationToken)
             .ConfigureAwait(false);
 
-        return user is null ? throw new UserNotFoundException($"User with name '{name}' was not found.") : MapToUserScope(user);
+        return user is null ? null : MapToUserScope(user);
     }
 
     /// <inheritdoc />
@@ -54,7 +54,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
             .FirstOrDefaultAsync(userEntity => userEntity.Email == normalized, cancellationToken)
             .ConfigureAwait(false);
 
-        return user is null ? throw new UserNotFoundException($"User with email '{email}' was not found.") : MapToUserScope(user);
+        return user is null ? null : MapToUserScope(user);
     }
 
     /// <inheritdoc />
@@ -66,7 +66,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         User? user = await db.Users.AsNoTracking()
             .FirstOrDefaultAsync(userEntity => userEntity.Id == id, cancellationToken)
             .ConfigureAwait(false);
-        return user is null ? throw new UserNotFoundException($"User with id '{id}' was not found.") : MapToUserScope(user);
+        return user is null ? null : MapToUserScope(user);
     }
 
     /// <inheritdoc />
@@ -77,7 +77,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
         User? user = await db.Users.AsNoTracking()
             .FirstOrDefaultAsync(userEntity => userEntity.Name == name, cancellationToken)
             .ConfigureAwait(false);
-        return user is null ? throw new UserNotFoundException() : user;
+        return user;
     }
 
     /// <inheritdoc />
@@ -92,7 +92,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
             .FirstOrDefaultAsync(userEntity => userEntity.Email == normalized, cancellationToken)
             .ConfigureAwait(false);
 
-        return user ?? throw new UserNotFoundException();
+        return user;
     }
 
     /// <inheritdoc />
@@ -105,7 +105,7 @@ public sealed class UserRepository(HermesDbContext db) : IUserRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(userEntity => userEntity.Id == id, cancellationToken)
             .ConfigureAwait(false);
-        return user ?? throw new UserNotFoundException();
+        return user;
     }
 
     /// <inheritdoc />

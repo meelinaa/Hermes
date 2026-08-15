@@ -19,15 +19,15 @@
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet />
-    <script src="_content/Hermes.WebFrontend.Client/hermes-theme.js"></script>
+    <script src="@Assets["hermes-theme.js"]"></script>
 </head>
 
 <body>
-    <Routes />
+    <Routes @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
     <GlobalAuthGuard @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
-    <script src="_content/Hermes.WebFrontend.Client/hermes-auth.js"></script>
-    <script src="_content/Hermes.WebFrontend.Client/hermes-dropdown.js"></script>
-    <script src="_framework/blazor.web.js"></script>
+    <script src="@Assets["hermes-auth.js"]"></script>
+    <script src="@Assets["hermes-dropdown.js"]"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 
 </html>

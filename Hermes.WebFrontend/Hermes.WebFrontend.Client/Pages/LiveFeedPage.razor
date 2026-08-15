@@ -103,6 +103,13 @@
                 @Model.ErrorMessage
             </div>
         }
+        else if (!Model.HasSearched)
+        {
+            <div class="live-feed-empty">
+                <p class="live-feed-empty-title">Bereit für deine Suche</p>
+                <p class="live-feed-empty-text">Wähle Suchbegriffe, Kategorien, Sprachen oder Länder aus und klicke auf „Aktualisieren“, um passende Nachrichten zu durchsuchen.</p>
+            </div>
+        }
         else if (Model.Articles.Count == 0)
         {
             <div class="live-feed-empty">
@@ -163,17 +170,20 @@
                         Erstelle basierend auf deiner aktuellen Suche einen automatischen E-Mail-Digest:
                     </p>
 
-                    <div class="news-sub-field">
-                        <span class="news-sub-label">Zustellung an Wochentagen</span>
-                        <WeekdayPicker DayActive="Model.SubscriptionDays" OnToggleDay="Model.ToggleSubscriptionDay" />
-                    </div>
+                    <div class="modal-schedule-card">
+                        <h4 class="modal-schedule-title">Zustellplan</h4>
+                        <div class="news-sub-field">
+                            <span class="news-sub-label">Zustellung an Wochentagen</span>
+                            <WeekdayPicker DayActive="Model.SubscriptionDays" OnToggleDay="Model.ToggleSubscriptionDay" />
+                        </div>
 
-                    <div class="news-sub-field">
-                        <span class="news-sub-label">Uhrzeiten (täglicher Versand)</span>
-                        <TimeSlotPicker SharedTimes="Model.SubscriptionTimes"
-                                        OnSetTime="Model.SetSubscriptionTime"
-                                        OnAddTimeSlot="Model.AddSubscriptionTimeSlot"
-                                        OnRemoveTimeSlot="Model.RemoveSubscriptionTimeSlot" />
+                        <div class="news-sub-field">
+                            <span class="news-sub-label">Uhrzeiten (täglicher Versand)</span>
+                            <TimeSlotPicker SharedTimes="Model.SubscriptionTimes"
+                                            OnSetTime="Model.SetSubscriptionTime"
+                                            OnAddTimeSlot="Model.AddSubscriptionTimeSlot"
+                                            OnRemoveTimeSlot="Model.RemoveSubscriptionTimeSlot" />
+                        </div>
                     </div>
 
                     <div class="hermes-toggle-switch-row">
