@@ -139,7 +139,7 @@ public sealed class HermesDbContextTests
             Id = user.Id,
             Name = user.Name,
             Email = Email.Parse("new-email@test.example"),
-            PasswordHash = null,
+            PasswordHash = null!,
         };
 
         await users.UpdateUserAsync(patch, CancellationToken.None);

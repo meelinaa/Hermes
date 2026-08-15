@@ -252,7 +252,7 @@ public sealed class UserAuthenticationServiceTests
     {
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityByIdAsync(new UserId(1), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = new UserId(1), Email = Email.Parse("a@b.c"), Name = "N", PasswordHash = null });
+            .ReturnsAsync(new User { Id = new UserId(1), Email = Email.Parse("a@b.c"), Name = "N", PasswordHash = string.Empty });
 
         UserAuthenticationService sut = CreateService(db.Object);
 

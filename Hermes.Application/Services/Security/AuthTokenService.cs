@@ -48,13 +48,13 @@ public sealed class AuthTokenService(
             new DateTimeOffset(row.ExpiresAt, TimeSpan.Zero)));
     }
 
-    private static readonly TimeSpan _rotationGracePeriod = TimeSpan.FromSeconds(30);
-
     /// <summary>
-    /// Rotates an existing refresh token, issuing a new pair and revoking the old one.
-    /// Returns failure when the token is invalid, expired, or was previously rotated.
-    /// If an old revoked token is reused outside the 30-second grace window, a replay attack is detected and the token family is revoked.
+    /// Rotates an existing active refresh token, issuing a new access/refresh pair and marking the previous token as rotated.
+    /// If an already revoked token is presented, detects a potential replay attack, invalidates the entire successor token family, and fails.
     /// </summary>
+    /// <param name="refreshTokenPlain">The plain-text refresh token to rotate.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A result containing new authentication tokens on success, or an error detailing the validation/security failure.</returns>
     public async ValueTask<Result<AuthTokensResultDto>> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenPlain))
@@ -72,13 +72,6 @@ public sealed class AuthTokenService(
 
         if (old.RevokedAt != null)
         {
-            bool withinGracePeriod = old.RevokedAt.Value >= nowUtc - _rotationGracePeriod && old.ReplacedByTokenId.HasValue;
-            if (withinGracePeriod)
-            {
-                logger.LogInformation("Refresh token was recently rotated within the grace period for user {UserId}", old.UserId.Value);
-                return Result.Fail("Refresh token was recently rotated.");
-            }
-
             string shortHash = hash.Length > 8 ? hash[..8] + "..." : hash;
             logger.LogReplayDetected(old.UserId.Value, shortHash);
             await RevokeTokenFamilyAsync(old, cancellationToken).ConfigureAwait(false);
@@ -140,7 +133,7 @@ public sealed class AuthTokenService(
     {
         DateTime utc = timeProvider.GetUtcNow().UtcDateTime;
 
-        List<RefreshToken> userTokens = await db.GetAllRefreshTokensForUserAsync(compromisedToken.UserId, cancellationToken).ConfigureAwait(false);
+        List<RefreshToken> userTokens = await db.GetAllRefreshTokensForUserAsync(compromisedToken.UserId, cancellationToken).ConfigureAwait(false) ?? [];
 
         var queue = new Queue<RefreshToken>();
         queue.Enqueue(compromisedToken);

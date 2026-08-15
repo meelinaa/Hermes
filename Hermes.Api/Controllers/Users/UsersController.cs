@@ -32,6 +32,7 @@ public class UsersController(
     /// <summary>
     /// Creates a new user identity and provisions their initial data structures.
     /// Acts as the public entry point for new customers to join the platform.
+    /// Returns 409 Conflict if a user with the requested email already exists.
     /// </summary>
     [AllowAnonymous]
     [HttpPost]
@@ -39,7 +40,13 @@ public class UsersController(
     {
         Result<UserScopeDto> registerResult = await authService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
         if (registerResult.IsFailed)
-            return this.BadRequestProblem(registerResult.Errors.First().Message);
+        {
+            string errorMessage = registerResult.Errors.First().Message;
+            if (errorMessage.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+                return this.ConflictProblem(errorMessage);
+
+            return this.BadRequestProblem(errorMessage);
+        }
 
         return Ok(registerResult.Value.ToUserResponse());
     }
@@ -47,6 +54,7 @@ public class UsersController(
     /// <summary>
     /// Applies changes to a user's master record. 
     /// Automatically revokes email verification status if the email address is changed.
+    /// Returns 400 with custom problem type when current password verification fails.
     /// </summary>
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpPut]
@@ -57,7 +65,13 @@ public class UsersController(
 
         Result updateResult = await authService.UpdateUserAsync(request.Id, request.Name, request.Email, request.NewPassword, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
         if (updateResult.IsFailed)
-            return this.BadRequestProblem(updateResult.Errors.First().Message);
+        {
+            string errorMessage = updateResult.Errors.First().Message;
+            if (errorMessage.Contains("Current password", StringComparison.OrdinalIgnoreCase))
+                return this.WrongCurrentPasswordProblem(errorMessage);
+
+            return this.BadRequestProblem(errorMessage);
+        }
 
         Result<UserScopeDto> updatedResult = await userService.GetUserByIdAsync(new UserId(request.Id), cancellationToken).ConfigureAwait(false);
         return updatedResult.IsFailed ? this.NotFoundProblem() : Ok(updatedResult.Value.ToUserResponse());
@@ -94,7 +108,7 @@ public class UsersController(
 
     /// <summary>
     /// Looks up a user account by email address for the currently authenticated caller.
-    /// Returns 404 if the user is not found or does not match the authenticated caller to prevent account enumeration.
+    /// Returns 404 if the user is not found, or 403 Forbidden if the requested email belongs to a different user.
     /// </summary>
     [HttpGet("by-email/{email}")]
     public async Task<ActionResult<UserResponseDto>> GetUserByEmail(string email, CancellationToken cancellationToken)
@@ -106,8 +120,11 @@ public class UsersController(
             return this.UnauthorizedProblem("Missing user identity.");
 
         Result<UserScopeDto> userResult = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
-        if (userResult.IsFailed || userResult.Value.UserId != currentUserId)
+        if (userResult.IsFailed)
             return this.NotFoundProblem();
+
+        if (userResult.Value.UserId != currentUserId)
+            return this.ForbiddenProblem();
 
         return Ok(userResult.Value.ToUserResponse());
     }

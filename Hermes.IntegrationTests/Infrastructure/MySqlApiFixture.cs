@@ -14,8 +14,7 @@ public sealed class MySqlApiFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _container = new MySqlBuilder()
-            .WithImage("mysql:8.4")
+        _container = new MySqlBuilder("mysql:8.4")
             .WithCleanUp(true)
             .Build();
 

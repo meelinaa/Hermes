@@ -74,4 +74,18 @@ public static class ApiProblemResultExtensions
             statusCode: StatusCodes.Status400BadRequest,
             title: "Invalid current password",
             type: HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD);
+
+    /// <summary>
+    /// Generates an HTTP 409 Conflict ProblemDetails response with specified detail message.
+    /// Used when a resource already exists or a uniqueness constraint is violated.
+    /// </summary>
+    /// <param name="controller">The controller instance.</param>
+    /// <param name="detail">Detailed description of the conflict.</param>
+    /// <returns>An <see cref="ActionResult"/> configured as HTTP 409 ProblemDetails.</returns>
+    public static ActionResult ConflictProblem(this ControllerBase controller, string detail) =>
+        controller.Problem(
+            title: "Conflict",
+            detail: detail,
+            statusCode: StatusCodes.Status409Conflict,
+            type: $"{RFC_7231}#section-6.5.8");
 }

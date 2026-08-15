@@ -17,8 +17,7 @@ public sealed class RedisRateLimiterIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _redisContainer = new RedisBuilder()
-            .WithImage("redis:7-alpine")
+        _redisContainer = new RedisBuilder("redis:7-alpine")
             .Build();
 
         await _redisContainer.StartAsync();
