@@ -17,12 +17,15 @@ namespace Hermes.WebFrontend.Client.Tests.ViewModels;
 /// <summary>
 /// Unit tests verifying profile state manipulation, validation, and modal workflows in <see cref="UserSettingsViewModel"/>.
 /// </summary>
+using Hermes.WebFrontend.Client.Services.Notifications;
+
 public sealed class UserSettingsViewModelTests
 {
     private readonly Mock<IUserApiClient> _userApiMock = new();
     private readonly Mock<ILocalStorageService> _localStorageMock = new();
     private readonly UserProfileRefreshStore _profileRefresh = new();
     private readonly TestNavigationManager _navManager = new();
+    private readonly Mock<IToastNotificationService> _toastMock = new();
 
     private UserSettingsViewModel CreateSut()
     {
@@ -31,7 +34,7 @@ public sealed class UserSettingsViewModelTests
         Mock<IJSRuntime> jsMock = new();
         Mock<ILogger<AuthLogoutService>> loggerMock = new();
         AuthLogoutService logoutService = new(new HttpClient(), tokenStore, newsClient, jsMock.Object, _navManager, loggerMock.Object);
-        return new UserSettingsViewModel(_userApiMock.Object, tokenStore, _profileRefresh, logoutService);
+        return new UserSettingsViewModel(_userApiMock.Object, tokenStore, _profileRefresh, logoutService, _toastMock.Object);
     }
 
     [Fact]

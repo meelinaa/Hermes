@@ -6,6 +6,7 @@ using Hermes.WebFrontend.Client.Enums;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
 using Hermes.WebFrontend.Client.Services.NewsService;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Hermes.WebFrontend.Client.Services.User;
 
 namespace Hermes.WebFrontend.Client.ViewModels;
@@ -15,7 +16,8 @@ namespace Hermes.WebFrontend.Client.ViewModels;
 /// </summary>
 public sealed class NewsSubscriptionCardViewModel(
     HttpClient http,
-    AuthTokenStore authTokens)
+    AuthTokenStore authTokens,
+    IToastNotificationService toastService)
 {
     private static readonly Weekdays[] AllWeekdays = Enum.GetValues<Weekdays>().ToArray();
 
@@ -285,6 +287,8 @@ public sealed class NewsSubscriptionCardViewModel(
                     ? $"Gespeichert (Newsletter-Abonnement #{created.SubscriptionId})."
                     : "Gespeichert.";
 
+                toastService.ShowSuccess(created is not null ? $"Newsletter-Abonnement #{created.SubscriptionId} gespeichert." : "Newsletter-Abonnement gespeichert.", "News");
+
                 return (true, created?.SubscriptionId);
             }
             else
@@ -315,6 +319,7 @@ public sealed class NewsSubscriptionCardViewModel(
                 }
 
                 NewsFeedback = "Änderungen gespeichert.";
+                toastService.ShowSuccess("Änderungen am Newsletter-Abonnement gespeichert.", "News");
                 return (true, EditingId);
             }
         }

@@ -11,6 +11,8 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 
+using Hermes.WebFrontend.Client.Services.Notifications;
+
 namespace Hermes.WebFrontend.Client.Tests.ViewModels;
 
 /// <summary>
@@ -21,6 +23,7 @@ public sealed class NewsSubscriptionCardViewModelTests
     private const string ValidTestJwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsIm5hbWUiOiJ0ZXN0ZXIifQ.dummy";
 
     private readonly Mock<ILocalStorageService> _localStorageMock = new();
+    private readonly Mock<IToastNotificationService> _toastMock = new();
 
     private NewsSubscriptionCardViewModel CreateSut(HttpMessageHandler? handler = null)
     {
@@ -29,7 +32,7 @@ public sealed class NewsSubscriptionCardViewModelTests
         AuthTokenStore tokenStore = new(_localStorageMock.Object);
         HttpClient client = handler != null ? new HttpClient(handler) : new HttpClient();
         client.BaseAddress = new Uri("http://localhost/");
-        return new NewsSubscriptionCardViewModel(client, tokenStore);
+        return new NewsSubscriptionCardViewModel(client, tokenStore, _toastMock.Object);
     }
 
     [Fact]

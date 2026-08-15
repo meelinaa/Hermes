@@ -1,5 +1,6 @@
 @page "/user-settings"
 @layout AppHomeLayout
+@attribute [Authorize]
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using Hermes.WebFrontend.Client.Components.UserSettings
 @using Hermes.WebFrontend.Client.ViewModels

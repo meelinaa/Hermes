@@ -2,8 +2,10 @@ using Blazored.LocalStorage;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
 using Hermes.WebFrontend.Client.Services.NewsService;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Hermes.WebFrontend.Client.Services.User;
 using Hermes.WebFrontend.Client.ViewModels;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
 WebAssemblyHostBuilder? builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -12,7 +14,10 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnCh
 builder.Configuration.AddJsonFile($"appsettings.{builder.HostEnvironment.Environment}.json", optional: true, reloadOnChange: false);
 
 builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddSingleton<IToastNotificationService, ToastNotificationService>();
 builder.Services.AddScoped<AuthTokenStore>();
+builder.Services.AddScoped<AuthenticationStateProvider, HermesAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthSessionService>();
 builder.Services.AddScoped<AuthLogoutService>();
 builder.Services.AddSingleton<UserProfileRefreshStore>();

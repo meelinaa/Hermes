@@ -41,6 +41,9 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
             .ConfigureAwait(false);
     }
 
+    /// <summary>Event raised whenever the access token is persisted or cleared.</summary>
+    public event Action<string?>? AuthenticationStateChanged;
+
     /// <summary>Persists access and refresh tokens and updates activity timestamp.</summary>
     public async Task PersistAsync(string accessToken, string refreshToken, CancellationToken cancellationToken = default)
     {
@@ -51,6 +54,7 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
         await localStorage.SetItemAsync(ACCESS_KEY, accessToken, cancellationToken).ConfigureAwait(false);
         await localStorage.SetItemAsync(REFRESH_KEY, refreshToken, cancellationToken).ConfigureAwait(false);
         await TouchActivityAsync(cancellationToken).ConfigureAwait(false);
+        AuthenticationStateChanged?.Invoke(accessToken);
     }
 
     /// <summary>Clears all stored authentication and session values.</summary>
@@ -64,6 +68,7 @@ public sealed class AuthTokenStore(ILocalStorageService localStorage)
         await localStorage.RemoveItemAsync(ACCESS_KEY, cancellationToken).ConfigureAwait(false);
         await localStorage.RemoveItemAsync(REFRESH_KEY, cancellationToken).ConfigureAwait(false);
         await localStorage.RemoveItemAsync(LAST_ACTIVITY_KEY, cancellationToken).ConfigureAwait(false);
+        AuthenticationStateChanged?.Invoke(null);
     }
 
     /// <summary>Parses a round-trip timestamp string into UTC activity value.</summary>

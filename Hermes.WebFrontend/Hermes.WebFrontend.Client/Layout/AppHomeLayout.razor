@@ -1,8 +1,10 @@
 @inherits LayoutComponentBase
+@using Hermes.WebFrontend.Client.Components.Notifications
 
 <div class="app-home-root app-home-shell">
     <HermesTopNavigation />
     <div class="app-home-main app-home-main--with-topnav">
         @Body
     </div>
+    <ToastContainer />
 </div>

@@ -2,6 +2,7 @@ using System.Globalization;
 using Hermes.WebFrontend.Client.ApiModels;
 using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
+using Hermes.WebFrontend.Client.Services.Notifications;
 using Hermes.WebFrontend.Client.Services.User;
 
 namespace Hermes.WebFrontend.Client.ViewModels;
@@ -13,7 +14,8 @@ public sealed class UserSettingsViewModel(
     IUserApiClient userApi,
     AuthTokenStore authTokens,
     UserProfileRefreshStore profileRefresh,
-    AuthLogoutService logoutService) : IAsyncDisposable
+    AuthLogoutService logoutService,
+    IToastNotificationService toastService) : IAsyncDisposable
 {
     private const int RESEND_COOLDOWN_TOTAL_SECONDS = 180;
     private const string WRONG_OR_EXPIRED_CODE_MESSAGE =
@@ -260,6 +262,7 @@ public sealed class UserSettingsViewModel(
             ShowNewPassword = false;
             OldPasswordReadonly = true;
             ProfileFeedback = "Profil gespeichert.";
+            toastService.ShowSuccess("Profil erfolgreich gespeichert.", "Profil");
 
             if (result.Value is not null)
             {
@@ -432,6 +435,7 @@ public sealed class UserSettingsViewModel(
             ShowVerificationModal = false;
             VerificationCodeInput = string.Empty;
             ProfileFeedback = "E-Mail-Adresse wurde verifiziert.";
+            toastService.ShowSuccess("E-Mail-Adresse wurde erfolgreich verifiziert.", "E-Mail");
 
             if (result.Value is not null)
             {
