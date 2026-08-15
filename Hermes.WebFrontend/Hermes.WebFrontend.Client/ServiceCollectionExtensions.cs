@@ -31,6 +31,7 @@ public static class ServiceCollectionExtensions
         services.AddBlazoredLocalStorage();
         services.AddAuthorizationCore();
         services.AddSingleton<IToastNotificationService, ToastNotificationService>();
+        services.AddScoped<IWebPushNotificationService, WebPushNotificationService>();
         services.AddScoped<IThemeService, ThemeService>();
         services.AddScoped<AuthTokenStore>();
         services.AddScoped<AuthenticationStateProvider, HermesAuthenticationStateProvider>();
