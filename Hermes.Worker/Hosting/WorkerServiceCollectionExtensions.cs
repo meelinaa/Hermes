@@ -21,8 +21,12 @@ using Hermes.Notifications.Sending.Providers;
 using Hermes.Worker.Filters.Hangfire;
 using Hermes.Worker.Services.Scheduling;
 using Hermes.Worker.Logging;
-using Microsoft.EntityFrameworkCore;
 using Hermes.Infrastructure.Adapters.Outbound.RateLimiting;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Outbox;
+using Hermes.Infrastructure.Adapters.Outbound.Hangfire;
+using Hermes.Infrastructure.EventDispatching;
+using Hermes.Application.EventHandlers;
+using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Worker.Hosting;
 
@@ -90,6 +94,13 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<NotificationJobService>();
         builder.Services.AddScoped<NewsletterSchedulerWorkerService>();
         builder.Services.AddSingleton(TimeProvider.System);
+
+        builder.Services.AddMediatR(cfg => {
+            cfg.RegisterServicesFromAssembly(typeof(UserRegisteredEventHandler).Assembly);
+        });
+        builder.Services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        builder.Services.AddScoped<IOutboxMessageProcessor, OutboxMessageProcessor>();
+        builder.Services.AddSingleton<IVerificationMailJobService, VerificationMailJobWrapper>();
 
         builder.Services.AddHangfire(configuration => configuration
             .UseSimpleAssemblyNameTypeSerializer()

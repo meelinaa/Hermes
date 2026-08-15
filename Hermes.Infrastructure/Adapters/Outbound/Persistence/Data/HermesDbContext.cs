@@ -27,6 +27,11 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
     /// <inheritdoc />
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
+    /// <summary>
+    /// Transactional outbox messages for reliable, at-least-once domain event dispatching.
+    /// </summary>
+    public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -148,11 +153,26 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
         });
+
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.ToTable("outbox_messages");
+            entity.HasKey(outboxMessage => outboxMessage.Id);
+            entity.Property(outboxMessage => outboxMessage.Type).HasMaxLength(256).IsRequired();
+            entity.Property(outboxMessage => outboxMessage.Content).IsRequired();
+            entity.Property(outboxMessage => outboxMessage.CreatedAtUtc).IsRequired();
+            entity.Property(outboxMessage => outboxMessage.ProcessedAtUtc);
+            entity.Property(outboxMessage => outboxMessage.Error);
+            entity.Property(outboxMessage => outboxMessage.RetryCount).HasDefaultValue(0);
+
+            entity.HasIndex(outboxMessage => new { outboxMessage.ProcessedAtUtc, outboxMessage.CreatedAtUtc })
+                .HasDatabaseName("IX_outbox_messages_pending");
+        });
     }
 
     /// <summary>
-    /// Persists all pending entity changes to the database and dispatches domain events upon successful commit.
-    /// Saves the database changes first so that auto-increment identity keys are assigned to new entities before events are dispatched to handlers or background queues.
+    /// Persists all pending entity changes to the database and atomically records domain events in the outbox table.
+    /// Slices auto-increment identity keys into outbox messages and dispatches events if an immediate dispatcher is configured.
     /// </summary>
     /// <param name="acceptAllChangesOnSuccess">Indicates whether all changes should be accepted if the operation succeeds.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the save operation to complete.</param>
@@ -163,6 +183,12 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             .Where(e => e.Entity.DomainEvents.Any())
             .Select(e => new { Entry = e, e.Entity, Events = e.Entity.DomainEvents.ToList() })
             .ToList();
+
+        // Clear events on entities immediately to prevent duplicated serialization
+        foreach (var item in entriesWithEvents)
+        {
+            item.Entity.ClearDomainEvents();
+        }
 
         int result;
         try
@@ -184,14 +210,18 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             throw;
         }
 
-        if (dispatcher is not null)
+        // Convert and persist domain events as OutboxMessages atomically
+        if (entriesWithEvents.Count > 0)
         {
+            DateTime nowUtc = DateTime.UtcNow;
+            List<OutboxMessage> outboxList = [];
+            List<IDomainEvent> eventsToDispatch = [];
+
             foreach (var item in entriesWithEvents)
             {
-                item.Entity.ClearDomainEvents();
                 foreach (var domainEvent in item.Events)
                 {
-                    var eventToDispatch = domainEvent switch
+                    IDomainEvent eventToStore = domainEvent switch
                     {
                         UserRegisteredEvent ure when ure.UserId.Value <= 0 && item.Entity is User u
                             => ure with { UserId = u.Id },
@@ -200,8 +230,42 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
                         _ => domainEvent
                     };
 
-                    await dispatcher.DispatchAsync(eventToDispatch, cancellationToken).ConfigureAwait(false);
+                    string typeName = eventToStore.GetType().AssemblyQualifiedName ?? eventToStore.GetType().FullName ?? eventToStore.GetType().Name;
+                    string contentJson = JsonSerializer.Serialize(eventToStore, eventToStore.GetType());
+
+                    outboxList.Add(OutboxMessage.Create(typeName, contentJson, nowUtc));
+                    eventsToDispatch.Add(eventToStore);
                 }
+            }
+
+            if (outboxList.Count > 0)
+            {
+                await OutboxMessages.AddRangeAsync(outboxList, cancellationToken).ConfigureAwait(false);
+                await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (dispatcher is not null)
+            {
+                for (int i = 0; i < eventsToDispatch.Count; i++)
+                {
+                    try
+                    {
+                        await dispatcher.DispatchAsync(eventsToDispatch[i], cancellationToken).ConfigureAwait(false);
+                        if (i < outboxList.Count)
+                        {
+                            outboxList[i].MarkProcessed(DateTime.UtcNow);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (i < outboxList.Count)
+                        {
+                            outboxList[i].MarkFailed(ex.Message);
+                        }
+                    }
+                }
+
+                await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
             }
         }
 

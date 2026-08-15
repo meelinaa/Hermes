@@ -32,6 +32,7 @@ using Hermes.Application.Services.Users;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 using Hermes.Infrastructure.EventDispatching;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Outbox;
 using Hermes.Domain.Events;
 using Hermes.Application.EventHandlers;
 
@@ -88,6 +89,7 @@ public static class ApiServiceCollectionExtensions
             cfg.RegisterServicesFromAssembly(typeof(UserRegisteredEventHandler).Assembly);
         });
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        services.AddScoped<IOutboxMessageProcessor, OutboxMessageProcessor>();
 
         services.AddHangfire((sp, config) => config
             .UseSimpleAssemblyNameTypeSerializer()
