@@ -1,3 +1,4 @@
+@using Hermes.WebFrontend.Client.Components.UI
 @using Hermes.WebFrontend.Client.Services.Auth
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject NavigationManager Navigation
@@ -18,6 +19,7 @@
         <NavLink href="/news-settings" class="hermes-top-nav__item" Match="NavLinkMatch.Prefix">
             News
         </NavLink>
+        <ThemeToggle />
         <button type="button" class="hermes-top-nav__logout" @onclick="OnLogoutAsync" disabled="@logoutBusy">
             @(logoutBusy ? "…" : "Abmelden")
         </button>
@@ -27,6 +29,9 @@
 @code {
     private bool logoutBusy;
 
+    /// <summary>
+    /// Signs the user out from active session and reloads browser to the login screen.
+    /// </summary>
     private async Task OnLogoutAsync()
     {
         if (logoutBusy)

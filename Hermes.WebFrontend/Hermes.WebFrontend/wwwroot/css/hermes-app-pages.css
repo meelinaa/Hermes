@@ -771,3 +771,85 @@
     color: var(--poster-ink, #0d0d0d);
     line-height: 1.35;
 }
+
+/* ==========================================================================
+   Dark Theme Enhancements for Hermes App Pages & Controls
+   ========================================================================== */
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: #1a1a22;
+    color: var(--poster-ink, #f4f4f5);
+    border-color: var(--border-color, #3f3f46);
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background-color: #1e1e28;
+    color: var(--poster-ink, #f4f4f5);
+    border-color: var(--poster-accent, #ff453a);
+    box-shadow: 0 0 0 0.25rem rgba(255, 69, 58, 0.2);
+}
+
+[data-theme="dark"] .form-control::placeholder {
+    color: #71717a;
+}
+
+[data-theme="dark"] .home-panel,
+[data-theme="dark"] .user-profile-panel,
+[data-theme="dark"] .news-settings-card,
+[data-theme="dark"] .news-settings-form-panel {
+    background: var(--primary-white, #16161c);
+    border-color: var(--border-color, #3f3f46);
+}
+
+[data-theme="dark"] .home-panel-list li,
+[data-theme="dark"] .home-switch-row {
+    border-bottom-color: #272730;
+    color: var(--text-dark, #f4f4f5);
+}
+
+[data-theme="dark"] .news-settings-card-head {
+    border-bottom-color: #272730;
+}
+
+[data-theme="dark"] .news-settings-row {
+    border-bottom-color: #272730;
+}
+
+[data-theme="dark"] .news-settings-dl dt {
+    color: var(--text-medium, #a1a1aa);
+}
+
+[data-theme="dark"] .news-settings-muted,
+[data-theme="dark"] .home-panel-hint {
+    color: var(--text-medium, #a1a1aa);
+}
+
+[data-theme="dark"] .verify-email-dialog {
+    background: #18181f;
+    border-color: var(--border-color, #3f3f46);
+    color: var(--poster-ink, #f4f4f5);
+}
+
+[data-theme="dark"] .verify-email-dialog__info {
+    background: #1e293b;
+    border-color: #334155;
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .verify-email-dialog__delete-cancel,
+[data-theme="dark"] .verify-email-dialog__send-secondary {
+    background: #272730;
+    color: #e4e4e7;
+    border-color: #3f3f46;
+}
+
+[data-theme="dark"] .verify-email-dialog__delete-cancel:hover:not(:disabled),
+[data-theme="dark"] .verify-email-dialog__send-secondary:hover:not(:disabled) {
+    background: #3f3f46;
+}
+
+[data-theme="dark"] .hermes-toggle-switch__track {
+    background: #3f3f46;
+}

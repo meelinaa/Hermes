@@ -45,6 +45,28 @@
   --poster-accent: #e03616;
 }
 
+[data-theme="dark"] {
+  --primary-black: #ffffff;
+  --primary-white: #16161c;
+  --swiss-red: #ff3b30;
+  --swiss-black: #ededf0;
+  --accent-orange: #ff9500;
+  --grid-gray: #272730;
+  --text-dark: #f4f4f5;
+  --text-medium: #a1a1aa;
+  --border-color: #3f3f46;
+
+  /* Auth poster in dark */
+  --auth-poster-sun: #f59e0b;
+  --auth-poster-stone: #27272a;
+  --auth-poster-ink: #f4f4f5;
+
+  /* Swiss poster palette */
+  --poster-beige: #0f0f14;
+  --poster-ink: #f4f4f5;
+  --poster-accent: #ff453a;
+}
+
 *,
 *::before,
 *::after {
@@ -59,6 +81,7 @@ body {
   color: var(--poster-ink, var(--text-dark));
   background: var(--poster-beige, #f2efe8);
   line-height: 1.5;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .heading-xl {

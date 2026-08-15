@@ -3,6 +3,7 @@ using Hermes.WebFrontend.Client.Services.Api;
 using Hermes.WebFrontend.Client.Services.Auth;
 using Hermes.WebFrontend.Client.Services.NewsService;
 using Hermes.WebFrontend.Client.Services.Notifications;
+using Hermes.WebFrontend.Client.Services.Theme;
 using Hermes.WebFrontend.Client.Services.User;
 using Hermes.WebFrontend.Client.ViewModels;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -16,6 +17,7 @@ builder.Configuration.AddJsonFile($"appsettings.{builder.HostEnvironment.Environ
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddSingleton<IToastNotificationService, ToastNotificationService>();
+builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<AuthTokenStore>();
 builder.Services.AddScoped<AuthenticationStateProvider, HermesAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthSessionService>();

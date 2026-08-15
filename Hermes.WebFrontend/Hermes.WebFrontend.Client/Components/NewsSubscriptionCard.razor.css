@@ -81,7 +81,7 @@
     padding: 0.65rem 0.85rem;
     cursor: pointer;
     font-size: 0.9rem;
-    color: #444;
+    color: var(--poster-ink, #444);
     list-style: none;
     text-align: left;
     white-space: normal;
@@ -95,17 +95,18 @@
 .news-ms-body {
     max-height: 280px;
     overflow-y: auto;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--grid-gray, #eee);
     padding: 0.35rem 0;
+    background: var(--primary-white, #fff);
 }
 
 .news-ms-search {
     padding: 0.35rem 0.65rem 0.5rem;
     position: sticky;
     top: 0;
-    background: #fff;
+    background: var(--primary-white, #fff);
     z-index: 1;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--grid-gray, #f0f0f0);
 }
 
 .news-ms-row {
@@ -115,11 +116,12 @@
     padding: 0.35rem 0.85rem;
     margin: 0;
     font-size: 0.88rem;
+    color: var(--poster-ink, #0d0d0d);
     cursor: pointer;
 }
 
 .news-ms-row:hover {
-    background: #f8f8f7;
+    background: var(--poster-beige, #f8f8f7);
 }
 
 .news-ms-row input {
