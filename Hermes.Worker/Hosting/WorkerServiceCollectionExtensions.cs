@@ -23,6 +23,7 @@ using Hermes.Worker.Services.Scheduling;
 using Hermes.Worker.Logging;
 using Hermes.Infrastructure.Adapters.Outbound.RateLimiting;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Outbox;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Dapper;
 using Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 using Hermes.Infrastructure.EventDispatching;
 using Hermes.Application.EventHandlers;
@@ -47,6 +48,9 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+        builder.Services.AddSingleton<ISqlConnectionFactory>(new MySqlConnectionFactory(connectionString));
+        builder.Services.AddScoped<IUserReadQueries, UserDapperQueries>();
+        builder.Services.AddScoped<INewsletterReadQueries, NewsletterDapperQueries>();
         builder.Services.AddScoped<IUserRepository, UserRepository>();
         builder.Services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
         builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();

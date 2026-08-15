@@ -33,6 +33,7 @@ using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 using Hermes.Infrastructure.EventDispatching;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Outbox;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Dapper;
 using Hermes.Domain.Events;
 using Hermes.Application.EventHandlers;
 
@@ -61,11 +62,14 @@ public static class ApiServiceCollectionExtensions
 
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, serverVersion));
+        services.AddSingleton<ISqlConnectionFactory>(new MySqlConnectionFactory(connectionString));
+        services.AddScoped<IUserReadQueries, UserDapperQueries>();
+        services.AddScoped<INewsletterReadQueries, NewsletterDapperQueries>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
-        Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
+        Log.Information("Registered HermesDbContext and Dapper CQRS queries with MySQL connection string");
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUserAuthenticationService, UserAuthenticationService>();
