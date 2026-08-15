@@ -80,11 +80,25 @@ public static class WorkerServiceCollectionExtensions
             });
         });
         builder.Services.AddOptions<NewsDataIoOptions>().BindConfiguration("NewsDataIo").ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddOptions<HttpResilienceOptions>().BindConfiguration(HttpResilienceOptions.SECTION_NAME);
         builder.Services.AddOptions<HermesSiteUrlsOptions>().BindConfiguration(HermesSiteUrlsOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddOptions<NewsletterOptions>().BindConfiguration(NewsletterOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddOptions<SecurityOptions>().BindConfiguration(SecurityOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+
+        var resilienceOptions = builder.Configuration.GetSection(HttpResilienceOptions.SECTION_NAME).Get<HttpResilienceOptions>() ?? new HttpResilienceOptions();
+
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>()
-            .AddStandardResilienceHandler();
+            .AddStandardResilienceHandler(options =>
+            {
+                options.Retry.MaxRetryAttempts = resilienceOptions.MaxRetryAttempts;
+                options.Retry.Delay = TimeSpan.FromMilliseconds(resilienceOptions.BaseDelayMilliseconds);
+                options.Retry.BackoffType = DelayBackoffType.Exponential;
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(resilienceOptions.AttemptTimeoutSeconds);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(resilienceOptions.TotalRequestTimeoutSeconds);
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(resilienceOptions.CircuitBreakerSamplingDurationSeconds);
+                options.CircuitBreaker.FailureRatio = resilienceOptions.CircuitBreakerFailureRatio;
+                options.CircuitBreaker.MinimumThroughput = resilienceOptions.CircuitBreakerMinimumThroughput;
+            });
         builder.Services.AddSingleton<INewsletterHtmlService, NewsletterHtmlService>();
         builder.Services.AddSingleton<IVerificationHtmlService, VerificationHtmlService>();
         builder.Services.AddScoped<IArticleFetchingService, ArticleFetchingService>();

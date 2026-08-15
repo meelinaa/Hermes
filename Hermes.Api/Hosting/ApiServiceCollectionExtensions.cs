@@ -78,7 +78,22 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<INewsletterSubscriptionService, NewsletterSubscriptionService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
         services.AddOptions<NewsDataIoOptions>().BindConfiguration("NewsDataIo");
-        services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>();
+        services.AddOptions<HttpResilienceOptions>().BindConfiguration(HttpResilienceOptions.SECTION_NAME);
+
+        var resilienceOptions = configuration.GetSection(HttpResilienceOptions.SECTION_NAME).Get<HttpResilienceOptions>() ?? new HttpResilienceOptions();
+
+        services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>()
+            .AddStandardResilienceHandler(options =>
+            {
+                options.Retry.MaxRetryAttempts = resilienceOptions.MaxRetryAttempts;
+                options.Retry.Delay = TimeSpan.FromMilliseconds(resilienceOptions.BaseDelayMilliseconds);
+                options.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(resilienceOptions.AttemptTimeoutSeconds);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(resilienceOptions.TotalRequestTimeoutSeconds);
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(resilienceOptions.CircuitBreakerSamplingDurationSeconds);
+                options.CircuitBreaker.FailureRatio = resilienceOptions.CircuitBreakerFailureRatio;
+                options.CircuitBreaker.MinimumThroughput = resilienceOptions.CircuitBreakerMinimumThroughput;
+            });
         services.AddScoped<IArticleFetchingService, ArticleFetchingService>();
         services.AddOptions<HermesSiteUrlsOptions>().BindConfiguration(HermesSiteUrlsOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<PaginationOptions>().BindConfiguration(PaginationOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
