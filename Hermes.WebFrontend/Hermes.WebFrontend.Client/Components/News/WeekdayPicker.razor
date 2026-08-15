@@ -1,0 +1,43 @@
+@using Hermes.WebFrontend.Client.ApiModels.Enums
+
+<div class="news-sub-field">
+    <span class="news-sub-label">Sende-Tage</span>
+    <p class="news-sub-hint mb-2">Tage auswählen, an denen Benachrichtigungen gesendet werden sollen.</p>
+    <div class="news-dow-row" role="group" aria-label="Wochentage">
+        @foreach (Weekdays day in AllWeekdays)
+        {
+            bool isActive = DayActive.TryGetValue(day, out bool val) && val;
+            <button type="button" class="news-dow-pill @(isActive ? "active" : "")"
+                    @onclick="() => OnToggleDay(day)" aria-pressed="@isActive">
+                @if (isActive)
+                {
+                    <svg class="news-dow-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 7.28a.75.75 0 1 1 1.06-1.06l2.72 2.72 6.72-6.72a.75.75 0 0 1 1.06 0z"/></svg>
+                }
+                else
+                {
+                    <svg class="news-dow-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                }
+                <span>@ShortWeekdayLabel(day)</span>
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly Weekdays[] AllWeekdays = Enum.GetValues<Weekdays>().ToArray();
+
+    [Parameter, EditorRequired] public Dictionary<Weekdays, bool> DayActive { get; set; } = [];
+    [Parameter, EditorRequired] public Action<Weekdays> OnToggleDay { get; set; } = null!;
+
+    private static string ShortWeekdayLabel(Weekdays d) => d switch
+    {
+        Weekdays.Monday => "Mo",
+        Weekdays.Tuesday => "Di",
+        Weekdays.Wednesday => "Mi",
+        Weekdays.Thursday => "Do",
+        Weekdays.Friday => "Fr",
+        Weekdays.Saturday => "Sa",
+        Weekdays.Sunday => "So",
+        _ => d.ToString()
+    };
+}
