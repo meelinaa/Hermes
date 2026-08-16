@@ -240,15 +240,16 @@ dotnet user-secrets set "NewsDataIo:Key" "your_news_api_key_here" --project Herm
 The solution includes comprehensive unit and integration test suites covering the domain, application services, controllers, and Blazor UI components.
 
 ```bash
-# Run all unit tests across backend and frontend
+# Run all unit and integration tests across backend and frontend
 dotnet test Hermes.UnitTests/Hermes.UnitTests.csproj
 dotnet test Hermes.WebFrontend/Hermes.WebFrontend.Client.Tests/Hermes.WebFrontend.Client.Tests.csproj
+dotnet test Hermes.IntegrationTests/Hermes.IntegrationTests.csproj
 ```
 
-**Test Suite Coverage (315 Tests Total):**
-- **Backend Unit Tests (`Hermes.UnitTests`):** 228 automated tests covering domain validation, user authentication, JWT lifecycle, newsletter scheduler logic, and News API URL construction.
-- **Frontend Component Tests (`Hermes.WebFrontend.Client.Tests`):** 87 bUnit tests validating Blazor WASM UI components, theme switching, filters, and ViewModels.
-- **Integration Tests (`Hermes.IntegrationTests`):** End-to-end API and database integration tests using [Testcontainers](https://dotnet.testcontainers.org/) for automated ephemeral MySQL test instances.
+**Test Suite Coverage (828 Tests Total):**
+- **Backend Unit Tests (`Hermes.UnitTests`):** 624 automated tests covering domain validation, user authentication, JWT lifecycle, newsletter scheduler logic, and News API URL construction.
+- **Frontend Component Tests (`Hermes.WebFrontend.Client.Tests`):** 109 bUnit tests validating Blazor WASM UI components, theme switching, filters, and ViewModels.
+- **Integration Tests (`Hermes.IntegrationTests`):** 95 end-to-end API and database integration tests using [Testcontainers](https://dotnet.testcontainers.org/) for automated ephemeral MySQL and Redis test instances.
 
 ---
 
