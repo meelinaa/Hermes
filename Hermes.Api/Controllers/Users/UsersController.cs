@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Distributed;
 
 using Hermes.Api.Constants;
 using Hermes.Api.Http;
@@ -12,6 +13,7 @@ using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.ValueObjects;
 using FluentResults;
+
 namespace Hermes.Api.Controllers.Users;
 
 /// <summary>
@@ -24,7 +26,9 @@ namespace Hermes.Api.Controllers.Users;
 public class UsersController(
     IUserService userService,
     IUserAuthenticationService authService,
-    IUserVerificationService verificationService) : ControllerBase
+    IUserVerificationService verificationService,
+    IDistributedCache? distributedCache = null,
+    TimeProvider? timeProvider = null) : ControllerBase
 {
     private static readonly TimeSpan _verificationMailCooldown = TimeSpan.FromSeconds(60);
     private static readonly ConcurrentDictionary<int, DateTimeOffset> _lastVerificationMailByUserId = new();
@@ -156,14 +160,14 @@ public class UsersController(
         if (userResult.IsFailed || string.IsNullOrWhiteSpace(userResult.Value.Email))
             return this.NotFoundProblem();
 
-        if (TryGetVerificationMailCooldownResponse(id) is { } cooldownResult)
+        if (await TryGetVerificationMailCooldownResponseAsync(id, cancellationToken).ConfigureAwait(false) is { } cooldownResult)
             return cooldownResult;
 
         Result sendResult = await verificationService.SendVerificationMailAsync(userResult.Value.Email, cancellationToken).ConfigureAwait(false);
         if (sendResult.IsFailed)
             return this.ToProblemResult(sendResult.Errors.First());
 
-        RegisterVerificationMailSend(id);
+        await RegisterVerificationMailSendAsync(id, cancellationToken).ConfigureAwait(false);
         return Accepted(new SendVerificationMailResponseDto(id, userResult.Value.Email));
     }
 
@@ -195,26 +199,60 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Evaluates the time elapsed since the last OTP dispatch to prevent SMTP abuse.
+    /// Evaluates the time elapsed since the last OTP dispatch across distributed instances to prevent SMTP abuse.
     /// Returns a Retry-After header hint if the cooldown is still active.
     /// </summary>
-    private ActionResult? TryGetVerificationMailCooldownResponse(int userId)
+    private async Task<ActionResult?> TryGetVerificationMailCooldownResponseAsync(int userId, CancellationToken cancellationToken)
     {
-        if (!_lastVerificationMailByUserId.TryGetValue(userId, out DateTimeOffset lastSentAt))
-            return null;
+        DateTimeOffset now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+        string cacheKey = $"cooldown:email-verify:{userId}";
 
-        TimeSpan elapsed = DateTimeOffset.UtcNow - lastSentAt;
-        if (elapsed >= _verificationMailCooldown)
-            return null;
+        if (distributedCache is not null)
+        {
+            string? cachedTimestamp = await distributedCache.GetStringAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(cachedTimestamp) && long.TryParse(cachedTimestamp, out long unixSeconds))
+            {
+                DateTimeOffset lastSentAt = DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
+                TimeSpan elapsed = now - lastSentAt;
+                if (elapsed < _verificationMailCooldown)
+                {
+                    int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
+                    Response.Headers.RetryAfter = remainingSeconds.ToString();
+                    return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
+                }
+            }
+        }
+        else if (_lastVerificationMailByUserId.TryGetValue(userId, out DateTimeOffset lastSentAt))
+        {
+            TimeSpan elapsed = now - lastSentAt;
+            if (elapsed < _verificationMailCooldown)
+            {
+                int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
+                Response.Headers.RetryAfter = remainingSeconds.ToString();
+                return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
+            }
+        }
 
-        int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
-        Response.Headers.RetryAfter = remainingSeconds.ToString();
-        return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
+        return null;
     }
 
     /// <summary>
-    /// Updates the in-memory rate-limiting dictionary with the current UTC timestamp after a successful dispatch.
+    /// Updates the distributed cache and in-memory fallback with the current UTC timestamp after a successful dispatch.
     /// </summary>
-    private static void RegisterVerificationMailSend(int userId)
-        => _lastVerificationMailByUserId[userId] = DateTimeOffset.UtcNow;
+    private async Task RegisterVerificationMailSendAsync(int userId, CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+        string cacheKey = $"cooldown:email-verify:{userId}";
+
+        if (distributedCache is not null)
+        {
+            var options = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = _verificationMailCooldown
+            };
+            await distributedCache.SetStringAsync(cacheKey, now.ToUnixTimeSeconds().ToString(), options, cancellationToken).ConfigureAwait(false);
+        }
+
+        _lastVerificationMailByUserId[userId] = now;
+    }
 }

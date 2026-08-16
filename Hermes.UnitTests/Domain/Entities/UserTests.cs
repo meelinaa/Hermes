@@ -240,7 +240,7 @@ public sealed class UserTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainValidationException>(() => sut.EnableTwoFactor(invalidCode!, DateTime.UtcNow.AddMinutes(10)));
-        Assert.Contains("Code darf nicht leer sein", ex.Message);
+        Assert.Contains("Code cannot be empty", ex.Message);
     }
 
     /// <summary>

@@ -79,6 +79,7 @@ public static class ApiServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, Hermes.Infrastructure.Adapters.Outbound.Security.BCryptPasswordHasher>();
         Log.Information("Registered HermesDbContext, Dapper queries, and BCrypt password hasher");
 
+        services.AddDistributedMemoryCache();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUserAuthenticationService, UserAuthenticationService>();
         services.AddScoped<IUserVerificationService, UserVerificationService>();

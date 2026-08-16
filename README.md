@@ -246,8 +246,8 @@ dotnet test Hermes.WebFrontend/Hermes.WebFrontend.Client.Tests/Hermes.WebFronten
 dotnet test Hermes.IntegrationTests/Hermes.IntegrationTests.csproj
 ```
 
-**Test Suite Coverage (828 Tests Total):**
-- **Backend Unit Tests (`Hermes.UnitTests`):** 624 automated tests covering domain validation, user authentication, JWT lifecycle, newsletter scheduler logic, and News API URL construction.
+**Test Suite Coverage (833 Tests Total):**
+- **Backend Unit & Architecture Tests (`Hermes.UnitTests`):** 629 automated tests covering domain validation, user authentication, JWT lifecycle, newsletter scheduler logic, News API URL construction, and automated Hexagonal Architecture dependency boundaries (NetArchTest).
 - **Frontend Component Tests (`Hermes.WebFrontend.Client.Tests`):** 109 bUnit tests validating Blazor WASM UI components, theme switching, filters, and ViewModels.
 - **Integration Tests (`Hermes.IntegrationTests`):** 95 end-to-end API and database integration tests using [Testcontainers](https://dotnet.testcontainers.org/) for automated ephemeral MySQL and Redis test instances.
 
