@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Hermes.Api;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
+using Hermes.Application.Services.Newsletter;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -26,8 +27,10 @@ public sealed class InMemoryApiWebApplicationFactory : WebApplicationFactory<Api
 
     public Mock<IUserService> UserServiceMock { get; } = new();
     public Mock<IUserAuthenticationService> AuthServiceMock { get; } = new();
+    public Mock<IUserVerificationService> VerificationServiceMock { get; } = new();
     public Mock<INewsletterSubscriptionService> NewsletterServiceMock { get; } = new();
     public Mock<INewsletterSchedulerJobService> JobServiceMock { get; } = new();
+    public Mock<IArticleFetchingService> ArticleFetchingServiceMock { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -58,11 +61,17 @@ public sealed class InMemoryApiWebApplicationFactory : WebApplicationFactory<Api
             services.RemoveAll<IUserAuthenticationService>();
             services.AddScoped(_ => AuthServiceMock.Object);
 
+            services.RemoveAll<IUserVerificationService>();
+            services.AddScoped(_ => VerificationServiceMock.Object);
+
             services.RemoveAll<INewsletterSubscriptionService>();
             services.AddScoped(_ => NewsletterServiceMock.Object);
 
             services.RemoveAll<INewsletterSchedulerJobService>();
             services.AddSingleton(_ => JobServiceMock.Object);
+
+            services.RemoveAll<IArticleFetchingService>();
+            services.AddScoped(_ => ArticleFetchingServiceMock.Object);
 
             // Add Test Authentication Handler
             services.AddAuthentication(options =>
