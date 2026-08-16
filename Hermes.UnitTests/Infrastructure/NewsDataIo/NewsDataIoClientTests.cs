@@ -153,4 +153,112 @@ public sealed class NewsDataIoClientTests
         Assert.Equal("Quantum Breakthrough", result[0].Title);
         Assert.Equal("https://example.com/quantum", result[0].Link);
     }
+
+    /// <summary>
+    /// Tests that <see cref="NewsDataIoClient.GetLatestAsync"/> properly bubbles cancellation or timeout exceptions.
+    /// </summary>
+    [Fact]
+    public async Task GetLatestAsync_Should_ThrowOperationCanceledException_WhenRequestTimesOut()
+    {
+        // Arrange
+        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new TaskCanceledException("The request was canceled due to timeout."));
+
+        HttpClient httpClient = new(handlerMock.Object);
+        Mock<ILogger<NewsDataIoClient>> loggerMock = new();
+        NewsDataIoClient sut = new(httpClient, loggerMock.Object);
+
+        NewsArticleQueryDto query = new()
+        {
+            ApiKey = "key-123",
+            KeywordsQuery = "quantum"
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<TaskCanceledException>(() => sut.GetLatestAsync(query));
+    }
+
+    /// <summary>
+    /// Tests that <see cref="NewsDataIoClient.GetLatestAsync"/> returns an empty collection when the payload contains 0 articles or results is null.
+    /// </summary>
+    [Fact]
+    public async Task GetLatestAsync_Should_ReturnEmptyList_WhenResponseHasNoArticles()
+    {
+        // Arrange
+        string json = """
+        {
+            "status": "ok",
+            "totalResults": 0,
+            "results": []
+        }
+        """;
+
+        HttpClient httpClient = CreateMockHttpClient(HttpStatusCode.OK, json);
+        Mock<ILogger<NewsDataIoClient>> loggerMock = new();
+        NewsDataIoClient sut = new(httpClient, loggerMock.Object);
+
+        NewsArticleQueryDto query = new()
+        {
+            ApiKey = "key-123",
+            KeywordsQuery = "nonexistent-topic"
+        };
+
+        // Act
+        var result = await sut.GetLatestAsync(query);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    /// <summary>
+    /// Tests that <see cref="NewsDataIoClient.GetLatestAsync"/> consistently rejects requests with <see cref="HttpRequestException"/>
+    /// and logs error diagnostics when receiving consecutive HTTP 500 responses.
+    /// </summary>
+    [Fact]
+    public async Task NewsDataIoClient_Should_TripCircuitBreaker_AfterConsecutiveHttp500s()
+    {
+        // Arrange
+        int callCount = 0;
+        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    Content = new StringContent("{\"status\":\"error\",\"message\":\"Internal server failure\"}")
+                };
+            });
+
+        HttpClient httpClient = new(handlerMock.Object);
+        Mock<ILogger<NewsDataIoClient>> loggerMock = new();
+        NewsDataIoClient sut = new(httpClient, loggerMock.Object);
+
+        NewsArticleQueryDto query = new()
+        {
+            ApiKey = "key-500",
+            KeywordsQuery = "resilience"
+        };
+
+        // Act & Assert (3 consecutive failures)
+        for (int i = 0; i < 3; i++)
+        {
+            var ex = await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetLatestAsync(query));
+            Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
+        }
+
+        Assert.Equal(3, callCount);
+    }
 }

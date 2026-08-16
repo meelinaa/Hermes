@@ -93,4 +93,33 @@ public sealed class NewsletterSchedulingProviderTests
         // Assert
         Assert.Equal(localWall, converted);
     }
+
+    /// <summary>
+    /// Tests that <see cref="NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc"/> correctly handles
+    /// Central European Time (CET, UTC+1) in winter and Central European Summer Time (CEST, UTC+2) in summer.
+    /// </summary>
+    [Fact]
+    public void ConvertWallMinuteStartToUtc_Should_AccountFor_DaylightSavingTimeTransitions_InBerlin()
+    {
+        // Arrange
+        TimeZoneInfo berlinZone;
+        try
+        {
+            berlinZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            berlinZone = TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
+        }
+
+        // Summer (CEST = UTC+2)
+        DateTime summerWall = new(2026, 7, 15, 10, 0, 0, DateTimeKind.Unspecified);
+        DateTime summerUtc = NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc(summerWall, berlinZone);
+        Assert.Equal(new DateTime(2026, 7, 15, 8, 0, 0, DateTimeKind.Utc), summerUtc);
+
+        // Winter (CET = UTC+1)
+        DateTime winterWall = new(2026, 1, 15, 10, 0, 0, DateTimeKind.Unspecified);
+        DateTime winterUtc = NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc(winterWall, berlinZone);
+        Assert.Equal(new DateTime(2026, 1, 15, 9, 0, 0, DateTimeKind.Utc), winterUtc);
+    }
 }

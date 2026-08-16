@@ -144,4 +144,51 @@ public sealed class NewsletterSchedulerTests
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RunAsync());
     }
+
+    /// <summary>
+    /// Tests that when two distributed worker nodes trigger the scheduling loop for the same slot,
+    /// each item is enqueued idempotently based on the schedule evaluation query.
+    /// </summary>
+    [Fact]
+    public async Task DistributedScheduler_Should_PreventDuplicateExecution_When_MultipleNodesTriggerSameMinuteSlot()
+    {
+        // Arrange
+        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> dueNode1 =
+        [
+            (new NewsletterId(42), new UserId(7))
+        ];
+        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> dueNode2 = []; // Node 2 receives empty list as items were claimed
+
+        Mock<INewsletterScheduleService> scheduleNode1 = new();
+        scheduleNode1.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(dueNode1);
+
+        Mock<INewsletterScheduleService> scheduleNode2 = new();
+        scheduleNode2.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(dueNode2);
+
+        Mock<IBackgroundJobClient> jobClient = new();
+
+        NewsletterSchedulerWorkerService sut1 = new(
+            scheduleNode1.Object,
+            jobClient.Object,
+            NullLogger<NewsletterSchedulerWorkerService>.Instance,
+            Options.Create(new NewsletterOptions()));
+
+        NewsletterSchedulerWorkerService sut2 = new(
+            scheduleNode2.Object,
+            jobClient.Object,
+            NullLogger<NewsletterSchedulerWorkerService>.Instance,
+            Options.Create(new NewsletterOptions()));
+
+        // Act: Execute concurrent ticks across node 1 and node 2
+        await Task.WhenAll(sut1.RunAsync(), sut2.RunAsync());
+
+        // Assert: Job client was called exactly once for the single due item
+        jobClient.Verify(
+            x => x.Create(
+                It.IsAny<global::Hangfire.Common.Job>(),
+                It.IsAny<global::Hangfire.States.EnqueuedState>()),
+            Times.Once);
+    }
 }

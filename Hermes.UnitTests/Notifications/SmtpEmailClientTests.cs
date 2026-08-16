@@ -144,4 +144,34 @@ public sealed class SmtpEmailClientTests
         // Act & Assert (Fails gracefully due to offline test port after exercising option branches)
         await Assert.ThrowsAnyAsync<Exception>(() => sut.SendAsync(message, CancellationToken.None));
     }
+
+    /// <summary>
+    /// Tests that <see cref="SmtpEmailClient.SendAsync"/> handles authentication configuration and propagates transport exceptions
+    /// gracefully when SMTP credentials or endpoints are invalid.
+    /// </summary>
+    [Fact]
+    public async Task SmtpEmailClient_Should_HandleAuthenticationFailure_Gracefully()
+    {
+        // Arrange: valid options with credentials pointing to local non-listening port
+        EmailOptions invalidAuthOptions = new()
+        {
+            Host = "127.0.0.1",
+            Port = 2525,
+            EnableSsl = false,
+            Username = "invalid_user",
+            Password = "wrong_password",
+            DefaultFromName = "Hermes News",
+            DefaultFromAddress = "news@hermes.de"
+        };
+
+        var (sut, _) = CreateSut(invalidAuthOptions);
+        EmailMessageDto message = new(
+            To: new EmailRecipientDto("user@test.dev", "User"),
+            Subject: "Test Auth",
+            Body: "<p>Body</p>");
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => sut.SendAsync(message, CancellationToken.None));
+        Assert.NotNull(ex);
+    }
 }

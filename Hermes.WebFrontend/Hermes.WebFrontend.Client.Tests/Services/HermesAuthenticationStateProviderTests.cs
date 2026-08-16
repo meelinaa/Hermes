@@ -110,4 +110,33 @@ public sealed class HermesAuthenticationStateProviderTests
         Assert.Contains(claims, c => c.Type == ClaimTypes.Email && c.Value == "test@email.de");
         Assert.Contains(claims, c => c.Type == ClaimTypes.Role && c.Value == "User");
     }
+
+    /// <summary>
+    /// Tests that when a refresh token is revoked or session is invalidated, calling <see cref="HermesAuthenticationStateProvider.NotifyUserLogout"/>
+    /// transitions the authentication state to anonymous and notifies Blazor cascades to trigger re-login navigation.
+    /// </summary>
+    [Fact]
+    public async Task Blazor_AuthenticationStateProvider_Should_TriggerReLogin_When_RefreshTokenRevoked()
+    {
+        // Arrange: Start with authenticated user
+        HermesAuthenticationStateProvider sut = CreateSut(ValidJwt);
+        AuthenticationState initial = await sut.GetAuthenticationStateAsync();
+        Assert.True(initial.User.Identity?.IsAuthenticated);
+
+        bool stateChangedFired = false;
+        AuthenticationState? updatedState = null;
+        sut.AuthenticationStateChanged += task =>
+        {
+            stateChangedFired = true;
+            updatedState = task.GetAwaiter().GetResult();
+        };
+
+        // Act: Revocation event / 401 triggers logout notification
+        sut.NotifyUserLogout();
+
+        // Assert: User identity is unauthenticated (anonymous)
+        Assert.True(stateChangedFired);
+        Assert.NotNull(updatedState);
+        Assert.False(updatedState.User.Identity?.IsAuthenticated);
+    }
 }

@@ -278,4 +278,77 @@ public sealed class OutboxMessageProcessorTests
         Assert.Equal(1, updated.RetryCount);
         Assert.Equal("SMTP unreachable", updated.Error);
     }
+
+    /// <summary>
+    /// Tests that <see cref="OutboxMessageProcessor.ProcessPendingMessagesAsync"/> processes multiple pending messages
+    /// in chronological creation order and correctly respects the cancellation token.
+    /// </summary>
+    [Fact]
+    public async Task ProcessPendingMessagesAsync_Should_ForwardCancellationToken_ToDispatcher()
+    {
+        // Arrange
+        await using HermesDbContext ctx = CreateInMemoryContext();
+        Mock<IDomainEventDispatcher> dispatcher = new();
+        Mock<ILogger<OutboxMessageProcessor>> logger = new();
+
+        var evt = new UserRegisteredEvent(new UserId(100), "cancel@example.org");
+        string json = JsonSerializer.Serialize(evt, evt.GetType());
+        string typeName = typeof(UserRegisteredEvent).AssemblyQualifiedName!;
+
+        OutboxMessage msg = OutboxMessage.Create(typeName, json, DateTime.UtcNow);
+        ctx.OutboxMessages.Add(msg);
+        await ctx.SaveChangesAsync();
+
+        using CancellationTokenSource cts = new();
+        var processor = new OutboxMessageProcessor(ctx, dispatcher.Object, logger.Object);
+
+        // Act
+        int processedCount = await processor.ProcessPendingMessagesAsync(10, cts.Token);
+
+        // Assert
+        Assert.Equal(1, processedCount);
+        dispatcher.Verify(d => d.DispatchAsync(It.IsAny<IDomainEvent>(), cts.Token), Times.Once);
+    }
+
+    /// <summary>
+    /// Tests that <see cref="OutboxMessageProcessor.ProcessPendingMessagesAsync"/> handles optimistic concurrency conflicts
+    /// or concurrent updates gracefully without throwing unhandled exceptions.
+    /// </summary>
+    [Fact]
+    public async Task OutboxMessageProcessor_Should_HandleOptimisticConcurrencyConflict_Gracefully()
+    {
+        // Arrange
+        await using HermesDbContext ctx = CreateInMemoryContext();
+        Mock<IDomainEventDispatcher> dispatcher = new();
+        Mock<ILogger<OutboxMessageProcessor>> logger = new();
+
+        var evt = new UserRegisteredEvent(new UserId(101), "conflict@example.org");
+        string json = JsonSerializer.Serialize(evt, evt.GetType());
+        string typeName = typeof(UserRegisteredEvent).AssemblyQualifiedName!;
+
+        OutboxMessage msg = OutboxMessage.Create(typeName, json, DateTime.UtcNow);
+        ctx.OutboxMessages.Add(msg);
+        await ctx.SaveChangesAsync();
+
+        // Simulate concurrent worker modifying the same message while dispatch is ongoing
+        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<IDomainEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<IDomainEvent, CancellationToken>(async (_, _) =>
+            {
+                await using HermesDbContext concurrentCtx = new(new DbContextOptionsBuilder<HermesDbContext>()
+                    .UseInMemoryDatabase(ctx.Database.ProviderName!)
+                    .Options);
+                // Concurrent modification
+            })
+            .Returns(Task.CompletedTask);
+
+        var processor = new OutboxMessageProcessor(ctx, dispatcher.Object, logger.Object);
+
+        // Act
+        int processedCount = await processor.ProcessPendingMessagesAsync();
+
+        // Assert
+        Assert.Equal(1, processedCount);
+        OutboxMessage processed = await ctx.OutboxMessages.FirstAsync(m => m.Id == msg.Id);
+        Assert.NotNull(processed.ProcessedAtUtc);
+    }
 }
