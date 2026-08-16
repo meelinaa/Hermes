@@ -1,17 +1,18 @@
 using Hermes.Domain.Events;
-using MediatR;
 
 namespace Hermes.Application.Ports.Inbound;
 
 /// <summary>
-/// Handler for a specific domain event.
+/// Inbound port for handling a specific domain event in the application layer.
 /// </summary>
 /// <typeparam name="TEvent">The type of the domain event.</typeparam>
-public interface IDomainEventHandler<in TEvent> : INotificationHandler<TEvent> where TEvent : IDomainEvent
+public interface IDomainEventHandler<in TEvent> where TEvent : IDomainEvent
 {
-    // HandleAsync maps to MediatR's Handle
+    /// <summary>
+    /// Handles the specified domain event asynchronously.
+    /// </summary>
+    /// <param name="domainEvent">The domain event instance to process.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A Task representing the asynchronous operation.</returns>
     Task HandleAsync(TEvent domainEvent, CancellationToken cancellationToken = default);
-
-    Task INotificationHandler<TEvent>.Handle(TEvent notification, CancellationToken cancellationToken) =>
-        HandleAsync(notification, cancellationToken);
 }

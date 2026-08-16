@@ -112,9 +112,8 @@ public static class ApiServiceCollectionExtensions
         services.AddSingleton<IVerificationMailJobService, VerificationMailJobWrapper>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");
 
-        services.AddMediatR(cfg => {
-            cfg.RegisterServicesFromAssembly(typeof(UserRegisteredEventHandler).Assembly);
-        });
+        services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();
+        services.AddScoped<IDomainEventHandler<UserEmailChangedEvent>, UserEmailChangedEventHandler>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         services.AddScoped<IOutboxMessageProcessor, OutboxMessageProcessor>();
 

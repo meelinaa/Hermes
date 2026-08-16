@@ -1,10 +1,9 @@
-using MediatR;
-
 namespace Hermes.Domain.Events;
 
 /// <summary>
-/// Marker interface for all domain events.
+/// Pure POCO marker interface for all domain events emitted by domain entities and aggregates.
+/// Completely decoupled from third-party messaging libraries and frameworks.
 /// </summary>
-public interface IDomainEvent : INotification
+public interface IDomainEvent
 {
 }

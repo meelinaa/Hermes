@@ -27,6 +27,7 @@ using Hermes.Infrastructure.Adapters.Outbound.Persistence.Dapper;
 using Hermes.Infrastructure.Adapters.Outbound.Hangfire;
 using Hermes.Infrastructure.EventDispatching;
 using Hermes.Application.EventHandlers;
+using Hermes.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hermes.Worker.Hosting;
@@ -121,9 +122,8 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<NewsletterSchedulerWorkerService>();
         builder.Services.AddSingleton(TimeProvider.System);
 
-        builder.Services.AddMediatR(cfg => {
-            cfg.RegisterServicesFromAssembly(typeof(UserRegisteredEventHandler).Assembly);
-        });
+        builder.Services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();
+        builder.Services.AddScoped<IDomainEventHandler<UserEmailChangedEvent>, UserEmailChangedEventHandler>();
         builder.Services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         builder.Services.AddScoped<IOutboxMessageProcessor, OutboxMessageProcessor>();
         builder.Services.AddSingleton<IVerificationMailJobService, VerificationMailJobWrapper>();
