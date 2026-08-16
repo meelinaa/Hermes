@@ -24,4 +24,11 @@ public sealed class JwtOptions
 
     [Range(1, 365)]
     public int RefreshTokenDays { get; set; } = 14;
+
+    /// <summary>
+    /// Absolute maximum session lifetime in days from initial credential authentication.
+    /// Prevents indefinite sliding token renewal.
+    /// </summary>
+    [Range(1, 365)]
+    public int MaxSessionDays { get; set; } = 30;
 }

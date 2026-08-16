@@ -67,17 +67,13 @@ public static class ServiceCollectionExtensions
         {
             AuthTokenStore store = sp.GetRequiredService<AuthTokenStore>();
             AuthSessionService session = sp.GetRequiredService<AuthSessionService>();
-            AuthMessageMiddleware pipeline = new(store, session) { InnerHandler = new HttpClientHandler() };
-            HttpClient client = new(pipeline);
             string? baseUrl = configuration["ApiBaseUrl"]?.Trim();
-            if (!string.IsNullOrWhiteSpace(baseUrl) && Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? validUri))
-            {
-                client.BaseAddress = validUri;
-            }
-            else
-            {
-                client.BaseAddress = new Uri("http://localhost:5165");
-            }
+            Uri baseAddress = !string.IsNullOrWhiteSpace(baseUrl) && Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? validUri)
+                ? validUri
+                : new Uri("http://localhost:5165");
+
+            AuthMessageMiddleware pipeline = new(store, session, baseAddress) { InnerHandler = new HttpClientHandler() };
+            HttpClient client = new(pipeline) { BaseAddress = baseAddress };
             return client;
         });
 

@@ -465,4 +465,88 @@ public sealed class AuthTokenServiceTests
         Assert.True(result.IsSuccess);
         db.Verify(dataStore => dataStore.RevokeAllRefreshTokensForUserAsync(new UserId(44), It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    /// <summary>
+    /// Tests that <see cref="AuthTokenService.RotateAsync"/> rejects rotation when the token's absolute session lifetime has expired.
+    /// </summary>
+    [Fact]
+    public async Task RotateAsync_Should_Fail_WhenAbsoluteSessionLifetimeExpired()
+    {
+        // Arrange
+        DateTime nowUtc = new(2026, 8, 16, 12, 0, 0, DateTimeKind.Utc);
+        FakeTimeProvider timeProvider = new(new DateTimeOffset(nowUtc));
+
+        string plain = "active-token";
+        string hash = RefreshTokenHashUtility.Hash(plain);
+        User user = new() { Id = new UserId(1), Email = Email.Parse("user@test.com"), Name = "User" };
+
+        // Sliding ExpiresAt is in the future, but AbsoluteExpiresAt is in the past
+        RefreshToken old = RefreshToken.Create(
+            user.Id,
+            hash,
+            expiresAt: nowUtc.AddDays(5),
+            createdAt: nowUtc.AddDays(-35),
+            absoluteExpiresAt: nowUtc.AddDays(-1));
+        typeof(RefreshToken).GetProperty(nameof(RefreshToken.User))!.SetValue(old, user);
+
+        Mock<IRefreshTokenRepository> db = new();
+        db.Setup(repo => repo.GetRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(old);
+
+        AuthTokenService sut = CreateSut(db, new Mock<IJwtTokenProvider>(), timeProvider: timeProvider);
+
+        // Act
+        Result<AuthTokensResultDto> result = await sut.RotateAsync(plain);
+
+        // Assert
+        Assert.True(result.IsFailed);
+        Assert.IsType<InvalidCredentialsError>(result.Errors[0]);
+    }
+
+    /// <summary>
+    /// Tests that <see cref="AuthTokenService.RotateAsync"/> caps the new token's ExpiresAt timestamp so it never exceeds AbsoluteExpiresAt.
+    /// </summary>
+    [Fact]
+    public async Task RotateAsync_Should_CapNewExpiresAt_ToAbsoluteExpiresAt()
+    {
+        // Arrange
+        DateTime nowUtc = new(2026, 8, 16, 12, 0, 0, DateTimeKind.Utc);
+        FakeTimeProvider timeProvider = new(new DateTimeOffset(nowUtc));
+
+        string plain = "active-token";
+        string hash = RefreshTokenHashUtility.Hash(plain);
+        User user = new() { Id = new UserId(1), Email = Email.Parse("user@test.com"), Name = "User" };
+
+        DateTime absoluteCap = nowUtc.AddDays(3); // Less than the 14-day sliding window
+        RefreshToken old = RefreshToken.Create(
+            user.Id,
+            hash,
+            expiresAt: nowUtc.AddDays(14),
+            createdAt: nowUtc.AddDays(-27),
+            absoluteExpiresAt: absoluteCap);
+        typeof(RefreshToken).GetProperty(nameof(RefreshToken.User))!.SetValue(old, user);
+
+        RefreshToken? capturedNew = null;
+        Mock<IRefreshTokenRepository> db = new();
+        db.Setup(repo => repo.GetRefreshTokenByHashAsync(hash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(old);
+        db.Setup(repo => repo.CompleteRefreshRotationAsync(It.IsAny<RefreshToken>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
+            .Callback<RefreshToken, RefreshToken, CancellationToken>((_, n, _) => capturedNew = n)
+            .ReturnsAsync(true);
+
+        Mock<IJwtTokenProvider> jwt = new();
+        jwt.Setup(j => j.Issue(user.Id, user.Email.Value, user.Name))
+            .Returns(new JwtAccessTokenResultDto("new-jwt", nowUtc.AddMinutes(15)));
+
+        AuthTokenService sut = CreateSut(db, jwt, timeProvider: timeProvider);
+
+        // Act
+        Result<AuthTokensResultDto> result = await sut.RotateAsync(plain);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(capturedNew);
+        Assert.Equal(absoluteCap, capturedNew!.ExpiresAt);
+        Assert.Equal(absoluteCap, capturedNew.AbsoluteExpiresAt);
+    }
 }

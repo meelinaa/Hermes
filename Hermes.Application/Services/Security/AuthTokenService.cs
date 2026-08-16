@@ -27,20 +27,23 @@ public sealed class AuthTokenService(
     private readonly JwtOptions _o = options.Value;
 
     /// <summary>
-    /// Issues a new JWT access token and a persisted refresh token for the given user.
+    /// Issues a new JWT access token and a persisted refresh token for the given user with an absolute session lifetime bound.
     /// </summary>
     public async ValueTask<Result<AuthTokensResultDto>> IssueTokensAsync(UserId userId, string? email, string? name, CancellationToken cancellationToken = default)
     {
         if (userId.Value <= 0)
             return Result.Fail("User ID must be positive.");
 
+        DateTime nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         JwtAccessTokenResultDto access = jwt.Issue(userId, email, name);
         string? plain = CreateRefreshPlain();
+        DateTime absoluteExpiresAt = nowUtc.AddDays(_o.MaxSessionDays);
         RefreshToken row = RefreshToken.Create(
             userId,
             RefreshTokenHashUtility.Hash(plain),
-            timeProvider.GetUtcNow().UtcDateTime.AddDays(_o.RefreshTokenDays),
-            timeProvider.GetUtcNow().UtcDateTime);
+            nowUtc.AddDays(_o.RefreshTokenDays),
+            nowUtc,
+            absoluteExpiresAt);
         await db.AddRefreshTokenAsync(row, cancellationToken).ConfigureAwait(false);
         return Result.Ok(new AuthTokensResultDto(
             access.Token,
@@ -52,6 +55,7 @@ public sealed class AuthTokenService(
     /// <summary>
     /// Rotates an existing active refresh token, issuing a new access/refresh pair and marking the previous token as rotated.
     /// If an already revoked token is presented, detects a potential replay attack, invalidates the entire successor token family, and fails.
+    /// Enforces the original session's absolute expiration ceiling across sliding rotations.
     /// </summary>
     /// <param name="refreshTokenPlain">The plain-text refresh token to rotate.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
@@ -68,7 +72,7 @@ public sealed class AuthTokenService(
 
         DateTime nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
-        if (old.ExpiresAt <= nowUtc)
+        if (old.ExpiresAt <= nowUtc || (old.AbsoluteExpiresAt != null && old.AbsoluteExpiresAt.Value <= nowUtc))
             return Result.Fail(new InvalidCredentialsError());
 
         if (old.RevokedAt != null)
@@ -80,11 +84,18 @@ public sealed class AuthTokenService(
         }
 
         string? newPlain = CreateRefreshPlain();
+        DateTime? absoluteExpiresAt = old.AbsoluteExpiresAt ?? nowUtc.AddDays(_o.MaxSessionDays);
+        DateTime slidingExpiresAt = nowUtc.AddDays(_o.RefreshTokenDays);
+        DateTime effectiveExpiresAt = absoluteExpiresAt.HasValue && slidingExpiresAt > absoluteExpiresAt.Value
+            ? absoluteExpiresAt.Value
+            : slidingExpiresAt;
+
         RefreshToken newRow = RefreshToken.Create(
             old.UserId,
             RefreshTokenHashUtility.Hash(newPlain),
-            nowUtc.AddDays(_o.RefreshTokenDays),
-            nowUtc);
+            effectiveExpiresAt,
+            nowUtc,
+            absoluteExpiresAt);
         bool rotated = await db.CompleteRefreshRotationAsync(old, newRow, cancellationToken).ConfigureAwait(false);
         if (!rotated)
             return Result.Fail(new TokenCompromisedError("Token rotation conflict."));
