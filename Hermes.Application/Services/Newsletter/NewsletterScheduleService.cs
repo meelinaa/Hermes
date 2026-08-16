@@ -8,8 +8,9 @@ namespace Hermes.Application.Services.Newsletter;
 
 /// <summary>
 /// Evaluates newsletter dispatch schedules against system time slots to identify pending digest tasks for background worker polling.
+/// Follows ISP by depending strictly on <see cref="INewsletterSchedulerStore"/>.
 /// </summary>
-public sealed class NewsletterScheduleService(INewsletterSubscriptionRepository newsletterSubscriptionRepository) : INewsletterScheduleService
+public sealed class NewsletterScheduleService(INewsletterSchedulerStore schedulerStore) : INewsletterScheduleService
 {
     /// <summary>
     /// Translates local wall-clock time into Hermes weekday enums and queries repository stores for due newsletter subscriptions.
@@ -27,7 +28,7 @@ public sealed class NewsletterScheduleService(INewsletterSubscriptionRepository 
     {
         TimeOnly nowTime = TimeOnly.FromDateTime(nowLocal);
         Weekdays todayWeekday = WeekdayMapper.ToHermesWeekday(nowLocal);
-        return await newsletterSubscriptionRepository
+        return await schedulerStore
             .GetDueNewsScheduleForSlotAsync(
                 todayWeekday,
                 nowTime.Hour,

@@ -17,7 +17,7 @@ namespace Hermes.Application.Services.Newsletter;
 /// </summary>
 public sealed class NewsletterDigestService(
     IUserStore users,
-    INewsletterSubscriptionRepository newsletterSubscriptions,
+    INewsletterSubscriptionStore newsletterSubscriptions,
     IArticleFetchingService articleFetchingService,
     IEmailProvider emailSender,
     INewsletterHtmlService newsletterRenderer,

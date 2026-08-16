@@ -56,7 +56,10 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<IUserStore>(sp => sp.GetRequiredService<UserRepository>());
         builder.Services.AddScoped<IUserAuthStore>(sp => sp.GetRequiredService<UserRepository>());
         builder.Services.AddScoped<IUserVerificationStore>(sp => sp.GetRequiredService<UserRepository>());
-        builder.Services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
+        builder.Services.AddScoped<NewsletterSubscriptionRepository>();
+        builder.Services.AddScoped<INewsletterSubscriptionRepository>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
+        builder.Services.AddScoped<INewsletterSubscriptionStore>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
+        builder.Services.AddScoped<INewsletterSchedulerStore>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
         builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
         builder.Services.AddSingleton<IPasswordHasher, Hermes.Infrastructure.Adapters.Outbound.Security.BCryptPasswordHasher>();

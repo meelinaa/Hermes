@@ -70,7 +70,10 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<IUserStore>(sp => sp.GetRequiredService<UserRepository>());
         services.AddScoped<IUserAuthStore>(sp => sp.GetRequiredService<UserRepository>());
         services.AddScoped<IUserVerificationStore>(sp => sp.GetRequiredService<UserRepository>());
-        services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
+        services.AddScoped<NewsletterSubscriptionRepository>();
+        services.AddScoped<INewsletterSubscriptionRepository>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
+        services.AddScoped<INewsletterSubscriptionStore>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
+        services.AddScoped<INewsletterSchedulerStore>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
         services.AddSingleton<IPasswordHasher, Hermes.Infrastructure.Adapters.Outbound.Security.BCryptPasswordHasher>();
