@@ -6,24 +6,34 @@ using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Xunit;
 
 namespace Hermes.UnitTests.Services;
 
+/// <summary>
+/// Contains unit tests for <see cref="UserVerificationService"/>,
+/// testing two-factor challenge dispatching, numeric OTP validation boundaries,
+/// constant-time verification comparisons, and hash format fallbacks.
+/// </summary>
 public sealed class UserVerificationServiceTests
 {
     private static UserVerificationService CreateService(
         IUserRepository db,
         IVerificationMailJobService? trigger = null,
-        bool hashEmailVerificationCodes = true) =>
+        bool hashEmailVerificationCodes = true,
+        TimeProvider? timeProvider = null) =>
         new(
             db,
             trigger ?? Mock.Of<IVerificationMailJobService>(),
             Options.Create(new SecurityOptions { HashEmailVerificationCodes = hashEmailVerificationCodes }),
-            TimeProvider.System);
+            timeProvider ?? TimeProvider.System);
 
-    // [R]IGHT: Enqueues background job to send verification email for existing user
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.SendVerificationMailAsync"/> enqueues a background job
+    /// to send a verification email when the user exists for the given normalized address.
+    /// </summary>
     [Fact]
     public async Task SendVerificationMailAsync_Should_EnqueueJob_WhenUserExists()
     {
@@ -44,7 +54,10 @@ public sealed class UserVerificationServiceTests
         trigger.Verify(jobTrigger => jobTrigger.EnqueueSendVerificationMail(new UserId(42)), Times.Once);
     }
 
-    // [E]RROR: Throws UserNotFoundException when email address is not found
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.SendVerificationMailAsync"/> throws a <see cref="UserNotFoundException"/>
+    /// when the requested email address is not registered in the system.
+    /// </summary>
     [Fact]
     public async Task SendVerificationMailAsync_Should_ThrowUserNotFound_WhenEmailUnknown()
     {
@@ -56,34 +69,45 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UserNotFoundException>(async () => await sut.SendVerificationMailAsync("ghost@test.dev", CancellationToken.None));
+        await Assert.ThrowsAsync<UserNotFoundException>(() => sut.SendVerificationMailAsync("ghost@test.dev", CancellationToken.None));
     }
 
-    // [B]OUNDARY: Rejects empty or whitespace email address input
-    [Fact]
-    public async Task SendVerificationMailAsync_Should_RejectBlankEmail()
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.SendVerificationMailAsync"/> throws an <see cref="ArgumentException"/>
+    /// when the provided email string is null, empty, or whitespace.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SendVerificationMailAsync_Should_RejectBlankEmail(string? blankEmail)
     {
         // Arrange
         UserVerificationService sut = CreateService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => await sut.SendVerificationMailAsync("  ", CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.SendVerificationMailAsync(blankEmail!, CancellationToken.None));
     }
 
-    // [B]OUNDARY: Rejects numeric verification code outside valid 6-digit range (0 - 999,999)
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.CheckVerificationCodeAsync"/> rejects codes outside the 6-digit boundary [0, 999999].
+    /// </summary>
     [Theory]
     [InlineData(-1)]
     [InlineData(1_000_000)]
+    [InlineData(1_234_567)]
     public async Task CheckVerificationCodeAsync_Should_RejectInvalidCode(int invalidCode)
     {
         // Arrange
         UserVerificationService sut = CreateService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await sut.CheckVerificationCodeAsync(new UserId(1), invalidCode));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.CheckVerificationCodeAsync(new UserId(1), invalidCode));
     }
 
-    // [B]OUNDARY: Rejects non-positive user ID inputs
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.CheckVerificationCodeAsync"/> rejects non-positive user identifiers.
+    /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-3)]
@@ -93,10 +117,13 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(Mock.Of<IUserRepository>());
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await sut.CheckVerificationCodeAsync(new UserId(invalidUserId), 123456));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.CheckVerificationCodeAsync(new UserId(invalidUserId), 123456));
     }
 
-    // [E]RROR: Throws UserNotFoundException when user record is missing during code verification
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.CheckVerificationCodeAsync"/> throws <see cref="UserNotFoundException"/>
+    /// when the user record does not exist in the database.
+    /// </summary>
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_ThrowUserNotFound_WhenUserMissing()
     {
@@ -108,45 +135,62 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<UserNotFoundException>(async () => await sut.CheckVerificationCodeAsync(new UserId(5), 123456));
+        await Assert.ThrowsAsync<UserNotFoundException>(() => sut.CheckVerificationCodeAsync(new UserId(5), 123456));
     }
 
-    // [E]RROR: Throws VerificationCodeMismatchException when user has no active verification challenge stored
-    [Fact]
-    public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenNoChallengeStored()
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.CheckVerificationCodeAsync"/> throws <see cref="VerificationCodeMismatchException"/>
+    /// when the user has no active challenge code or expiration timestamp stored.
+    /// </summary>
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("123456", null)]
+    [InlineData(null, "2026-08-16T12:00:00Z")]
+    [InlineData("   ", "2026-08-16T12:00:00Z")]
+    public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenNoChallengeStored(string? code, string? expiryIso)
     {
         // Arrange
+        DateTime? expiry = expiryIso != null ? DateTime.Parse(expiryIso) : null;
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(new UserId(1), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = new UserId(1), TwoFactorCode = null, TwoFactorExpiry = null });
+            .ReturnsAsync(new User { Id = new UserId(1), TwoFactorCode = code, TwoFactorExpiry = expiry });
 
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<VerificationCodeMismatchException>(async () => await sut.CheckVerificationCodeAsync(new UserId(1), 123456));
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(new UserId(1), 123456));
     }
 
-    // [E]RROR: Throws VerificationCodeMismatchException when stored challenge has expired
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.CheckVerificationCodeAsync"/> throws <see cref="VerificationCodeMismatchException"/>
+    /// when the challenge code has expired (tested with FakeTimeProvider and Unspecified DateTimeKind).
+    /// </summary>
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenExpired()
     {
         // Arrange
+        var now = new DateTime(2026, 8, 16, 12, 0, 0, DateTimeKind.Utc);
+        var timeProvider = new FakeTimeProvider(now);
+
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(new UserId(1), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User
             {
                 Id = new UserId(1),
                 TwoFactorCode = RefreshTokenHashUtility.Hash("123456"),
-                TwoFactorExpiry = DateTime.UtcNow.AddMinutes(-5),
+                TwoFactorExpiry = DateTime.SpecifyKind(now.AddSeconds(-1), DateTimeKind.Unspecified),
             });
 
-        UserVerificationService sut = CreateService(db.Object);
+        UserVerificationService sut = CreateService(db.Object, timeProvider: timeProvider);
 
         // Act & Assert
-        await Assert.ThrowsAsync<VerificationCodeMismatchException>(async () => await sut.CheckVerificationCodeAsync(new UserId(1), 123456));
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(new UserId(1), 123456));
     }
 
-    // [E]RROR: Throws VerificationCodeMismatchException when provided code does not match stored challenge
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.CheckVerificationCodeAsync"/> throws <see cref="VerificationCodeMismatchException"/>
+    /// when the code does not match the stored hash.
+    /// </summary>
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_ThrowVerificationCodeMismatch_WhenCodeWrong()
     {
@@ -163,12 +207,19 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act & Assert
-        await Assert.ThrowsAsync<VerificationCodeMismatchException>(async () => await sut.CheckVerificationCodeAsync(new UserId(1), 123456));
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(new UserId(1), 123456));
     }
 
-    // [R]IGHT: Completes email verification when code matches hashed challenge and is not expired
-    [Fact]
-    public async Task CheckVerificationCodeAsync_Should_CompleteVerification_WhenCodeAndExpiryValid()
+    /// <summary>
+    /// Tests that <see cref="UserVerificationService.CheckVerificationCodeAsync"/> completes verification
+    /// when the code (formatted with leading zeros) matches the hashed challenge.
+    /// </summary>
+    [Theory]
+    [InlineData(0, "000000")]
+    [InlineData(7, "000007")]
+    [InlineData(123456, "123456")]
+    [InlineData(999999, "999999")]
+    public async Task CheckVerificationCodeAsync_Should_CompleteVerification_WhenCodeAndExpiryValid(int code, string formattedCode)
     {
         // Arrange
         Mock<IUserRepository> db = new();
@@ -176,7 +227,7 @@ public sealed class UserVerificationServiceTests
             .ReturnsAsync(new User
             {
                 Id = new UserId(8),
-                TwoFactorCode = RefreshTokenHashUtility.Hash("123456"),
+                TwoFactorCode = RefreshTokenHashUtility.Hash(formattedCode),
                 TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
             });
         db.Setup(dataStore => dataStore.CompleteUserEmailVerificationAsync(new UserId(8), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
@@ -184,13 +235,16 @@ public sealed class UserVerificationServiceTests
         UserVerificationService sut = CreateService(db.Object);
 
         // Act
-        await sut.CheckVerificationCodeAsync(new UserId(8), 123456);
+        await sut.CheckVerificationCodeAsync(new UserId(8), code);
 
         // Assert
         db.Verify(dataStore => dataStore.CompleteUserEmailVerificationAsync(new UserId(8), It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // [R]IGHT: Backward compatibility fallback accepts legacy unhashed 6-digit challenge codes
+    /// <summary>
+    /// Tests backward compatibility where a legacy unhashed 6-digit code stored in the database
+    /// is accepted even when hashing is enabled.
+    /// </summary>
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_AcceptLegacyPlaintext_WhenHashingEnabled_ButStoredChallengeIsPlainSixDigits()
     {
@@ -214,7 +268,33 @@ public sealed class UserVerificationServiceTests
         db.Verify(dataStore => dataStore.CompleteUserEmailVerificationAsync(new UserId(2), It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // [R]IGHT: Verifies plaintext code when code hashing option is disabled in configuration
+    /// <summary>
+    /// Tests that a 64-character stored code containing invalid non-hex characters (e.g. 'G', 'Z', lowercase 'a')
+    /// is not treated as a valid SHA-256 hash and falls back to plaintext comparison.
+    /// </summary>
+    [Fact]
+    public async Task CheckVerificationCodeAsync_Should_FallbackToPlaintext_When64CharStringContainsNonUpperHexDigits()
+    {
+        // Arrange
+        string invalidHex64 = new string('A', 63) + "Z"; // 'Z' is not valid hex
+        Mock<IUserRepository> db = new();
+        db.Setup(dataStore => dataStore.GetUserEntityForAuthenticationByIdAsync(new UserId(99), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                Id = new UserId(99),
+                TwoFactorCode = invalidHex64,
+                TwoFactorExpiry = DateTime.UtcNow.AddMinutes(5),
+            });
+
+        UserVerificationService sut = CreateService(db.Object, trigger: null, hashEmailVerificationCodes: true);
+
+        // Act & Assert (Since provided 6-digit string does not equal the 64-char string, it must fail)
+        await Assert.ThrowsAsync<VerificationCodeMismatchException>(() => sut.CheckVerificationCodeAsync(new UserId(99), 123456));
+    }
+
+    /// <summary>
+    /// Tests that verification succeeds with plaintext storage when hashing is disabled in configuration.
+    /// </summary>
     [Fact]
     public async Task CheckVerificationCodeAsync_Should_UsePlaintextPersisted_WhenHashingDisabled()
     {
@@ -238,4 +318,3 @@ public sealed class UserVerificationServiceTests
         db.Verify(dataStore => dataStore.CompleteUserEmailVerificationAsync(new UserId(3), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
-
