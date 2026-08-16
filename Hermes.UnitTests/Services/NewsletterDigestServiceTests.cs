@@ -7,6 +7,7 @@ using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Newsletter;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -145,6 +146,50 @@ public sealed class NewsletterDigestServiceTests
     }
 
     /// <summary>
+    /// Tests that <see cref="NewsletterDigestService.DeduplicateArticles"/> eliminates tracking parameters (utm_source, ref) and removes duplicate URLs.
+    /// </summary>
+    [Fact]
+    public void DeduplicateArticles_Should_StripTrackingParamsAndRemoveDuplicateUrls()
+    {
+        // Arrange
+        List<NewsArticle> articles =
+        [
+            new("1", "https://example.com/article1?utm_source=twitter&utm_medium=social", "Title One Long Headline Here", "Desc", ["tech"], null),
+            new("2", "https://example.com/article1?ref=homepage&fbclid=12345", "Title One Long Headline Here", "Desc", ["tech"], null),
+            new("3", "https://example.com/article2", "Title Two Long Headline Here", "Desc", ["tech"], null)
+        ];
+
+        // Act
+        var deduplicated = NewsletterDigestService.DeduplicateArticles(articles);
+
+        // Assert
+        Assert.Equal(2, deduplicated.Count);
+        Assert.Equal("1", deduplicated[0].ArticleId);
+        Assert.Equal("3", deduplicated[1].ArticleId);
+    }
+
+    /// <summary>
+    /// Tests that <see cref="NewsletterDigestService.DeduplicateArticles"/> avoids false positive collisions for distinct articles with short generic titles.
+    /// </summary>
+    [Fact]
+    public void DeduplicateArticles_Should_NotDeduplicateShortGenericTitlesFromDifferentUrls()
+    {
+        // Arrange
+        List<NewsArticle> articles =
+        [
+            new("1", "https://spiegel.de/live-ticker-1", "Live-Ticker", "Desc 1", ["news"], null),
+            new("2", "https://zeit.de/live-ticker-2", "Live-Ticker", "Desc 2", ["news"], null),
+            new("3", "https://focus.de/eilmeldung", "Eilmeldung", "Desc 3", ["news"], null)
+        ];
+
+        // Act
+        var deduplicated = NewsletterDigestService.DeduplicateArticles(articles);
+
+        // Assert: Short generic titles must NOT be eliminated across distinct URLs
+        Assert.Equal(3, deduplicated.Count);
+    }
+
+    /// <summary>
     /// Tests that <see cref="NewsletterDigestService.SendAsync"/> limits articles to 5 items,
     /// truncates descriptions longer than 150 characters with an ellipsis, falls back to default values for null metadata,
     /// renders HTML, and sends the email message.
@@ -163,12 +208,12 @@ public sealed class NewsletterDigestServiceTests
 
         string longDescription = new('A', 200);
         List<NewsArticle> fetchedArticles = [
-            new("1", "http://link1", "Title 1", longDescription, ["technology"], "http://img1"),
+            new("1", "http://link1", "Title 1 Long Unique Headline Text", longDescription, ["technology"], "http://img1"),
             new("2", null, null, null, null, null), // Exercise all null fallbacks
-            new("3", "http://link3", "Title 3", "Short description", ["science"], null),
-            new("4", "http://link4", "Title 4", "Desc 4", null, null),
-            new("5", "http://link5", "Title 5", "Desc 5", null, null),
-            new("6", "http://link6", "Title 6", "Desc 6", null, null) // 6th article must be excluded (max 5)
+            new("3", "http://link3", "Title 3 Long Unique Headline Text", "Short description", ["science"], null),
+            new("4", "http://link4", "Title 4 Long Unique Headline Text", "Desc 4", null, null),
+            new("5", "http://link5", "Title 5 Long Unique Headline Text", "Desc 5", null, null),
+            new("6", "http://link6", "Title 6 Long Unique Headline Text", "Desc 6", null, null) // 6th article must be excluded (max 5)
         ];
 
         Mock<IArticleFetchingService> articles = new();
@@ -217,7 +262,7 @@ public sealed class NewsletterDigestServiceTests
 
 /// <summary>
 /// Contains unit tests for <see cref="NewsletterDigestLoggingDecorator"/>,
-/// verifying atomic slot reservations, duplicate skip, success audits, and crash recovery.
+/// verifying atomic slot reservations, duplicate skip, success audits, crash recovery, and quota handling.
 /// </summary>
 public sealed class NewsletterDigestLoggingDecoratorTests
 {
@@ -341,6 +386,55 @@ public sealed class NewsletterDigestLoggingDecoratorTests
 
         Assert.Equal("SMTP unavailable", exception.Message);
         logs.Verify(l => l.UpdateNotificationLogAsync(It.Is<NotificationLog>(n => n.Status == NotificationStatus.Failed && n.ErrorMessage == "SMTP unavailable"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>
+    /// Tests that when DailyQuotaExceededException occurs, the decorator catches it terminally, marks log Failed, advances slot, and returns Result.Fail without rethrowing.
+    /// </summary>
+    [Fact]
+    public async Task SendAsync_Should_HandleDailyQuotaExceededTerminally_WithoutRethrowing()
+    {
+        // Arrange
+        var createdLog = NotificationLog.Create(new UserId(1), DeliveryChannel.Email, DateTime.UtcNow, new NewsletterId(1));
+        Mock<INotificationLogRepository> logs = new();
+        logs.Setup(s => s.TryReserveSlotAsync(
+                It.IsAny<NotificationLog>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SlotReservationResult.NewReservation(createdLog));
+
+        logs.Setup(s => s.UpdateNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        Mock<INewsletterSubscriptionRepository> newsStore = new();
+        newsStore.Setup(s => s.AdvanceNextDigestSlotAsync(
+                It.IsAny<NewsletterId>(),
+                It.IsAny<UserId>(),
+                It.IsAny<TimeZoneInfo>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        Mock<INewsletterDigestService> inner = new();
+        inner.Setup(i => i.SendAsync(It.IsAny<UserId>(), It.IsAny<NewsletterId>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DailyQuotaExceededException("Daily quota exceeded"));
+
+        var sut = new NewsletterDigestLoggingDecorator(
+            inner.Object,
+            logs.Object,
+            newsStore.Object,
+            Options.Create(new NewsletterOptions()),
+            TimeProvider.System,
+            Mock.Of<ILogger<NewsletterDigestLoggingDecorator>>());
+
+        // Act
+        var result = await sut.SendAsync(new UserId(1), new NewsletterId(1), DateTime.UtcNow);
+
+        // Assert
+        Assert.True(result.IsFailed);
+        Assert.Contains("Daily quota exceeded", result.Errors[0].Message);
+        newsStore.Verify(s => s.AdvanceNextDigestSlotAsync(new NewsletterId(1), new UserId(1), It.IsAny<TimeZoneInfo>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        logs.Verify(l => l.UpdateNotificationLogAsync(It.Is<NotificationLog>(n => n.Status == NotificationStatus.Failed), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     /// <summary>

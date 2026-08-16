@@ -224,7 +224,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     }
 
     /// <summary>
-    /// Calculates and advances the next digest run slot for a newsletter subscription.
+    /// Atomically calculates and advances the next digest run slot for a newsletter subscription if not already advanced past the reference time.
     /// </summary>
     public async ValueTask AdvanceNextDigestSlotAsync(
         NewsletterId newsId,
@@ -234,26 +234,47 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(newsletterTimeZone);
-        NewsletterSubscription? row = await db.NewsletterSubscriptions
-            .FirstOrDefaultAsync(n => n.Id == newsId && n.UserId == userId, cancellationToken)
+
+        var schedule = await db.NewsletterSubscriptions.AsNoTracking()
+            .Where(n => n.Id == newsId && n.UserId == userId)
+            .Select(n => new { n.SendOnWeekdays, n.SendAtTimes, n.NextDigestSlotUtc })
+            .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (row is null)
-            return;
-        if (row.SendOnWeekdays.Count == 0 || row.SendAtTimes.Count == 0)
+
+        if (schedule is null || schedule.SendOnWeekdays.Count == 0 || schedule.SendAtTimes.Count == 0)
             return;
 
+        if (schedule.NextDigestSlotUtc != null && schedule.NextDigestSlotUtc > referenceUtcExclusive)
+            return; // Already advanced past this slot
+
         DateTime? next = NewsletterNextRunUtility.ComputeNextOccurrenceUtcAfter(
-            row.SendOnWeekdays,
-            row.SendAtTimes,
+            schedule.SendOnWeekdays,
+            schedule.SendAtTimes,
             newsletterTimeZone,
             referenceUtcExclusive);
 
-        if (next.HasValue)
+        if (!next.HasValue)
+            return;
+
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
         {
-            row.SetNextDigestSlot(next.Value);
+            NewsletterSubscription? row = await db.NewsletterSubscriptions
+                .FirstOrDefaultAsync(n => n.Id == newsId && n.UserId == userId && (n.NextDigestSlotUtc == null || n.NextDigestSlotUtc <= referenceUtcExclusive), cancellationToken)
+                .ConfigureAwait(false);
+
+            if (row is not null)
+            {
+                row.SetNextDigestSlot(next.Value);
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            return;
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await db.NewsletterSubscriptions
+            .Where(n => n.Id == newsId && n.UserId == userId && (n.NextDigestSlotUtc == null || n.NextDigestSlotUtc <= referenceUtcExclusive))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(n => n.NextDigestSlotUtc, next.Value), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>

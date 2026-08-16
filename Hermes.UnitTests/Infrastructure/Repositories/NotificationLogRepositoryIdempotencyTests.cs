@@ -240,4 +240,39 @@ public sealed class NotificationLogRepositoryIdempotencyTests
         Assert.False(result2.IsAcquired);
         Assert.Equal(SlotReservationStatus.ActiveLeaseInProgress, result2.Status);
     }
+
+    /// <summary>
+    /// Tests that calling AdvanceNextDigestSlotAsync multiple times for the same slot (e.g. across retries) only advances NextDigestSlotUtc once.
+    /// </summary>
+    [Fact]
+    public async Task AdvanceNextDigestSlotAsync_MultipleCalls_Should_AdvanceSlotOnlyOnce()
+    {
+        // Arrange
+        await using HermesDbContext ctx = CreateContext();
+        User user = await SeedUserAsync(ctx, id: 10);
+        NewsletterSubscriptionRepository sut = new(ctx);
+
+        DateTime slot1 = new(2026, 8, 17, 8, 0, 0, DateTimeKind.Utc); // Monday 08:00 UTC
+        NewsletterSubscription sub = NewsletterSubscription.CreateForUser(user.Id);
+        sub.AssignDigestSchedule(ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday, Weekdays.Tuesday, Weekdays.Wednesday], [new TimeOnly(8, 0)]));
+        sub.SetNextDigestSlot(slot1);
+        ctx.NewsletterSubscriptions.Add(sub);
+        await ctx.SaveChangesAsync();
+
+        DateTime referenceExclusive = slot1.AddMinutes(1); // 08:01 UTC
+
+        // Act: First attempt advances from Monday to Tuesday
+        await sut.AdvanceNextDigestSlotAsync(sub.Id, user.Id, TimeZoneInfo.Utc, referenceExclusive);
+        var subAfterFirst = await ctx.NewsletterSubscriptions.FindAsync(sub.Id);
+        DateTime? tuesdaySlot = subAfterFirst!.NextDigestSlotUtc;
+
+        // Act: Second attempt (Hangfire retry) calls with the same slot reference
+        await sut.AdvanceNextDigestSlotAsync(sub.Id, user.Id, TimeZoneInfo.Utc, referenceExclusive);
+        var subAfterSecond = await ctx.NewsletterSubscriptions.FindAsync(sub.Id);
+
+        // Assert: Slot must remain at Tuesday, NOT jump to Wednesday!
+        Assert.NotNull(tuesdaySlot);
+        Assert.Equal(tuesdaySlot, subAfterSecond!.NextDigestSlotUtc);
+        Assert.Equal(new DateTime(2026, 8, 18, 8, 0, 0, DateTimeKind.Utc), subAfterSecond.NextDigestSlotUtc);
+    }
 }

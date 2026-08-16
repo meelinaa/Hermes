@@ -4,6 +4,7 @@ using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.Exceptions;
 using Hermes.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -12,7 +13,7 @@ namespace Hermes.Application.Services.Newsletter;
 
 /// <summary>
 /// Logging and idempotency decorator for newsletter digest dispatches.
-/// Enforces two-phase atomic slot reservation, active lease protection, and audit persistence.
+/// Enforces two-phase atomic slot reservation, active lease protection, daily quota bypass, and audit persistence.
 /// </summary>
 public sealed class NewsletterDigestLoggingDecorator : INewsletterDigestService
 {
@@ -104,6 +105,19 @@ public sealed class NewsletterDigestLoggingDecorator : INewsletterDigestService
             }
 
             return result;
+        }
+        catch (DailyQuotaExceededException ex)
+        {
+            // Terminal non-transient condition: Do NOT retry in Hangfire today
+            _logger.LogCritical(
+                ex,
+                "Terminal news provider quota exceeded for user {UserId} and news {NewsId}. Halting job execution for today.",
+                userId.Value,
+                newsId.Value);
+
+            activeLog.MarkAsFailed(ex.Message, null);
+            await _notificationLogs.UpdateNotificationLogAsync(activeLog, CancellationToken.None).ConfigureAwait(false);
+            return Result.Fail(ex.Message);
         }
         catch (OperationCanceledException)
         {

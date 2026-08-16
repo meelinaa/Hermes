@@ -95,6 +95,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddOptions<SecurityOptions>().BindConfiguration(SecurityOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
 
         var resilienceOptions = builder.Configuration.GetSection(HttpResilienceOptions.SECTION_NAME).Get<HttpResilienceOptions>() ?? new HttpResilienceOptions();
+        RedisRateLimiter newsApiLimiter = new(redis, "newsapi_global_ratelimit", limit: 5, window: TimeSpan.FromSeconds(1));
 
         builder.Services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>()
             .AddStandardResilienceHandler(options =>
@@ -107,6 +108,7 @@ public static class WorkerServiceCollectionExtensions
                 options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(resilienceOptions.CircuitBreakerSamplingDurationSeconds);
                 options.CircuitBreaker.FailureRatio = resilienceOptions.CircuitBreakerFailureRatio;
                 options.CircuitBreaker.MinimumThroughput = resilienceOptions.CircuitBreakerMinimumThroughput;
+                options.RateLimiter.RateLimiter = args => newsApiLimiter.AcquireAsync(1, args.Context.CancellationToken);
             });
         builder.Services.AddSingleton<INewsletterHtmlService, NewsletterHtmlService>();
         builder.Services.AddSingleton<IVerificationHtmlService, VerificationHtmlService>();
