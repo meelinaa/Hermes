@@ -131,6 +131,13 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             entity.Property(notificationLog => notificationLog.NewsId).HasConversion(id => id.HasValue ? id.Value.Value : (int?)null, val => val.HasValue ? new NewsletterId(val.Value) : (NewsletterId?)null);
             entity.Property(notificationLog => notificationLog.Status).HasConversion<string>().HasMaxLength(32);
             entity.Property(notificationLog => notificationLog.Channel).HasConversion<string>().HasMaxLength(32);
+            entity.Property(notificationLog => notificationLog.ScheduledSlotUtc);
+            entity.Property(notificationLog => notificationLog.CreatedAtUtc);
+
+            entity.HasIndex(
+                    notificationLog => new { notificationLog.UserId, notificationLog.NewsId, notificationLog.Channel, notificationLog.ScheduledSlotUtc })
+                .IsUnique()
+                .HasDatabaseName("UX_notification_logs_slot_reservation");
 
             entity.HasIndex(
                     notificationLog => new { notificationLog.UserId, notificationLog.NewsId, notificationLog.Channel, notificationLog.Status, notificationLog.SentAt })
@@ -305,5 +312,44 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             (c1, c2) => c1 == null && c2 == null || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
             c => c == null ? 0 : c.Aggregate(0, (a, v) => HashCode.Combine(a, v == null ? 0 : v.GetHashCode())),
             c => c == null ? Array.Empty<T>() : c.ToList().AsReadOnly());
+    }
+
+    /// <summary>
+    /// Deduplicates historical notification logs before unique constraint indexes are enforced.
+    /// Retains the newest log entry for any duplicate (UserId, NewsId, Channel, ScheduledSlotUtc) tuple.
+    /// </summary>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>The number of deleted duplicate entries.</returns>
+    public async Task<int> DeduplicateNotificationLogsAsync(CancellationToken cancellationToken = default)
+    {
+        var allLogs = await NotificationLogs
+            .Where(n => n.ScheduledSlotUtc != null)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var duplicateGroups = allLogs
+            .GroupBy(n => new { n.UserId, n.NewsId, n.Channel, n.ScheduledSlotUtc })
+            .Where(g => g.Count() > 1)
+            .Select(g => g.OrderByDescending(x => x.Id).Skip(1).Select(x => x.Id))
+            .ToList();
+
+        List<int> idsToDelete = duplicateGroups.SelectMany(x => x).ToList();
+        if (idsToDelete.Count > 0)
+        {
+            if (Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+            {
+                var toDelete = allLogs.Where(n => idsToDelete.Contains(n.Id)).ToList();
+                NotificationLogs.RemoveRange(toDelete);
+                await SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                return toDelete.Count;
+            }
+
+            return await NotificationLogs
+                .Where(n => idsToDelete.Contains(n.Id))
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return 0;
     }
 }

@@ -120,6 +120,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<INewsletterScheduleService, NewsletterScheduleService>();
         builder.Services.AddScoped<NotificationJobService>();
         builder.Services.AddScoped<NewsletterSchedulerWorkerService>();
+        builder.Services.AddScoped<NotificationReaperWorkerService>();
         builder.Services.AddSingleton(TimeProvider.System);
 
         builder.Services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();
@@ -135,6 +136,7 @@ public static class WorkerServiceCollectionExtensions
             {
                 TablesPrefix = "Hangfire"
             }))
+            .UseFilter(new AutomaticRetryAttribute { Attempts = 3, OnAttemptsExceeded = AttemptsExceededAction.Fail })
             .UseFilter(new CorrelationIdServerFilter()));
 
         builder.Services.AddHangfireServer();

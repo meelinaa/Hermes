@@ -25,6 +25,7 @@ internal static class NotificationLogHttpMapper
 
         // Reflection is used here because the domain entity is properly encapsulated
         // and an API endpoint directly injecting state bypasses domain rules.
+        typeof(NotificationLog).GetProperty("SentAt")!.SetValue(log, dto.SentAt);
         typeof(NotificationLog).GetProperty("Status")!.SetValue(log, dto.Status);
         typeof(NotificationLog).GetProperty("ErrorMessage")!.SetValue(log, dto.ErrorMessage);
         typeof(NotificationLog).GetProperty("RetryCount")!.SetValue(log, dto.RetryCount);
@@ -44,11 +45,13 @@ internal static class NotificationLogHttpMapper
             Id = entity.Id,
             UserId = entity.UserId.Value,
             NewsId = entity.NewsId?.Value,
+            ScheduledSlotUtc = entity.ScheduledSlotUtc,
             SentAt = entity.SentAt,
             Status = entity.Status,
             Channel = entity.Channel,
             ErrorMessage = entity.ErrorMessage,
             RetryCount = entity.RetryCount,
             NextRetryAt = entity.NextRetryAt,
+            CreatedAtUtc = entity.CreatedAtUtc,
         };
 }

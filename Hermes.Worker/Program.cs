@@ -46,6 +46,11 @@ try
         processor => processor.ProcessPendingMessagesAsync(50, CancellationToken.None),
         Cron.Minutely());
 
+    RecurringJob.AddOrUpdate<NotificationReaperWorkerService>(
+        "stale-notification-reaper",
+        reaper => reaper.RunAsync(CancellationToken.None),
+        "*/5 * * * *");
+
     host.Run();
 }
 catch (Exception ex)

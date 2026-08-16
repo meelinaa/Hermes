@@ -42,8 +42,8 @@ public sealed class NewsletterDigestServiceTests
     {
         // Arrange
         var sut = new NewsletterDigestService(
-            Mock.Of<IUserRepository>(),
-            Mock.Of<INewsletterSubscriptionRepository>(),
+            Mock.Of<IUserStore>(),
+            Mock.Of<INewsletterSubscriptionStore>(),
             Mock.Of<IArticleFetchingService>(),
             Mock.Of<IEmailProvider>(),
             Mock.Of<INewsletterHtmlService>(),
@@ -63,11 +63,11 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_ReturnFalse_WhenUserOrEmailMissing()
     {
         // Arrange
-        Mock<IUserRepository> users = new();
+        Mock<IUserStore> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(new UserId(7), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
         var sut = new NewsletterDigestService(
             users.Object,
-            Mock.Of<INewsletterSubscriptionRepository>(),
+            Mock.Of<INewsletterSubscriptionStore>(),
             Mock.Of<IArticleFetchingService>(),
             Mock.Of<IEmailProvider>(),
             Mock.Of<INewsletterHtmlService>(),
@@ -88,10 +88,10 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_ReturnFalse_WhenNewsDisabled()
     {
         // Arrange
-        Mock<IUserRepository> users = new();
+        Mock<IUserStore> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(new UserId(1), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = new UserId(1), Email = Email.Parse("off@b.c"), Name = "Off" });
-        Mock<INewsletterSubscriptionRepository> newsPort = new();
+        Mock<INewsletterSubscriptionStore> newsPort = new();
         newsPort.Setup(store => store.GetNewsByIdAsync(new UserId(1), new NewsletterId(42), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateNews(new NewsletterId(42), new UserId(1), ["x"], isEnabled: false));
 
@@ -118,10 +118,10 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_ReturnFalse_WhenNoArticlesFound()
     {
         // Arrange
-        Mock<IUserRepository> users = new();
+        Mock<IUserStore> users = new();
         users.Setup(u => u.GetUserEntityByIdAsync(It.IsAny<UserId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = new UserId(5), Name = "Alice", Email = Email.Parse("alice@test.com") });
-        Mock<INewsletterSubscriptionRepository> newsStore = new();
+        Mock<INewsletterSubscriptionStore> newsStore = new();
         newsStore.Setup(s => s.GetNewsByIdAsync(It.IsAny<UserId>(), It.IsAny<NewsletterId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateNews(new NewsletterId(10), new UserId(5), ["test"], isEnabled: true));
         Mock<IArticleFetchingService> articleFetchingService = new();
@@ -153,11 +153,11 @@ public sealed class NewsletterDigestServiceTests
     public async Task SendAsync_Should_ProcessAndSendEmail_WhenArticlesAvailable()
     {
         // Arrange
-        Mock<IUserRepository> users = new();
+        Mock<IUserStore> users = new();
         users.Setup(store => store.GetUserEntityByIdAsync(new UserId(2), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = new UserId(2), Email = Email.Parse("digest@test.example"), Name = "Dieter" });
 
-        Mock<INewsletterSubscriptionRepository> newsPort = new();
+        Mock<INewsletterSubscriptionStore> newsPort = new();
         newsPort.Setup(store => store.GetNewsByIdAsync(new UserId(2), new NewsletterId(12), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateNews(new NewsletterId(12), new UserId(2), ["Berlin"]));
 
@@ -217,7 +217,7 @@ public sealed class NewsletterDigestServiceTests
 
 /// <summary>
 /// Contains unit tests for <see cref="NewsletterDigestLoggingDecorator"/>,
-/// verifying duplicate dispatch checks, success audit logs, and exception logging.
+/// verifying atomic slot reservations, duplicate skip, success audits, and crash recovery.
 /// </summary>
 public sealed class NewsletterDigestLoggingDecoratorTests
 {
@@ -235,20 +235,19 @@ public sealed class NewsletterDigestLoggingDecoratorTests
     }
 
     /// <summary>
-    /// Tests that the decorator skips invocation and returns Ok(false) when a duplicate notification was already logged within the time window.
+    /// Tests that the decorator skips invocation and returns Ok(false) when a duplicate notification was already sent.
     /// </summary>
     [Fact]
     public async Task SendAsync_Should_ReturnFalse_WhenDuplicateAlreadySentInWindow()
     {
         // Arrange
         Mock<INotificationLogRepository> logs = new();
-        logs.Setup(s => s.ExistsSentNotificationInWindowAsync(
-                It.IsAny<UserId>(),
-                It.IsAny<NewsletterId>(),
-                It.IsAny<DateTime>(),
-                It.IsAny<DateTime>(),
+        logs.Setup(s => s.TryReserveSlotAsync(
+                It.IsAny<NotificationLog>(),
+                It.IsAny<TimeSpan>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync(SlotReservationResult.AlreadySent());
+
         Mock<INewsletterDigestService> inner = new();
 
         var sut = new NewsletterDigestLoggingDecorator(
@@ -269,16 +268,26 @@ public sealed class NewsletterDigestLoggingDecoratorTests
     }
 
     /// <summary>
-    /// Tests that the decorator logs a successful notification log when the inner digest service completes.
+    /// Tests that the decorator reserves a pending slot, executes inner send, and updates status to Sent.
     /// </summary>
     [Fact]
     public async Task SendAsync_Should_LogSuccess_WhenInnerSucceeds()
     {
         // Arrange
+        var createdLog = NotificationLog.Create(new UserId(2), DeliveryChannel.Email, DateTime.UtcNow, new NewsletterId(12));
         Mock<INotificationLogRepository> logs = new();
-        logs.Setup(s => s.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        logs.Setup(s => s.TryReserveSlotAsync(
+                It.IsAny<NotificationLog>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SlotReservationResult.NewReservation(createdLog));
+
+        logs.Setup(s => s.UpdateNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
         Mock<INewsletterDigestService> inner = new();
-        inner.Setup(i => i.SendAsync(It.IsAny<UserId>(), It.IsAny<NewsletterId>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(Result.Ok(true));
+        inner.Setup(i => i.SendAsync(It.IsAny<UserId>(), It.IsAny<NewsletterId>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(true));
 
         var sut = new NewsletterDigestLoggingDecorator(
             inner.Object,
@@ -294,7 +303,7 @@ public sealed class NewsletterDigestLoggingDecoratorTests
         // Assert
         Assert.True(result.IsSuccess);
         Assert.True(result.Value);
-        logs.Verify(l => l.SetNotificationLogAsync(It.Is<NotificationLog>(n => n.Status == NotificationStatus.Sent), It.IsAny<CancellationToken>()), Times.Once);
+        logs.Verify(l => l.UpdateNotificationLogAsync(It.Is<NotificationLog>(n => n.Status == NotificationStatus.Sent), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     /// <summary>
@@ -304,10 +313,20 @@ public sealed class NewsletterDigestLoggingDecoratorTests
     public async Task SendAsync_Should_LogErrorAndThrow_WhenInnerThrows()
     {
         // Arrange
+        var createdLog = NotificationLog.Create(new UserId(1), DeliveryChannel.Email, DateTime.UtcNow, new NewsletterId(1));
         Mock<INotificationLogRepository> logs = new();
-        logs.Setup(s => s.SetNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        logs.Setup(s => s.TryReserveSlotAsync(
+                It.IsAny<NotificationLog>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SlotReservationResult.NewReservation(createdLog));
+
+        logs.Setup(s => s.UpdateNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
         Mock<INewsletterDigestService> inner = new();
-        inner.Setup(i => i.SendAsync(It.IsAny<UserId>(), It.IsAny<NewsletterId>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("SMTP unavailable"));
+        inner.Setup(i => i.SendAsync(It.IsAny<UserId>(), It.IsAny<NewsletterId>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("SMTP unavailable"));
 
         var sut = new NewsletterDigestLoggingDecorator(
             inner.Object,
@@ -321,6 +340,46 @@ public sealed class NewsletterDigestLoggingDecoratorTests
         var exception = await Assert.ThrowsAsync<Exception>(() => sut.SendAsync(new UserId(1), new NewsletterId(1), DateTime.UtcNow));
 
         Assert.Equal("SMTP unavailable", exception.Message);
-        logs.Verify(l => l.SetNotificationLogAsync(It.Is<NotificationLog>(n => n.Status == NotificationStatus.Failed && n.ErrorMessage == "SMTP unavailable"), It.IsAny<CancellationToken>()), Times.Once);
+        logs.Verify(l => l.UpdateNotificationLogAsync(It.Is<NotificationLog>(n => n.Status == NotificationStatus.Failed && n.ErrorMessage == "SMTP unavailable"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>
+    /// Tests that the decorator reclaims a stale pending lease from a crashed attempt and delivers the email.
+    /// </summary>
+    [Fact]
+    public async Task SendAsync_Should_ReclaimPendingAndSend_WhenPreviousAttemptCrashed()
+    {
+        // Arrange
+        var stalePendingLog = NotificationLog.Create(new UserId(3), DeliveryChannel.Email, DateTime.UtcNow.AddMinutes(-2), new NewsletterId(33));
+        Mock<INotificationLogRepository> logs = new();
+        logs.Setup(s => s.TryReserveSlotAsync(
+                It.IsAny<NotificationLog>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SlotReservationResult.Reclaimed(stalePendingLog));
+
+        logs.Setup(s => s.UpdateNotificationLogAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        Mock<INewsletterDigestService> inner = new();
+        inner.Setup(i => i.SendAsync(It.IsAny<UserId>(), It.IsAny<NewsletterId>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(true));
+
+        var sut = new NewsletterDigestLoggingDecorator(
+            inner.Object,
+            logs.Object,
+            CreateDefaultNewsStore(),
+            Options.Create(new NewsletterOptions()),
+            TimeProvider.System,
+            Mock.Of<ILogger<NewsletterDigestLoggingDecorator>>());
+
+        // Act
+        var result = await sut.SendAsync(new UserId(3), new NewsletterId(33), DateTime.UtcNow);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value);
+        inner.Verify(i => i.SendAsync(new UserId(3), new NewsletterId(33), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        logs.Verify(l => l.UpdateNotificationLogAsync(It.Is<NotificationLog>(n => n.Status == NotificationStatus.Sent), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
