@@ -9,3 +9,10 @@ RUN dotnet publish -c Release -o /app/publish --no-restore
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_HTTP_PORTS=5166
+EXPOSE 5166
+
+ENTRYPOINT ["dotnet", "Hermes.Worker.dll"]
