@@ -13,12 +13,20 @@ using Xunit;
 
 namespace Hermes.IntegrationTests.Dapper;
 
+/// <summary>
+/// Contains integration tests for Dapper-based high-performance CQRS read queries,
+/// verifying direct SQL lookups, case-insensitivity, whitespace trimming, and SQL-injection safety.
+/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class DapperQueriesIntegrationTests(MySqlApiFixture fixture)
 {
     private static readonly JsonSerializerOptions _jsonWeb = new(JsonSerializerDefaults.Web);
 
+    /// <summary>
+    /// Tests that <see cref="IUserReadQueries"/> correctly fetches user scopes by ID, email, and name,
+    /// and accurately reports account existence.
+    /// </summary>
     [Fact]
     public async Task UserDapperQueries_Should_Retrieve_UserScope_And_Check_Existence()
     {
@@ -71,6 +79,66 @@ public sealed class DapperQueriesIntegrationTests(MySqlApiFixture fixture)
         Assert.False(notExists);
     }
 
+    /// <summary>
+    /// Tests that <see cref="IUserReadQueries"/> handles case-insensitive email matching,
+    /// whitespace trimming, and potential SQL-injection characters safely.
+    /// </summary>
+    [Fact]
+    public async Task UserDapperQueries_Should_HandleCaseInsensitivity_And_SqlInjectionResilience()
+    {
+        // Arrange
+        using HttpClient client = fixture.Factory.CreateClient();
+        string email = $"cased-{Guid.NewGuid():N}@integration.hermes";
+        string name = "Cased User";
+        object dto = new
+        {
+            id = 0,
+            name,
+            email,
+            password = AuthIntegrationFlows.DEFAULT_PASSWORD,
+            isEmailVerified = true,
+        };
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, options: _jsonWeb);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using IServiceScope scope = fixture.Factory.Services.CreateScope();
+        IUserReadQueries userQueries = scope.ServiceProvider.GetRequiredService<IUserReadQueries>();
+
+        // Act 1: Mixed case and whitespace email lookup
+        string upperEmailWithSpaces = $"   {email.ToUpperInvariant()}   ";
+        UserScopeDto? byUpperEmail = await userQueries.GetUserScopeByEmailAsync(upperEmailWithSpaces);
+        bool existsUpper = await userQueries.ExistsByEmailAsync(upperEmailWithSpaces);
+
+        // Assert 1
+        Assert.NotNull(byUpperEmail);
+        Assert.Equal(email, byUpperEmail!.Email);
+        Assert.True(existsUpper);
+
+        // Act 2: SQL Injection Attempt string
+        string sqlInjectionAttempt = "' OR '1'='1' --";
+        UserScopeDto? byInjection = await userQueries.GetUserScopeByEmailAsync(sqlInjectionAttempt);
+        bool existsInjection = await userQueries.ExistsByEmailAsync(sqlInjectionAttempt);
+
+        // Assert 2
+        Assert.Null(byInjection);
+        Assert.False(existsInjection);
+
+        // Act 3: Null and whitespace boundary handling
+        UserScopeDto? nullEmail = await userQueries.GetUserScopeByEmailAsync(null!);
+        UserScopeDto? whitespaceName = await userQueries.GetUserScopeByNameAsync("   ");
+        bool nullExists = await userQueries.ExistsByEmailAsync(null!);
+
+        // Assert 3
+        Assert.Null(nullEmail);
+        Assert.Null(whitespaceName);
+        Assert.False(nullExists);
+    }
+
+    /// <summary>
+    /// Tests that <see cref="INewsletterReadQueries"/> retrieves active subscription counts and IDs correctly,
+    /// while filtering out disabled subscriptions.
+    /// </summary>
     [Fact]
     public async Task NewsletterDapperQueries_Should_Retrieve_Active_Subscription_Counts_And_Ids()
     {
@@ -109,5 +177,11 @@ public sealed class DapperQueriesIntegrationTests(MySqlApiFixture fixture)
         IReadOnlyList<int> activeIds = await newsQueries.GetActiveSubscriptionIdsByUserIdAsync(user.Id.Value);
         Assert.Single(activeIds);
         Assert.Equal(sub1.Id.Value, activeIds[0]);
+
+        // Boundary: User with 0 subscriptions
+        int nonExistentCount = await newsQueries.GetActiveSubscriptionCountByUserIdAsync(999999);
+        IReadOnlyList<int> nonExistentIds = await newsQueries.GetActiveSubscriptionIdsByUserIdAsync(999999);
+        Assert.Equal(0, nonExistentCount);
+        Assert.Empty(nonExistentIds);
     }
 }
