@@ -119,3 +119,20 @@ public sealed class ValidationError : DomainError
     {
     }
 }
+
+/// <summary>
+/// Error representing an invalid, expired, or missing two-factor email verification code.
+/// Maps to HTTP 400 Bad Request.
+/// </summary>
+public sealed class VerificationCodeMismatchError : DomainError
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="VerificationCodeMismatchError"/> class.
+    /// </summary>
+    /// <param name="message">Optional custom message describing the verification mismatch.</param>
+    public VerificationCodeMismatchError(string message = "Verification code does not match, has expired, or is missing.") 
+        : base(message)
+    {
+    }
+}
+

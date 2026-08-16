@@ -31,6 +31,7 @@ public static class ApiProblemResultExtensions
             UserNotFoundError notFound => controller.NotFoundProblem(notFound.Message),
             InvalidCredentialsError unauthorized => controller.UnauthorizedProblem(unauthorized.Message),
             TokenCompromisedError compromised => controller.UnauthorizedProblem(compromised.Message),
+            VerificationCodeMismatchError mismatch => controller.BadRequestProblem(mismatch.Message),
             _ => controller.BadRequestProblem(error.Message)
         };
     }

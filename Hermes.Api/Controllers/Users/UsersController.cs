@@ -159,7 +159,10 @@ public class UsersController(
         if (TryGetVerificationMailCooldownResponse(id) is { } cooldownResult)
             return cooldownResult;
 
-        await verificationService.SendVerificationMailAsync(userResult.Value.Email, cancellationToken).ConfigureAwait(false);
+        Result sendResult = await verificationService.SendVerificationMailAsync(userResult.Value.Email, cancellationToken).ConfigureAwait(false);
+        if (sendResult.IsFailed)
+            return this.ToProblemResult(sendResult.Errors.First());
+
         RegisterVerificationMailSend(id);
         return Accepted(new SendVerificationMailResponseDto(id, userResult.Value.Email));
     }
@@ -183,10 +186,12 @@ public class UsersController(
         if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        await verificationService.CheckVerificationCodeAsync(new UserId(id), request.Code, cancellationToken).ConfigureAwait(false);
+        Result checkResult = await verificationService.CheckVerificationCodeAsync(new UserId(id), request.Code, cancellationToken).ConfigureAwait(false);
+        if (checkResult.IsFailed)
+            return this.ToProblemResult(checkResult.Errors.First());
 
         Result<UserScopeDto> refreshedResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
-        return refreshedResult.IsFailed ? this.NotFoundProblem() : Ok(refreshedResult.Value.ToUserResponse());
+        return refreshedResult.IsFailed ? this.ToProblemResult(refreshedResult.Errors.First()) : Ok(refreshedResult.Value.ToUserResponse());
     }
 
     /// <summary>

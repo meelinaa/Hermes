@@ -359,7 +359,7 @@ public sealed class UsersControllerTests
 
         Mock<IUserVerificationService> verification = new();
         verification.Setup(v => v.SendVerificationMailAsync("cooldown@hermes.de", It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Ok());
 
         UsersController sut = CreateController(userService: users.Object, verificationService: verification.Object, authenticatedUserId: uniqueUserId);
 
@@ -407,7 +407,7 @@ public sealed class UsersControllerTests
         // Arrange
         Mock<IUserVerificationService> verification = new();
         verification.Setup(v => v.CheckVerificationCodeAsync(new UserId(1), 123456, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(Result.Ok());
 
         Mock<IUserService> users = new();
         users.Setup(u => u.GetUserByIdAsync(new UserId(1), It.IsAny<CancellationToken>()))
