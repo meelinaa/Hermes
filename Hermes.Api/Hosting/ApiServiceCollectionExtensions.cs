@@ -218,6 +218,9 @@ public static class ApiServiceCollectionExtensions
                 options.AddPolicy("AuthLoginPolicy", httpContext =>
                     CreateAuthPartition(httpContext, permitLimit: 8, window: TimeSpan.FromMinutes(1)));
 
+                options.AddPolicy("AuthRegisterPolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 10, window: TimeSpan.FromMinutes(1)));
+
                 options.AddPolicy("AuthRefreshPolicy", httpContext =>
                     CreateAuthPartition(httpContext, permitLimit: 30, window: TimeSpan.FromMinutes(1)));
 
@@ -234,7 +237,7 @@ public static class ApiServiceCollectionExtensions
             {
                 foreach (string policyName in new[]
                          {
-                             "AuthLoginPolicy", "AuthRefreshPolicy", "VerifyCodePolicy", "VerifyMailPolicy", "SensitiveWritePolicy",
+                             "AuthLoginPolicy", "AuthRegisterPolicy", "AuthRefreshPolicy", "VerifyCodePolicy", "VerifyMailPolicy", "SensitiveWritePolicy",
                          })
                 {
                     options.AddPolicy(policyName, _ => RateLimitPartition.GetNoLimiter("testing-" + policyName));

@@ -44,6 +44,7 @@ public class UsersController(
     /// <returns>A 201 Created result containing the created user profile.</returns>
     [AllowAnonymous]
     [HttpPost]
+    [EnableRateLimiting("AuthRegisterPolicy")]
     public async Task<ActionResult<UserResponseDto>> SetNewUser([FromBody] RegisterUserRequestDto request, CancellationToken cancellationToken)
     {
         Result<UserScopeDto> registerResult = await authService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
