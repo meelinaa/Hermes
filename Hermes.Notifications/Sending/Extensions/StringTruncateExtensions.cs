@@ -3,7 +3,7 @@ namespace Hermes.Notifications.Sending.Extensions;
 /// <summary>
 /// Extension methods for string truncation utilities.
 /// </summary>
-internal static class StringTruncateExtensions
+public static class StringTruncateExtensions
 {
     /// <summary>
     /// Truncates a string to a specified maximum length, appending a suffix if truncated.
