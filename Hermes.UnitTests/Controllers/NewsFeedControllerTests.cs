@@ -8,18 +8,26 @@ using Xunit;
 namespace Hermes.UnitTests.Controllers;
 
 /// <summary>
-/// Unit tests for <see cref="NewsFeedController"/> verifying live article preview endpoints.
+/// Contains unit tests for <see cref="NewsFeedController"/>,
+/// verifying live news article query and preview endpoints.
 /// </summary>
 public sealed class NewsFeedControllerTests
 {
     private readonly Mock<IArticleFetchingService> _articleFetchingServiceMock = new();
     private readonly NewsFeedController _sut;
 
+    /// <summary>
+    /// Initializes test dependencies for <see cref="NewsFeedControllerTests"/>.
+    /// </summary>
     public NewsFeedControllerTests()
     {
         _sut = new NewsFeedController(_articleFetchingServiceMock.Object);
     }
 
+    /// <summary>
+    /// Tests that <see cref="NewsFeedController.GetNewsPreview"/> returns HTTP 200 OK
+    /// with the list of retrieved preview articles matching the request filters.
+    /// </summary>
     [Fact]
     public async Task GetNewsPreview_Should_Return_Ok_With_Articles()
     {
