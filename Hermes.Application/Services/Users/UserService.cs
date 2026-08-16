@@ -3,16 +3,22 @@ using Hermes.Application.DTOs.User;
 using Hermes.Application.Errors;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Domain.Entities;
 using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Users;
 
 /// <summary>
 /// Service implementation for querying user profiles and executing user account deletion operations.
+/// Follows Interface Segregation by depending strictly on <see cref="IUserStore"/>.
 /// </summary>
-public sealed class UserService(IUserRepository db) : IUserService
+public sealed class UserService(IUserStore db) : IUserService
 {
+    /// <summary>
+    /// Deletes a user account and purges associated resources from the system.
+    /// </summary>
+    /// <param name="user">The user scope DTO identifying the user to delete.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A Result indicating success or validation failure.</returns>
     public async ValueTask<Result> DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
     {
         if (user is null)
@@ -22,6 +28,12 @@ public sealed class UserService(IUserRepository db) : IUserService
         return Result.Ok();
     }
 
+    /// <summary>
+    /// Looks up a user account by its display name.
+    /// </summary>
+    /// <param name="name">The display name to search for.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A Result containing the user scope DTO or a not-found error.</returns>
     public async ValueTask<Result<UserScopeDto>> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -34,6 +46,12 @@ public sealed class UserService(IUserRepository db) : IUserService
         return Result.Ok(user);
     }
 
+    /// <summary>
+    /// Looks up a user account by its unique identifier.
+    /// </summary>
+    /// <param name="id">The unique user identifier.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A Result containing the user scope DTO or a not-found error.</returns>
     public async ValueTask<Result<UserScopeDto>> GetUserByIdAsync(UserId id, CancellationToken cancellationToken = default)
     {
         if (id.Value <= 0)
@@ -46,6 +64,12 @@ public sealed class UserService(IUserRepository db) : IUserService
         return Result.Ok(user);
     }
 
+    /// <summary>
+    /// Looks up a user account by its email address.
+    /// </summary>
+    /// <param name="email">The email address to search for.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A Result containing the user scope DTO or a not-found error.</returns>
     public async ValueTask<Result<UserScopeDto>> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))

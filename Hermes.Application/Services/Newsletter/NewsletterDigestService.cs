@@ -11,8 +11,12 @@ using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Newsletter;
 
+/// <summary>
+/// Service responsible for composing and delivering personalized news digest emails to subscribers.
+/// Follows ISP by depending on <see cref="IUserStore"/> for user profile lookup.
+/// </summary>
 public sealed class NewsletterDigestService(
-    IUserRepository users,
+    IUserStore users,
     INewsletterSubscriptionRepository newsletterSubscriptions,
     IArticleFetchingService articleFetchingService,
     IEmailProvider emailSender,
@@ -22,6 +26,14 @@ public sealed class NewsletterDigestService(
     private const int MAX_ARTICLES_IN_NEWSLETTER = 5;
     private readonly CultureInfo _digestCulture = new("de-DE");
 
+    /// <summary>
+    /// Fetches matching news articles for a user subscription, renders HTML markup, and sends the digest email.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the recipient user.</param>
+    /// <param name="newsId">The unique identifier of the newsletter subscription.</param>
+    /// <param name="digestSlotStartUtc">The UTC schedule slot timestamp.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
+    /// <returns>A Result containing true if an email was sent, or false if skipped.</returns>
     public async Task<Result<bool>> SendAsync(UserId userId, NewsletterId newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default)
     {
         if (userId.Value <= 0)
@@ -68,6 +80,13 @@ public sealed class NewsletterDigestService(
         return Result.Ok(true);
     }
 
+    /// <summary>
+    /// Truncates plain text content to the specified maximum length and appends an ellipsis suffix.
+    /// </summary>
+    /// <param name="value">The raw string to truncate.</param>
+    /// <param name="maxLength">The maximum allowed character length.</param>
+    /// <param name="suffix">The suffix to append upon truncation.</param>
+    /// <returns>A truncated string or empty string if null.</returns>
     private static string TruncatePlainText(string? value, int maxLength, string suffix = "...")
     {
         if (string.IsNullOrEmpty(value))

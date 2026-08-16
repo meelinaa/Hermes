@@ -22,7 +22,7 @@ public sealed class UserAuthenticationServiceTests
         IUserRepository db,
         IRefreshTokenRepository? refreshTokens = null,
         IPasswordHasher? passwordHasher = null) =>
-        new(db, refreshTokens ?? Mock.Of<IRefreshTokenRepository>(), passwordHasher ?? new Hermes.Infrastructure.Adapters.Outbound.Security.BCryptPasswordHasher());
+        new(db, db, refreshTokens ?? Mock.Of<IRefreshTokenRepository>(), passwordHasher ?? new Hermes.Infrastructure.Adapters.Outbound.Security.BCryptPasswordHasher());
 
     /// <summary>
     /// Tests that <see cref="UserAuthenticationService.RegisterUserAsync"/> normalizes email addresses,

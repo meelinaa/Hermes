@@ -26,6 +26,7 @@ public sealed class UserVerificationServiceTests
         TimeProvider? timeProvider = null) =>
         new(
             db,
+            db,
             trigger ?? Mock.Of<IVerificationMailJobService>(),
             Options.Create(new SecurityOptions { HashEmailVerificationCodes = hashEmailVerificationCodes }),
             timeProvider ?? TimeProvider.System);

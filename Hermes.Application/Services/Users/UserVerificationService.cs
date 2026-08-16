@@ -4,7 +4,6 @@ using System.Text;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Services.Newsletter;
 using Hermes.Application.Services.Security;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Exceptions;
@@ -15,9 +14,11 @@ namespace Hermes.Application.Services.Users;
 
 /// <summary>
 /// Service implementation for managing two-factor email verification challenges and validating verification OTP codes.
+/// Follows ISP by depending on segregated <see cref="IUserAuthStore"/> and <see cref="IUserVerificationStore"/> ports.
 /// </summary>
 public sealed class UserVerificationService(
-    IUserRepository db,
+    IUserAuthStore authStore,
+    IUserVerificationStore verificationStore,
     IVerificationMailJobService verificationMailJobTrigger,
     IOptions<SecurityOptions> securityOptions,
     TimeProvider timeProvider) : IUserVerificationService
@@ -35,7 +36,7 @@ public sealed class UserVerificationService(
             throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
 
         Email normalized = Email.Parse(email);
-        User? user = await db.GetUserEntityForAuthenticationByEmailAsync(normalized.Value, cancellationToken).ConfigureAwait(false);
+        User? user = await authStore.GetUserEntityForAuthenticationByEmailAsync(normalized.Value, cancellationToken).ConfigureAwait(false);
         if (user is null)
             throw new UserNotFoundException($"User with email '{normalized.Value}' was not found.");
 
@@ -58,7 +59,7 @@ public sealed class UserVerificationService(
         if (code is < 0 or > 999_999)
             throw new ArgumentOutOfRangeException(nameof(code), "Verification code must be a six-digit value.");
 
-        User? user = await db.GetUserEntityForAuthenticationByIdAsync(userId, cancellationToken).ConfigureAwait(false)
+        User? user = await authStore.GetUserEntityForAuthenticationByIdAsync(userId, cancellationToken).ConfigureAwait(false)
             ?? throw new UserNotFoundException($"User with id {userId.Value} was not found.");
         string? stored = user.TwoFactorCode;
         DateTime? expiry = user.TwoFactorExpiry;
@@ -76,7 +77,7 @@ public sealed class UserVerificationService(
         if (!VerificationCodeMatchesStored(stored.Trim(), provided))
             throw new VerificationCodeMismatchException();
 
-        await db.CompleteUserEmailVerificationAsync(userId, cancellationToken).ConfigureAwait(false);
+        await verificationStore.CompleteUserEmailVerificationAsync(userId, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -51,7 +51,11 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddSingleton<ISqlConnectionFactory>(new MySqlConnectionFactory(connectionString));
         builder.Services.AddScoped<IUserReadQueries, UserDapperQueries>();
         builder.Services.AddScoped<INewsletterReadQueries, NewsletterDapperQueries>();
-        builder.Services.AddScoped<IUserRepository, UserRepository>();
+        builder.Services.AddScoped<UserRepository>();
+        builder.Services.AddScoped<IUserRepository>(sp => sp.GetRequiredService<UserRepository>());
+        builder.Services.AddScoped<IUserStore>(sp => sp.GetRequiredService<UserRepository>());
+        builder.Services.AddScoped<IUserAuthStore>(sp => sp.GetRequiredService<UserRepository>());
+        builder.Services.AddScoped<IUserVerificationStore>(sp => sp.GetRequiredService<UserRepository>());
         builder.Services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
         builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();

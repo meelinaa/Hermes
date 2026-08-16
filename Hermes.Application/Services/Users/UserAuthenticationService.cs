@@ -12,9 +12,11 @@ namespace Hermes.Application.Services.Users;
 
 /// <summary>
 /// Service implementation for user account registration, authentication via password verification, credential updates, and session token invalidation.
+/// Adheres to ISP by depending on segregated <see cref="IUserStore"/> and <see cref="IUserAuthStore"/> ports.
 /// </summary>
 public sealed class UserAuthenticationService(
-    IUserRepository db,
+    IUserStore userStore,
+    IUserAuthStore authStore,
     IRefreshTokenRepository refreshTokenRepository,
     IPasswordHasher passwordHasher) : IUserAuthenticationService
 {
@@ -46,7 +48,7 @@ public sealed class UserAuthenticationService(
             return Result.Fail(new ValidationError(ex.Message));
         }
         
-        UserScopeDto? existing = await db.GetUserByEmailAsync(email.Value, cancellationToken).ConfigureAwait(false);
+        UserScopeDto? existing = await userStore.GetUserByEmailAsync(email.Value, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
             return Result.Fail(new DuplicateEmailError(email.Value));
             
@@ -62,7 +64,7 @@ public sealed class UserAuthenticationService(
             return Result.Fail(new ValidationError(ex.Message));
         }
         
-        await db.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
+        await userStore.SetUserAsync(user, cancellationToken).ConfigureAwait(false);
         if (user.Id.Value <= 0)
             return Result.Fail(new ValidationError("Failed to create user."));
         
@@ -92,8 +94,8 @@ public sealed class UserAuthenticationService(
 
         string? key = nameOrEmail.Trim();
         User? user = key.Contains('@', StringComparison.Ordinal)
-            ? await db.GetUserEntityForAuthenticationByEmailAsync(key, cancellationToken).ConfigureAwait(false)
-            : await db.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
+            ? await authStore.GetUserEntityForAuthenticationByEmailAsync(key, cancellationToken).ConfigureAwait(false)
+            : await authStore.GetUserEntityForAuthenticationByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
         if (user is null || string.IsNullOrEmpty(user.PasswordHash))
             return Result.Fail(new InvalidCredentialsError());
@@ -132,7 +134,7 @@ public sealed class UserAuthenticationService(
             return Result.Fail(new ValidationError("Email is required."));
 
         UserId uid = new UserId(userId);
-        User? existing = await db.GetUserEntityByIdAsync(uid, cancellationToken).ConfigureAwait(false);
+        User? existing = await userStore.GetUserEntityByIdAsync(uid, cancellationToken).ConfigureAwait(false);
         if (existing is null)
             return Result.Fail(new UserNotFoundError(userId));
 
@@ -179,7 +181,7 @@ public sealed class UserAuthenticationService(
             }
         }
 
-        await db.UpdateUserAsync(existing, cancellationToken).ConfigureAwait(false);
+        await userStore.UpdateUserAsync(existing, cancellationToken).ConfigureAwait(false);
 
         if (passwordChanged)
         {

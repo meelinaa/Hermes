@@ -65,7 +65,11 @@ public static class ApiServiceCollectionExtensions
         services.AddSingleton<ISqlConnectionFactory>(new MySqlConnectionFactory(connectionString));
         services.AddScoped<IUserReadQueries, UserDapperQueries>();
         services.AddScoped<INewsletterReadQueries, NewsletterDapperQueries>();
-        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<UserRepository>();
+        services.AddScoped<IUserRepository>(sp => sp.GetRequiredService<UserRepository>());
+        services.AddScoped<IUserStore>(sp => sp.GetRequiredService<UserRepository>());
+        services.AddScoped<IUserAuthStore>(sp => sp.GetRequiredService<UserRepository>());
+        services.AddScoped<IUserVerificationStore>(sp => sp.GetRequiredService<UserRepository>());
         services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
