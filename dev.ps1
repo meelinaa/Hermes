@@ -185,6 +185,7 @@ Write-Host "   Frontend Web App : https://localhost:7016" -ForegroundColor Green
 Write-Host "   Backend API      : http://localhost:5165" -ForegroundColor Cyan
 Write-Host "   Worker Hangfire  : http://localhost:5166/hangfire" -ForegroundColor Cyan
 Write-Host "   MailHog Inbox    : http://localhost:8025" -ForegroundColor Yellow
+Write-Host "   Jaeger Traces    : http://localhost:16686" -ForegroundColor Magenta
 Write-Host "   MySQL Database   : localhost:3308 (Database: hermes)" -ForegroundColor Gray
 Write-Host "   Redis Cache      : localhost:6379" -ForegroundColor Gray
 Write-Host " ========================================================" -ForegroundColor White

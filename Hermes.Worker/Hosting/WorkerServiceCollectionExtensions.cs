@@ -139,7 +139,8 @@ public static class WorkerServiceCollectionExtensions
                 TablesPrefix = "Hangfire"
             }))
             .UseFilter(new AutomaticRetryAttribute { Attempts = 3, OnAttemptsExceeded = AttemptsExceededAction.Fail })
-            .UseFilter(new CorrelationIdServerFilter()));
+            .UseFilter(new CorrelationIdServerFilter())
+            .UseFilter(new HangfireTraceContextServerFilter()));
 
         builder.Services.AddHangfireServer();
     }

@@ -121,7 +121,8 @@ public static class ApiServiceCollectionExtensions
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             .UseStorage(CreateHangfireJobStorage(configuration))
-            .UseFilter(new CorrelationIdClientFilter(sp.GetRequiredService<IHttpContextAccessor>())));
+            .UseFilter(new CorrelationIdClientFilter(sp.GetRequiredService<IHttpContextAccessor>()))
+            .UseFilter(new HangfireTraceContextClientFilter()));
         services.AddSingleton<INewsletterSchedulerJobService, NewsletterSchedulerJobWrapper>();
         Log.Information("Registered Hangfire JobStorage (MySQL) for newsletter scheduler triggers (same DB as Hermes.Worker).");
 

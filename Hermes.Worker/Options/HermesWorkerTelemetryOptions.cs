@@ -30,4 +30,9 @@ public sealed class HermesWorkerTelemetryOptions
     /// Gets or sets custom OTLP exporter headers.
     /// </summary>
     public string? OtlpHeaders { get; set; }
+
+    /// <summary>
+    /// Gets or sets the OTLP exporter transport protocol ('grpc' or 'http'). Defaults to 'grpc'.
+    /// </summary>
+    public string Protocol { get; set; } = "grpc";
 }

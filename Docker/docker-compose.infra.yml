@@ -1,6 +1,17 @@
-# Hermes Development Infrastructure (MySQL, Redis, MailHog)
+# Hermes Development Infrastructure (MySQL, Redis, MailHog, Jaeger)
 # Usage: docker compose -f Docker/docker-compose.infra.yml up -d
 services:
+  hermes-jaeger:
+    container_name: hermes-jaeger
+    image: jaegertracing/all-in-one:latest
+    restart: unless-stopped
+    ports:
+      - "16686:16686" # Jaeger Web UI (http://localhost:16686)
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
   hermes-mailhog:
     container_name: hermes-mailhog
     image: mailhog/mailhog:latest

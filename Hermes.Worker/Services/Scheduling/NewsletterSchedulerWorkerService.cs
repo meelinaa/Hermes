@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Hermes.Domain.ValueObjects;
 using Hermes.Worker.Logging;
+using Serilog.Context;
 
 namespace Hermes.Worker.Services.Scheduling;
 
@@ -29,30 +30,33 @@ public sealed class NewsletterSchedulerWorkerService(
     /// <returns>A task representing the asynchronous execution.</returns>
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        DateTime wallNow = NewsletterSchedulingProvider.GetWallClockNow(_newsletterTimeZone);
-        DateTime slotStartWall = NewsletterSchedulingProvider.GetWallClockMinuteStart(_newsletterTimeZone);
-        DateTime slotStartUtc = NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
-
-        logger.LogRunStart(_newsletterTimeZone.Id, wallNow, slotStartWall, slotStartUtc);
-
-        DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
-
-        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> due = await newsletterScheduleService
-            .GetDueItemsAsync(wallNow, slotStartUtc, slotEndUtc, cancellationToken)
-            .ConfigureAwait(false);
-
-        if (due.Count > 0)
+        using (LogContext.PushProperty("SchedulerRunId", Guid.NewGuid().ToString("N")))
         {
-            logger.LogFoundDueItems(due.Count, string.Join(", ", due.Select(d => d.NewsId.Value)));
-        }
+            DateTime wallNow = NewsletterSchedulingProvider.GetWallClockNow(_newsletterTimeZone);
+            DateTime slotStartWall = NewsletterSchedulingProvider.GetWallClockMinuteStart(_newsletterTimeZone);
+            DateTime slotStartUtc = NewsletterSchedulingProvider.ConvertWallMinuteStartToUtc(slotStartWall, _newsletterTimeZone);
 
-        foreach ((NewsletterId newsId, UserId userId) in due)
-        {
-            string? jobId = backgroundJobClient.Enqueue<NotificationJobService>(notificationJobs =>
-                notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
-            logger.LogJobEnqueued(newsId.Value, userId.Value, jobId);
-        }
+            logger.LogRunStart(_newsletterTimeZone.Id, wallNow, slotStartWall, slotStartUtc);
 
-        logger.LogRunEnd(slotStartUtc, due.Count);
+            DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
+
+            IReadOnlyList<(NewsletterId NewsId, UserId UserId)> due = await newsletterScheduleService
+                .GetDueItemsAsync(wallNow, slotStartUtc, slotEndUtc, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (due.Count > 0)
+            {
+                logger.LogFoundDueItems(due.Count, string.Join(", ", due.Select(d => d.NewsId.Value)));
+            }
+
+            foreach ((NewsletterId newsId, UserId userId) in due)
+            {
+                string? jobId = backgroundJobClient.Enqueue<NotificationJobService>(notificationJobs =>
+                    notificationJobs.SendNewsDigestAsync(userId, newsId, slotStartUtc, CancellationToken.None));
+                logger.LogJobEnqueued(newsId.Value, userId.Value, jobId);
+            }
+
+            logger.LogRunEnd(slotStartUtc, due.Count);
+        }
     }
 }

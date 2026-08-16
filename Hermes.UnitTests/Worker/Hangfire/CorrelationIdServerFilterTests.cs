@@ -59,14 +59,14 @@ public sealed class CorrelationIdServerFilterTests
     }
 
     /// <summary>
-    /// Tests that <see cref="CorrelationIdServerFilter.OnPerforming"/> does not attach a scope
-    /// when the CorrelationId is null, empty, or whitespace.
+    /// Tests that <see cref="CorrelationIdServerFilter.OnPerforming"/> attaches a log scope
+    /// even when the CorrelationId parameter is null or whitespace, generating a fallback identifier.
     /// </summary>
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void OnPerforming_Should_NotPushLogScope_WhenCorrelationIdIsNullOrWhitespace(string? invalidCorrelationId)
+    public void OnPerforming_Should_GenerateFallbackScope_WhenCorrelationIdIsNullOrWhitespace(string? invalidCorrelationId)
     {
         // Arrange
         CorrelationIdServerFilter sut = new();
@@ -76,7 +76,8 @@ public sealed class CorrelationIdServerFilterTests
         sut.OnPerforming(context);
 
         // Assert
-        Assert.False(context.Items.ContainsKey("CorrelationIdLogScope"));
+        Assert.True(context.Items.ContainsKey("CorrelationIdLogScope"));
+        Assert.IsAssignableFrom<IDisposable>(context.Items["CorrelationIdLogScope"]);
     }
 
     /// <summary>
