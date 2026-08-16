@@ -12,8 +12,7 @@ public sealed class ReadinessProbeFailureIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _mysql = new MySqlBuilder()
-            .WithImage("mysql:8.4")
+        _mysql = new MySqlBuilder("mysql:8.4")
             .WithCleanUp(true)
             .Build();
 

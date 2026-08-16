@@ -14,7 +14,9 @@ using Serilog;
 using Serilog.Enrichers.Span;
 
 using Hermes.Api.Filters;
+using Hermes.Api.Middleware;
 using Hermes.Infrastructure.Adapters.Outbound.Hangfire;
+using Hermes.Infrastructure.Adapters.Outbound.NewsDataIo.Providers;
 using Hermes.Api.Validators.Auth;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Options.Common;
@@ -29,6 +31,11 @@ using Hermes.Application.Services.Security;
 using Hermes.Application.Services.Users;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
+using Hermes.Infrastructure.EventDispatching;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Outbox;
+using Hermes.Infrastructure.Adapters.Outbound.Persistence.Dapper;
+using Hermes.Domain.Events;
+using Hermes.Application.EventHandlers;
 
 namespace Hermes.Api.Hosting;
 
@@ -55,32 +62,69 @@ public static class ApiServiceCollectionExtensions
 
         services.AddDbContext<HermesDbContext>(options =>
             options.UseMySql(connectionString, serverVersion));
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
+        services.AddSingleton<ISqlConnectionFactory>(new MySqlConnectionFactory(connectionString));
+        services.AddScoped<IUserReadQueries, UserDapperQueries>();
+        services.AddScoped<INewsletterReadQueries, NewsletterDapperQueries>();
+        services.AddScoped<UserRepository>();
+        services.AddScoped<IUserRepository>(sp => sp.GetRequiredService<UserRepository>());
+        services.AddScoped<IUserStore>(sp => sp.GetRequiredService<UserRepository>());
+        services.AddScoped<IUserAuthStore>(sp => sp.GetRequiredService<UserRepository>());
+        services.AddScoped<IUserVerificationStore>(sp => sp.GetRequiredService<UserRepository>());
+        services.AddScoped<NewsletterSubscriptionRepository>();
+        services.AddScoped<INewsletterSubscriptionRepository>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
+        services.AddScoped<INewsletterSubscriptionStore>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
+        services.AddScoped<INewsletterSchedulerStore>(sp => sp.GetRequiredService<NewsletterSubscriptionRepository>());
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
-        Log.Information("Registered HermesDbContext with MySQL connection string from configuration");
+        services.AddSingleton<IPasswordHasher, Hermes.Infrastructure.Adapters.Outbound.Security.BCryptPasswordHasher>();
+        Log.Information("Registered HermesDbContext, Dapper queries, and BCrypt password hasher");
 
+        services.AddDistributedMemoryCache();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUserAuthenticationService, UserAuthenticationService>();
         services.AddScoped<IUserVerificationService, UserVerificationService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<INewsletterSubscriptionService, NewsletterSubscriptionService>();
         services.AddScoped<INotificationLogService, NotificationLogService>();
-        services.Configure<HermesSiteUrlsOptions>(configuration.GetSection(HermesSiteUrlsOptions.SECTION_NAME));
-        services.Configure<PaginationOptions>(configuration.GetSection(PaginationOptions.SECTION_NAME));
-        services.Configure<NewsletterOptions>(configuration.GetSection(NewsletterOptions.SECTION_NAME));
-        services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SECTION_NAME));
+        services.AddOptions<NewsDataIoOptions>().BindConfiguration("NewsDataIo");
+        services.AddOptions<HttpResilienceOptions>().BindConfiguration(HttpResilienceOptions.SECTION_NAME);
+
+        var resilienceOptions = configuration.GetSection(HttpResilienceOptions.SECTION_NAME).Get<HttpResilienceOptions>() ?? new HttpResilienceOptions();
+
+        services.AddHttpClient<INewsArticleProvider, NewsDataIoClient>()
+            .AddStandardResilienceHandler(options =>
+            {
+                options.Retry.MaxRetryAttempts = resilienceOptions.MaxRetryAttempts;
+                options.Retry.Delay = TimeSpan.FromMilliseconds(resilienceOptions.BaseDelayMilliseconds);
+                options.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(resilienceOptions.AttemptTimeoutSeconds);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(resilienceOptions.TotalRequestTimeoutSeconds);
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(resilienceOptions.CircuitBreakerSamplingDurationSeconds);
+                options.CircuitBreaker.FailureRatio = resilienceOptions.CircuitBreakerFailureRatio;
+                options.CircuitBreaker.MinimumThroughput = resilienceOptions.CircuitBreakerMinimumThroughput;
+            });
+        services.AddScoped<IArticleFetchingService, ArticleFetchingService>();
+        services.AddOptions<HermesSiteUrlsOptions>().BindConfiguration(HermesSiteUrlsOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<PaginationOptions>().BindConfiguration(PaginationOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<NewsletterOptions>().BindConfiguration(NewsletterOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<SecurityOptions>().BindConfiguration(SecurityOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         services.AddHttpContextAccessor();
-        services.AddSingleton<IVerificationMailJobService, VerificationMailJobService>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IVerificationMailJobService, VerificationMailJobWrapper>();
         Log.Information("Registered application services: UserService, AuthTokenService, NewsletterSubscriptionService, NotificationLogService");
+
+        services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();
+        services.AddScoped<IDomainEventHandler<UserEmailChangedEvent>, UserEmailChangedEventHandler>();
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        services.AddScoped<IOutboxMessageProcessor, OutboxMessageProcessor>();
 
         services.AddHangfire((sp, config) => config
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             .UseStorage(CreateHangfireJobStorage(configuration))
-            .UseFilter(new CorrelationIdClientFilter(sp.GetRequiredService<IHttpContextAccessor>())));
-        services.AddSingleton<INewsletterSchedulerJobService, NewsletterSchedulerJobService>();
+            .UseFilter(new CorrelationIdClientFilter(sp.GetRequiredService<IHttpContextAccessor>()))
+            .UseFilter(new HangfireTraceContextClientFilter()));
+        services.AddSingleton<INewsletterSchedulerJobService, NewsletterSchedulerJobWrapper>();
         Log.Information("Registered Hangfire JobStorage (MySQL) for newsletter scheduler triggers (same DB as Hermes.Worker).");
 
         services.AddControllers(options =>
@@ -97,6 +141,7 @@ public static class ApiServiceCollectionExtensions
         Log.Information("Added controllers, JWT authentication, FluentValidation, and OpenAPI services");
 
         services.AddProblemDetails();
+        services.AddExceptionHandler<GlobalExceptionHandler>();
 
         string[] allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                                   ?? ["http://localhost:5269", "https://localhost:7016"];
@@ -128,11 +173,17 @@ public static class ApiServiceCollectionExtensions
                 Timeout = TimeSpan.FromSeconds(30),
                 WriteTimeoutResponse = async context =>
                 {
+                    IProblemDetailsService problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
                     context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
-                    await context.Response.WriteAsJsonAsync(new
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
                     {
-                        error = "Timeout",
-                        message = "The server took too long to respond."
+                        HttpContext = context,
+                        ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                        {
+                            Status = StatusCodes.Status504GatewayTimeout,
+                            Title = "Gateway Timeout",
+                            Detail = "The server took too long to respond."
+                        }
                     });
                 }
             };
@@ -167,6 +218,9 @@ public static class ApiServiceCollectionExtensions
                 options.AddPolicy("AuthLoginPolicy", httpContext =>
                     CreateAuthPartition(httpContext, permitLimit: 8, window: TimeSpan.FromMinutes(1)));
 
+                options.AddPolicy("AuthRegisterPolicy", httpContext =>
+                    CreateAuthPartition(httpContext, permitLimit: 10, window: TimeSpan.FromMinutes(1)));
+
                 options.AddPolicy("AuthRefreshPolicy", httpContext =>
                     CreateAuthPartition(httpContext, permitLimit: 30, window: TimeSpan.FromMinutes(1)));
 
@@ -183,7 +237,7 @@ public static class ApiServiceCollectionExtensions
             {
                 foreach (string policyName in new[]
                          {
-                             "AuthLoginPolicy", "AuthRefreshPolicy", "VerifyCodePolicy", "VerifyMailPolicy", "SensitiveWritePolicy",
+                             "AuthLoginPolicy", "AuthRegisterPolicy", "AuthRefreshPolicy", "VerifyCodePolicy", "VerifyMailPolicy", "SensitiveWritePolicy",
                          })
                 {
                     options.AddPolicy(policyName, _ => RateLimitPartition.GetNoLimiter("testing-" + policyName));

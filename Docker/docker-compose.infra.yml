@@ -1,0 +1,56 @@
+# Hermes Development Infrastructure (MySQL, Redis, MailHog, Jaeger)
+# Usage: docker compose -f Docker/docker-compose.infra.yml up -d
+services:
+  hermes-jaeger:
+    container_name: hermes-jaeger
+    image: jaegertracing/all-in-one:latest
+    restart: unless-stopped
+    ports:
+      - "16686:16686" # Jaeger Web UI (http://localhost:16686)
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+  hermes-mailhog:
+    container_name: hermes-mailhog
+    image: mailhog/mailhog:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP Port (for Hermes backend dispatch)
+      - "8025:8025" # Web UI (http://localhost:8025 to inspect outgoing emails)
+
+  hermes-redis:
+    container_name: hermes-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  hermes-mysql:
+    container_name: hermes-mysql
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-password1234!}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-hermes}"
+      MYSQL_USER: "${MYSQL_USER:-hermes_user}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-hermes_pass}"
+      TZ: Europe/Berlin
+    ports:
+      - "${MYSQL_PORT:-3308}:3306"
+    volumes:
+      - hermes_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD:-password1234!} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  hermes_data:
+    name: hermes_data

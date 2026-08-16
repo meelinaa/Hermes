@@ -1,6 +1,7 @@
 @page "/news-settings"
 @page "/news-settings/new"
 @layout AppHomeLayout
+@attribute [Authorize]
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @implements IDisposable
 @inject NavigationManager Navigation

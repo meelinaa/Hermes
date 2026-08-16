@@ -1,0 +1,47 @@
+.hermes-theme-toggle {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 42px;
+    min-width: 42px;
+    padding: 0 0.65rem;
+    border: 2px solid var(--poster-ink, #0d0d0d);
+    border-radius: 0;
+    background: transparent;
+    color: var(--poster-ink, #0d0d0d);
+    cursor: pointer;
+    font-size: var(--body-s, 14px);
+    font-weight: var(--weight-semibold, 600);
+    font-family: var(--font-primary, inherit);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.hermes-theme-toggle:hover {
+    background: var(--poster-ink, #0d0d0d);
+    color: var(--poster-beige, #f2efe8);
+}
+
+.hermes-theme-toggle__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.hermes-theme-toggle:hover .hermes-theme-toggle__icon {
+    transform: rotate(15deg);
+}
+
+.hermes-theme-toggle:focus-visible {
+    outline: 2px solid var(--poster-accent, #e03616);
+    outline-offset: 2px;
+}
+
+.hermes-theme-toggle__label {
+    margin-left: 0.25rem;
+    font-size: 0.85rem;
+}

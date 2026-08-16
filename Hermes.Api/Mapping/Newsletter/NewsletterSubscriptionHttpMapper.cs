@@ -1,5 +1,6 @@
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Api.Mapping.Newsletter;
 
@@ -14,18 +15,19 @@ internal static class NewsletterSubscriptionHttpMapper
     /// <param name="dto">The creation request payload.</param>
     /// <param name="userId">The ID of the subscribing user.</param>
     /// <returns>The mapped <see cref="NewsletterSubscription"/> domain entity.</returns>
-    public static NewsletterSubscription ToEntity(this CreateNewsletterSubscriptionRequestDto dto, int userId) =>
-        new()
-        {
-            UserId = userId,
-            Keywords = dto.Keywords,
-            Category = dto.Category,
-            Languages = dto.Languages,
-            Countries = dto.Countries,
-            SendOnWeekdays = dto.SendOnWeekdays ?? [],
-            SendAtTimes = dto.SendAtTimes ?? [],
-            IsEnabled = dto.IsEnabled ?? true,
-        };
+    public static NewsletterSubscription ToEntity(this CreateNewsletterSubscriptionRequestDto dto, UserId userId)
+    {
+        NewsletterSubscription news = NewsletterSubscription.CreateForUser(userId);
+        news.UpdateFilters(dto.Keywords, dto.Category, dto.Languages, dto.Countries);
+        if (dto.IsEnabled == false)
+            news.Disable();
+        
+        // Use the domain value object to set the schedule
+        var window = Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling(dto.SendOnWeekdays, dto.SendAtTimes);
+        news.AssignDigestSchedule(window);
+        
+        return news;
+    }
 
     /// <summary>
     /// Converts an <see cref="UpdateNewsletterSubscriptionRequestDto"/> DTO to a domain entity.
@@ -34,20 +36,26 @@ internal static class NewsletterSubscriptionHttpMapper
     /// <param name="userId">The ID of the user requesting update.</param>
     /// <param name="existing">The existing subscription entity.</param>
     /// <returns>The updated <see cref="NewsletterSubscription"/> entity.</returns>
-    public static NewsletterSubscription ToEntity(this UpdateNewsletterSubscriptionRequestDto dto, int userId, NewsletterSubscription existing) =>
-        new()
+    public static NewsletterSubscription ToEntity(this UpdateNewsletterSubscriptionRequestDto dto, UserId userId, NewsletterSubscription existing)
+    {
+        existing.UpdateFilters(dto.Keywords, dto.Category, dto.Languages, dto.Countries);
+        
+        if (dto.IsEnabled.HasValue)
         {
-            Id = dto.Id,
-            UserId = userId,
-            Keywords = dto.Keywords,
-            Category = dto.Category,
-            Languages = dto.Languages,
-            Countries = dto.Countries,
-            SendOnWeekdays = dto.SendOnWeekdays ?? [],
-            SendAtTimes = dto.SendAtTimes ?? [],
-            NextDigestSlotUtc = existing.NextDigestSlotUtc,
-            IsEnabled = dto.IsEnabled ?? existing.IsEnabled,
-        };
+            if (dto.IsEnabled.Value)
+                existing.Enable();
+            else
+                existing.Disable();
+        }
+
+        var window = Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling(
+            dto.SendOnWeekdays ?? existing.SendOnWeekdays, 
+            dto.SendAtTimes ?? existing.SendAtTimes);
+        
+        existing.AssignDigestSchedule(window);
+        
+        return existing;
+    }
 
     /// <summary>
     /// Converts a <see cref="NewsletterSubscription"/> domain entity to a response DTO.
@@ -57,8 +65,8 @@ internal static class NewsletterSubscriptionHttpMapper
     public static NewsletterSubscriptionResponseDto ToResponse(this NewsletterSubscription entity) =>
         new()
         {
-            Id = entity.Id,
-            UserId = entity.UserId,
+            Id = entity.Id.Value,
+            UserId = entity.UserId.Value,
             Keywords = entity.Keywords,
             Category = entity.Category,
             Languages = entity.Languages,

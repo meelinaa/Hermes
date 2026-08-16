@@ -33,6 +33,10 @@ public static class OpenTelemetryWorkerHostBuilderExtensions
                     new("deployment.environment", builder.Environment.EnvironmentName)
                 }))
             .WithTracing(t => t
+                // AlwaysOnSampler is configured for full visibility in local development & integration testing.
+                // In high-throughput production environments, consider using a ratio-based sampler (e.g. TraceIdRatioBasedSampler).
+                .SetSampler(new AlwaysOnSampler())
+                .AddSource("Hermes.Api", "Hermes.Worker", "Hermes.Hangfire")
                 .AddEntityFrameworkCoreInstrumentation()
                 .AddOtlpExporter(ote => ConfigureOtlp(ote, options)))
             .WithMetrics(m => m
@@ -43,12 +47,17 @@ public static class OpenTelemetryWorkerHostBuilderExtensions
     }
 
     /// <summary>
-    /// Configures OTLP exporter options endpoint and headers from telemetry options.
+    /// Configures OTLP exporter options endpoint, protocol, and headers from telemetry options.
     /// </summary>
     /// <param name="exporter">The OTLP exporter options.</param>
     /// <param name="options">The worker telemetry options.</param>
     private static void ConfigureOtlp(OtlpExporterOptions exporter, HermesWorkerTelemetryOptions options)
     {
+        exporter.Protocol = string.Equals(options.Protocol, "http", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(options.Protocol, "httpprotobuf", StringComparison.OrdinalIgnoreCase)
+            ? OtlpExportProtocol.HttpProtobuf
+            : OtlpExportProtocol.Grpc;
+
         if (!string.IsNullOrWhiteSpace(options.OtlpEndpoint) &&
             Uri.TryCreate(options.OtlpEndpoint, UriKind.Absolute, out Uri? endpoint))
             exporter.Endpoint = endpoint;

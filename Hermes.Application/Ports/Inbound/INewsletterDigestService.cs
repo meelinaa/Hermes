@@ -1,6 +1,9 @@
+using FluentResults;
+using Hermes.Domain.ValueObjects;
+
 namespace Hermes.Application.Ports.Inbound;
 
 public interface INewsletterDigestService
 {
-    Task SendAsync(int userId, int newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default);
+    Task<Result<bool>> SendAsync(UserId userId, NewsletterId newsId, DateTime digestSlotStartUtc, CancellationToken cancellationToken = default);
 }

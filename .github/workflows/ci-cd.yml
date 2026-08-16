@@ -7,7 +7,7 @@ on:
       - 'feat/**'
       - 'test/**'
       - 'fix/**'
-      - 'refactor/**'
+      - 'refactor**'
 
   pull_request:
     branches:
@@ -283,11 +283,11 @@ jobs:
           exit-code: '0'
 
       - name: Upload Trivy Scan Results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always() && hashFiles('trivy-results.sarif') != ''
         with:
-          sarif_file: trivy-results.sarif
-          category: ${{ matrix.service }}
+            sarif_file: trivy-results.sarif
+            category: ${{ matrix.service }}
 
       - name: Fail on CRITICAL vulnerabilities (main only)
         if: github.ref_name == 'main'

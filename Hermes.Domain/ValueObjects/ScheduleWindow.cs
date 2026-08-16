@@ -1,3 +1,4 @@
+using Hermes.Domain.Exceptions;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
 
@@ -22,8 +23,7 @@ public sealed record ScheduleWindow
 
         if (wd.Count == 0 || tm.Count == 0)
         {
-            throw new ArgumentException(
-                "A news digest subscription requires at least one weekday and at least one send time.");
+            throw new DomainValidationException("A news digest subscription requires at least one weekday and at least one send time.");
         }
 
         return new ScheduleWindow(wd, tm);
@@ -36,7 +36,6 @@ public sealed record ScheduleWindow
     public void ApplyToSubscription(NewsletterSubscription subscription)
     {
         ArgumentNullException.ThrowIfNull(subscription);
-        subscription.SendOnWeekdays = Weekdays.ToList();
-        subscription.SendAtTimes = Times.ToList();
+        subscription.SetSchedule(Weekdays.ToList(), Times.ToList());
     }
 }

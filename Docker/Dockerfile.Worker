@@ -1,11 +1,28 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 WORKDIR /src
 
-COPY . .
+# Copy project files for optimal layer caching
+COPY ["Hermes.Domain/Hermes.Domain.csproj", "Hermes.Domain/"]
+COPY ["Hermes.Application/Hermes.Application.csproj", "Hermes.Application/"]
+COPY ["Hermes.Infrastructure/Hermes.Infrastructure.csproj", "Hermes.Infrastructure/"]
+COPY ["Hermes.Notifications/Hermes.Notifications.csproj", "Hermes.Notifications/"]
+COPY ["Hermes.Worker/Hermes.Worker.csproj", "Hermes.Worker/"]
 
 RUN dotnet restore "Hermes.Worker/Hermes.Worker.csproj"
+
+COPY . .
 WORKDIR /src/Hermes.Worker
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Run as non-root user for container security
+USER $APP_UID
+
+ENV ASPNETCORE_HTTP_PORTS=5166
+EXPOSE 5166
+
+ENTRYPOINT ["dotnet", "Hermes.Worker.dll"]

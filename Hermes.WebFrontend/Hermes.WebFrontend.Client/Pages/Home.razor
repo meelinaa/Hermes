@@ -1,16 +1,10 @@
 @page "/home"
 @layout AppHomeLayout
+@attribute [Authorize]
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-@using System.Net.Http.Json
-@using System.Text.Json
-@using Hermes.WebFrontend.Client.ApiModels
-@using Hermes.WebFrontend.Client.Services
-@using Hermes.WebFrontend.Client.Services.Auth
-@using Hermes.WebFrontend.Client.Services.User
+@using Hermes.WebFrontend.Client.ViewModels
 @implements IDisposable
-@inject AuthTokenStore AuthTokens
-@inject HttpClient Http
-@inject UserProfileRefreshService ProfileRefresh
+@inject HomeViewModel Model
 
 <PageTitle>Home — Hermes</PageTitle>
 
@@ -26,9 +20,9 @@
     <div class="poster-home__main">
         <p class="poster-home__kicker">personalisierter news service</p>
 
-        @if (!string.IsNullOrWhiteSpace(welcomeLine))
+        @if (!string.IsNullOrWhiteSpace(Model.WelcomeLine))
         {
-            <h1 class="poster-home__title">@welcomeLine</h1>
+            <h1 class="poster-home__title">@Model.WelcomeLine</h1>
         }
 
         <p class="poster-home__subtitle">Eigenes Fullstack-Projekt zur Personalisierung von News-Inhalten</p>
@@ -54,64 +48,17 @@
 </div>
 
 @code {
-    private string? welcomeLine;
-    private Func<Task>? _profileChangedHandler;
-
     protected override async Task OnInitializedAsync()
     {
-        _profileChangedHandler = OnProfileChangedAsync;
-        ProfileRefresh.Subscribe(_profileChangedHandler);
-        await LoadWelcomeAsync().ConfigureAwait(false);
+        Model.StateChanged += OnModelStateChanged;
+        await Model.InitializeAsync();
     }
 
-    private async Task OnProfileChangedAsync()
-    {
-        await LoadWelcomeAsync().ConfigureAwait(false);
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task LoadWelcomeAsync()
-    {
-        await AuthTokens.EnsureLoadedFromStorageAsync().ConfigureAwait(false);
-        int? userId = AuthTokens.AccessToken.TryGetUserId();
-        if (userId is null)
-        {
-            welcomeLine = ApplyWelcomeFromJwt();
-            return;
-        }
-
-        try
-        {
-            HttpResponseMessage response = await Http.GetAsync($"api/v1/users/{userId.Value}").ConfigureAwait(false);
-            if (response.IsSuccessStatusCode)
-            {
-                UserScopeDto? scope = await response.Content.ReadFromJsonAsync<UserScopeDto>(JsonSerializerOptions.Web).ConfigureAwait(false);
-                if (!string.IsNullOrWhiteSpace(scope?.Name))
-                {
-                    welcomeLine = $"Willkommen {scope.Name.Trim()}.";
-                    return;
-                }
-            }
-        }
-        catch
-        {
-        }
-
-        welcomeLine = ApplyWelcomeFromJwt();
-    }
-
-    private string? ApplyWelcomeFromJwt()
-    {
-        string? name = AuthTokens.AccessToken.TryGetDisplayName();
-        return string.IsNullOrWhiteSpace(name) ? null : $"Willkommen {name.Trim()}.";
-    }
+    private void OnModelStateChanged() => InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        if (_profileChangedHandler is not null)
-        {
-            ProfileRefresh.Unsubscribe(_profileChangedHandler);
-            _profileChangedHandler = null;
-        }
+        Model.StateChanged -= OnModelStateChanged;
+        Model.Dispose();
     }
 }

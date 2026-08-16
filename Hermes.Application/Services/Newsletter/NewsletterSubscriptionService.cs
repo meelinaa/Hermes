@@ -1,3 +1,4 @@
+using FluentResults;
 using Hermes.Application.DTOs.NewsletterSubscription;
 using Hermes.Application.Options.Newsletter;
 using Hermes.Application.Ports;
@@ -14,136 +15,100 @@ namespace Hermes.Application.Services.Newsletter;
 /// </summary>
 public sealed class NewsletterSubscriptionService(
     INewsletterSubscriptionRepository db,
-    IOptions<NewsletterOptions> newsletterOptions) : INewsletterSubscriptionService
+    IOptions<NewsletterOptions> newsletterOptions,
+    TimeProvider timeProvider) : INewsletterSubscriptionService
 {
-    /// <summary>
-    /// Validates schedule window requirements and persists a new newsletter subscription profile.
-    /// </summary>
-    /// <param name="news">The subscription entity to create and persist.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <returns>The unique database identifier assigned to the created subscription.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="news"/> is <c>null</c>.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when the owning user ID is less than or equal to zero.</exception>
-    public async Task<int> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask<Result<NewsletterId>> SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(news);
-        if (news.UserId <= 0)
-            throw new ArgumentOutOfRangeException(nameof(news.UserId), "Owning user ID must be greater than zero.");
+        if (news is null)
+            return Result.Fail("News subscription cannot be null.");
+        if (news.UserId.Value <= 0)
+            return Result.Fail("Owning user ID must be greater than zero.");
+            
         ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
         news.AssignDigestSchedule(window);
         await db.SetNewsAsync(news, cancellationToken).ConfigureAwait(false);
         await AdvanceDigestSlotAfterMutationAsync(news, cancellationToken).ConfigureAwait(false);
-        return news.Id;
+        return Result.Ok(news.Id);
     }
 
-    /// <summary>
-    /// Updates an existing newsletter subscription's settings, validating updated schedule windows and recalculating its next run slot.
-    /// </summary>
-    /// <param name="news">The updated subscription entity to persist.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="news"/> is <c>null</c>.</exception>
-    public async Task UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask<Result> UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(news);
+        if (news is null)
+            return Result.Fail("News subscription cannot be null.");
+            
         ScheduleWindow window = ScheduleWindow.EnsureForDigestScheduling(news.SendOnWeekdays, news.SendAtTimes);
         news.AssignDigestSchedule(window);
         await db.UpdateNewsAsync(news, cancellationToken).ConfigureAwait(false);
         await AdvanceDigestSlotAfterMutationAsync(news, cancellationToken).ConfigureAwait(false);
+        return Result.Ok();
     }
 
-    /// <summary>
-    /// Resolves configured timezone settings and advances the next digest run slot for a mutated subscription profile.
-    /// </summary>
-    /// <param name="news">The subscription profile containing ID and user information.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    private async Task AdvanceDigestSlotAfterMutationAsync(NewsletterSubscription news, CancellationToken cancellationToken)
+    private async ValueTask AdvanceDigestSlotAfterMutationAsync(NewsletterSubscription news, CancellationToken cancellationToken)
     {
         TimeZoneInfo zone = NewsletterSchedulingProvider.ResolveTimeZone(newsletterOptions.Value.TimeZoneId);
-        await db.AdvanceNextDigestSlotAsync(news.Id, news.UserId, zone, DateTime.UtcNow, cancellationToken)
+        await db.AdvanceNextDigestSlotAsync(news.Id, news.UserId, zone, timeProvider.GetUtcNow().UtcDateTime, cancellationToken)
             .ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Removes a specific newsletter subscription from the persistence store.
-    /// </summary>
-    /// <param name="news">The subscription entity to remove.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="news"/> is <c>null</c>.</exception>
-    public async Task DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask<Result> DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(news);
+        if (news is null)
+            return Result.Fail("News subscription cannot be null.");
+            
         await db.DeleteNewsAsync(news, cancellationToken).ConfigureAwait(false);
+        return Result.Ok();
     }
 
-    /// <summary>
-    /// Retrieves a newsletter subscription by ID for a verified owning user.
-    /// </summary>
-    /// <param name="userId">The unique identifier of the owning user.</param>
-    /// <param name="id">The unique identifier of the target newsletter subscription.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <returns>The matching <see cref="NewsletterSubscription"/> if found; otherwise <c>null</c>.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="userId"/> or <paramref name="id"/> is less than or equal to zero.</exception>
-    public async Task<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
+    public async ValueTask<Result<NewsletterSubscription>> GetNewsByIdAsync(UserId userId, NewsletterId id, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
-            throw new ArgumentException("User id must be greater than zero.", nameof(userId));
-        if (id <= 0)
-            throw new ArgumentException("News id must be greater than zero.", nameof(id));
-        return await db.GetNewsByIdAsync(userId, id, cancellationToken).ConfigureAwait(false);
+        if (userId.Value <= 0)
+            return Result.Fail("User id must be greater than zero.");
+        if (id.Value <= 0)
+            return Result.Fail("News id must be greater than zero.");
+            
+        NewsletterSubscription? news = await db.GetNewsByIdAsync(userId, id, cancellationToken).ConfigureAwait(false);
+        if (news is null)
+            return Result.Fail($"Newsletter subscription with id '{id.Value}' not found for user '{userId.Value}'.");
+            
+        return Result.Ok(news);
     }
 
-    /// <summary>
-    /// Finds a newsletter subscription by its database identifier regardless of owning user context.
-    /// </summary>
-    /// <param name="id">The unique identifier of the target newsletter subscription.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <returns>The matching <see cref="NewsletterSubscription"/> if found; otherwise <c>null</c>.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is less than or equal to zero.</exception>
-    public async Task<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<Result<NewsletterSubscription>> FindNewsByIdAsync(NewsletterId id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
-            throw new ArgumentException("News id must be greater than zero.", nameof(id));
-        return await db.FindNewsByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        if (id.Value <= 0)
+            return Result.Fail("News id must be greater than zero.");
+            
+        NewsletterSubscription? news = await db.FindNewsByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        if (news is null)
+            return Result.Fail($"Newsletter subscription with id '{id.Value}' not found.");
+            
+        return Result.Ok(news);
     }
 
-    /// <summary>
-    /// Queries a paged collection of newsletter subscriptions belonging to a user, with optional filtering and cursor pagination.
-    /// </summary>
-    /// <param name="query">The query parameter DTO containing filter options, sorting preference, and pagination boundaries.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <returns>A <see cref="NewsletterSubscriptionListResultDto"/> containing matching items and pagination metadata.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="query"/> is <c>null</c>.</exception>
-    /// <exception cref="ArgumentException">Thrown when query parameter constraints (such as positive user ID or valid cursor pagination) are violated.</exception>
-    public async Task<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
+    public async ValueTask<Result<NewsletterSubscriptionListResultDto>> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(query);
+        if (query is null)
+            return Result.Fail("Query cannot be null.");
         if (query.UserId <= 0)
-            throw new ArgumentException("User id must be greater than zero.", nameof(query));
+            return Result.Fail("User id must be greater than zero.");
         if (query.Page < 1)
-            throw new ArgumentException("Page must be at least 1.", nameof(query));
+            return Result.Fail("Page must be at least 1.");
         if (query.PageSize < 1)
-            throw new ArgumentException("Page size must be at least 1.", nameof(query));
+            return Result.Fail("Page size must be at least 1.");
         if (query.AfterId is not null && query.SortDescending)
-        {
-            throw new ArgumentException(
-                "Cursor pagination (afterId) is only supported with ascending id order (sort=id or omit sort).",
-                nameof(query));
-        }
+            return Result.Fail("Cursor pagination (afterId) is only supported with ascending id order (sort=id or omit sort).");
 
-        return await db.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
+        NewsletterSubscriptionListResultDto result = await db.GetNewsListAsync(query, cancellationToken).ConfigureAwait(false);
+        return Result.Ok(result);
     }
 
-    /// <summary>
-    /// Deletes all newsletter subscriptions associated with a specific user.
-    /// </summary>
-    /// <param name="userId">The unique identifier of the user whose subscriptions should be purged.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <returns>The total number of subscription records deleted.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="userId"/> is less than or equal to zero.</exception>
-    public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask<Result<int>> DeleteAllNewsByUserAsync(UserId userId, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
-            throw new ArgumentException("User id must be greater than zero.", nameof(userId));
-        return await db.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        if (userId.Value <= 0)
+            return Result.Fail("User id must be greater than zero.");
+            
+        int count = await db.DeleteAllNewsByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        return Result.Ok(count);
     }
 }

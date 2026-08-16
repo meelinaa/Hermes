@@ -1,5 +1,6 @@
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -21,8 +22,9 @@ public sealed class HermesDbContextTests
     {
         User seededUser = new()
         {
+            Id = new UserId(Random.Shared.Next(1, 10000)),
             Name = "Tester",
-            Email = "db@test.example",
+            Email = Email.Parse("db@test.example"),
             PasswordHash = "$2a$placeholder",
         };
         ctx.Users.Add(seededUser);
@@ -40,17 +42,12 @@ public sealed class HermesDbContextTests
         DateTime windowStart = new(2026, 4, 10, 8, 15, 0, DateTimeKind.Utc);
         DateTime windowEnd = windowStart.AddMinutes(1);
 
-        ctx.NotificationLogs.Add(new NotificationLog
-        {
-            UserId = user.Id,
-            NewsId = 42,
-            SentAt = windowStart.AddSeconds(40),
-            Status = NotificationStatus.Sent,
-            Channel = DeliveryChannel.Email,
-        });
+        var log1 = NotificationLog.Create(user.Id, DeliveryChannel.Email, windowStart.AddSeconds(40), new NewsletterId(42));
+        log1.MarkAsSent();
+        ctx.NotificationLogs.Add(log1);
         await ctx.SaveChangesAsync();
 
-        bool exists = await logStore.ExistsSentNotificationInWindowAsync(user.Id, 42, windowStart, windowEnd, CancellationToken.None);
+        bool exists = await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(42), windowStart, windowEnd, CancellationToken.None);
 
         Assert.True(exists);
     }
@@ -65,61 +62,44 @@ public sealed class HermesDbContextTests
         DateTime windowStart = new(2026, 4, 10, 8, 15, 0, DateTimeKind.Utc);
         DateTime windowEnd = windowStart.AddMinutes(1);
 
-        ctx.NotificationLogs.Add(new NotificationLog
-        {
-            UserId = user.Id,
-            NewsId = 1,
-            SentAt = windowStart.AddMinutes(-5),
-            Status = NotificationStatus.Sent,
-            Channel = DeliveryChannel.Email,
-        });
-        ctx.NotificationLogs.Add(new NotificationLog
-        {
-            UserId = user.Id,
-            NewsId = 2,
-            SentAt = windowStart.AddSeconds(20),
-            Status = NotificationStatus.Failed,
-            Channel = DeliveryChannel.Email,
-        });
-        ctx.NotificationLogs.Add(new NotificationLog
-        {
-            UserId = user.Id,
-            NewsId = 3,
-            SentAt = windowEnd,
-            Status = NotificationStatus.Sent,
-            Channel = DeliveryChannel.Email,
-        });
+        var log2 = NotificationLog.Create(user.Id, DeliveryChannel.Email, windowStart.AddMinutes(-5), new NewsletterId(1));
+        log2.MarkAsSent();
+        ctx.NotificationLogs.Add(log2);
+
+        var log3 = NotificationLog.Create(user.Id, DeliveryChannel.Email, windowStart.AddSeconds(20), new NewsletterId(2));
+        log3.MarkAsFailed("error", null);
+        ctx.NotificationLogs.Add(log3);
+
+        var log4 = NotificationLog.Create(user.Id, DeliveryChannel.Email, windowEnd, new NewsletterId(3));
+        log4.MarkAsSent();
+        ctx.NotificationLogs.Add(log4);
         await ctx.SaveChangesAsync();
 
-        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 1, windowStart, windowEnd, CancellationToken.None));
-        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 2, windowStart, windowEnd, CancellationToken.None));
-        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, 3, windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(1), windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(2), windowStart, windowEnd, CancellationToken.None));
+        Assert.False(await logStore.ExistsSentNotificationInWindowAsync(user.Id, new NewsletterId(3), windowStart, windowEnd, CancellationToken.None));
     }
 
     [Fact]
     public async Task CompleteRefreshRotationAsync_SetsRevokedAndReplacementLink()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
-        var tokens = new RefreshTokenRepository(ctx);
+        var tokens = new RefreshTokenRepository(ctx, TimeProvider.System);
         User user = await SeedUserAsync(ctx);
 
-        RefreshToken oldToken = new()
-        {
-            UserId = user.Id,
-            TokenHash = "hash-old-test",
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            CreatedAt = DateTime.UtcNow,
-        };
+        RefreshToken oldToken = RefreshToken.Create(
+            user.Id,
+            "hash-old-test",
+            DateTime.UtcNow.AddDays(7),
+            DateTime.UtcNow);
         ctx.RefreshTokens.Add(oldToken);
         await ctx.SaveChangesAsync();
 
-        RefreshToken newToken = new()
-        {
-            UserId = user.Id,
-            TokenHash = "hash-new-test",
-            ExpiresAt = DateTime.UtcNow.AddDays(14),
-            CreatedAt = DateTime.UtcNow,
-        };
+        RefreshToken newToken = RefreshToken.Create(
+            user.Id,
+            "hash-new-test",
+            DateTime.UtcNow.AddDays(14),
+            DateTime.UtcNow);
 
         bool ok = await tokens.CompleteRefreshRotationAsync(oldToken, newToken, CancellationToken.None);
 
@@ -138,7 +118,7 @@ public sealed class HermesDbContextTests
     public async Task GetActiveRefreshTokenByHashAsync_Should_ReturnNull_WhenHashEmpty()
     {
         await using HermesDbContext ctx = CreateInMemoryContext();
-        var tokens = new RefreshTokenRepository(ctx);
+        var tokens = new RefreshTokenRepository(ctx, TimeProvider.System);
 
         RefreshToken? row = await tokens.GetActiveRefreshTokenByHashAsync("", CancellationToken.None);
 
@@ -158,8 +138,8 @@ public sealed class HermesDbContextTests
         {
             Id = user.Id,
             Name = user.Name,
-            Email = "new-email@test.example",
-            PasswordHash = null,
+            Email = Email.Parse("new-email@test.example"),
+            PasswordHash = null!,
         };
 
         await users.UpdateUserAsync(patch, CancellationToken.None);
@@ -170,3 +150,4 @@ public sealed class HermesDbContextTests
         Assert.False(reloaded.IsEmailVerified);
     }
 }
+

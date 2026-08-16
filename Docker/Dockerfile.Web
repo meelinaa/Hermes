@@ -23,6 +23,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# Run as non-root user for container security
+USER $APP_UID
+
 ENV ASPNETCORE_HTTP_PORTS=7016
 EXPOSE 7016
 

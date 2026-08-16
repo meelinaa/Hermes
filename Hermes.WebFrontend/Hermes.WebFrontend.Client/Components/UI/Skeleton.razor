@@ -1,0 +1,20 @@
+<div class="hermes-skeleton @Class" style="@ComputedStyle" aria-hidden="true"></div>
+
+@code {
+    /// <summary>Gets or sets the CSS width property of the skeleton element.</summary>
+    [Parameter] public string Width { get; set; } = "100%";
+
+    /// <summary>Gets or sets the CSS height property of the skeleton element.</summary>
+    [Parameter] public string Height { get; set; } = "1rem";
+
+    /// <summary>Gets or sets the CSS border-radius property.</summary>
+    [Parameter] public string BorderRadius { get; set; } = "4px";
+
+    /// <summary>Gets or sets additional custom CSS classes.</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets additional inline CSS styles.</summary>
+    [Parameter] public string Style { get; set; } = string.Empty;
+
+    private string ComputedStyle => $"width: {Width}; height: {Height}; border-radius: {BorderRadius}; {Style}".Trim();
+}

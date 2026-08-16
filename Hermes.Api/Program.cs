@@ -3,7 +3,7 @@ using Serilog;
 using Hermes.Api.Hosting;
 using Hermes.Api.Services;
 
-SerilogBootstrapService.InitializeGlobalLogger();
+SerilogBootstrapHelper.InitializeGlobalLogger();
 
 try
 {

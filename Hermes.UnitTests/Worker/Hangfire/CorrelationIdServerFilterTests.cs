@@ -8,6 +8,10 @@ using Xunit;
 
 namespace Hermes.UnitTests.Worker.Hangfire;
 
+/// <summary>
+/// Contains unit tests for <see cref="CorrelationIdServerFilter"/>,
+/// verifying Serilog LogContext scope attachment during Hangfire background job execution.
+/// </summary>
 public sealed class CorrelationIdServerFilterTests
 {
     private static PerformingContext CreatePerformingContext(string? correlationIdValue)
@@ -16,7 +20,6 @@ public sealed class CorrelationIdServerFilterTests
 
         if (correlationIdValue != null)
         {
-            // Hangfire job parameters are stored as JSON strings.
             string jsonValue = System.Text.Json.JsonSerializer.Serialize(correlationIdValue);
             connectionMock.Setup(x => x.GetJobParameter(It.IsAny<string>(), CorrelationIdServerFilter.JOB_PARAMETER_NAME))
                 .Returns(jsonValue);
@@ -36,6 +39,10 @@ public sealed class CorrelationIdServerFilterTests
         return new PerformingContext(performContext);
     }
 
+    /// <summary>
+    /// Tests that <see cref="CorrelationIdServerFilter.OnPerforming"/> pushes a log scope into context items
+    /// when the job parameter contains a valid CorrelationId.
+    /// </summary>
     [Fact]
     public void OnPerforming_Should_PushLogScope_WhenCorrelationIdIsPresent()
     {
@@ -51,11 +58,15 @@ public sealed class CorrelationIdServerFilterTests
         Assert.IsAssignableFrom<IDisposable>(context.Items["CorrelationIdLogScope"]);
     }
 
+    /// <summary>
+    /// Tests that <see cref="CorrelationIdServerFilter.OnPerforming"/> attaches a log scope
+    /// even when the CorrelationId parameter is null or whitespace, generating a fallback identifier.
+    /// </summary>
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void OnPerforming_Should_NotPushLogScope_WhenCorrelationIdIsNullOrWhitespace(string? invalidCorrelationId)
+    public void OnPerforming_Should_GenerateFallbackScope_WhenCorrelationIdIsNullOrWhitespace(string? invalidCorrelationId)
     {
         // Arrange
         CorrelationIdServerFilter sut = new();
@@ -65,9 +76,14 @@ public sealed class CorrelationIdServerFilterTests
         sut.OnPerforming(context);
 
         // Assert
-        Assert.False(context.Items.ContainsKey("CorrelationIdLogScope"));
+        Assert.True(context.Items.ContainsKey("CorrelationIdLogScope"));
+        Assert.IsAssignableFrom<IDisposable>(context.Items["CorrelationIdLogScope"]);
     }
 
+    /// <summary>
+    /// Tests that <see cref="CorrelationIdServerFilter.OnPerformed"/> cleanly disposes the active log scope
+    /// stored in filter items.
+    /// </summary>
     [Fact]
     public void OnPerformed_Should_DisposeScope_WhenPresentInItems()
     {
@@ -75,7 +91,6 @@ public sealed class CorrelationIdServerFilterTests
         CorrelationIdServerFilter sut = new();
         Mock<IDisposable> scopeMock = new();
 
-        // We use a dummy context and inject our mock scope manually
         PerformedContext context = new(
             CreatePerformingContext(null),
             null,
@@ -91,6 +106,10 @@ public sealed class CorrelationIdServerFilterTests
         scopeMock.Verify(x => x.Dispose(), Times.Once);
     }
 
+    /// <summary>
+    /// Tests that <see cref="CorrelationIdServerFilter.OnPerformed"/> completes without exception
+    /// when no log scope is present in items.
+    /// </summary>
     [Fact]
     public void OnPerformed_Should_NotThrow_WhenScopeIsMissing()
     {

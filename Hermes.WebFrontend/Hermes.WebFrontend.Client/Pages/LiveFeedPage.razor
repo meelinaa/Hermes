@@ -1,0 +1,256 @@
+@page "/feed"
+@layout AppHomeLayout
+@attribute [Authorize]
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using Hermes.WebFrontend.Client.ApiModels
+@using Hermes.WebFrontend.Client.ApiModels.Enums
+@using Hermes.WebFrontend.Client.Components.News
+@using Hermes.WebFrontend.Client.Components.UI
+@using Hermes.WebFrontend.Client.Enums
+@using Hermes.WebFrontend.Client.ViewModels
+@implements IDisposable
+@inject LiveFeedViewModel Model
+
+<PageTitle>Live Feed — Hermes</PageTitle>
+
+<div class="live-feed-root">
+    <div class="live-feed-header">
+        <div>
+            <span class="live-feed-kicker">Echtzeit-Nachrichten &amp; Newsletter-Vorschau</span>
+            <h1 class="live-feed-title">Live News Feed</h1>
+        </div>
+        <button type="button" class="live-feed-save-cta" @onclick="Model.OpenSaveModal" title="Filter als Newsletter speichern">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            <span>Als E-Mail-Abonnement speichern</span>
+        </button>
+    </div>
+
+    <!-- Filter Control Bar -->
+    <div class="live-feed-filters-card">
+        <div class="live-feed-search-row">
+            <div class="live-feed-search-input-wrap">
+                <input type="search"
+                       class="form-control"
+                       placeholder="Suchbegriffe eingeben (z. B. KI, Wirtschaft, Energie)…"
+                       aria-label="Suchbegriffe"
+                       @bind="Model.Keywords"
+                       @bind:event="oninput"
+                       @onkeydown="HandleSearchKeyDownAsync" />
+            </div>
+            <button type="button" class="live-feed-btn-search" @onclick="() => Model.LoadArticlesAsync()" disabled="@Model.IsLoading">
+                @(Model.IsLoading ? "Lädt…" : "Aktualisieren")
+            </button>
+        </div>
+
+        <div class="live-feed-dropdowns-grid">
+            <MultiSelectFilterDropdown TItem="NewsCategory"
+                                       Label="Kategorien"
+                                       Placeholder="Kategorien durchsuchen…"
+                                       AllItems="AllNewsCategories"
+                                       SelectedItems="Model.SelectedCategories"
+                                       GetDisplayName="NewsEnumGermanDisplayConstants.CategoryDe"
+                                       SummaryText="@Model.CategorySummaryText"
+                                       OnToggle="Model.ToggleCategory" />
+
+            <MultiSelectFilterDropdown TItem="Language"
+                                       Label="Sprachen"
+                                       Placeholder="Sprachen durchsuchen…"
+                                       AllItems="AllLanguages"
+                                       SelectedItems="Model.SelectedLanguages"
+                                       GetDisplayName="NewsEnumGermanDisplayConstants.LanguageDe"
+                                       SummaryText="@Model.LanguageSummaryText"
+                                       OnToggle="Model.ToggleLanguage" />
+
+            <MultiSelectFilterDropdown TItem="Country"
+                                       Label="Länder"
+                                       Placeholder="Länder durchsuchen…"
+                                       AllItems="AllCountries"
+                                       SelectedItems="Model.SelectedCountries"
+                                       GetDisplayName="NewsEnumGermanDisplayConstants.CountryDe"
+                                       SummaryText="@Model.CountrySummaryText"
+                                       OnToggle="Model.ToggleCountry" />
+        </div>
+
+        <div class="live-feed-filter-actions">
+            <button type="button" class="live-feed-btn-clear" @onclick="OnClearFiltersAsync">
+                Filter zurücksetzen
+            </button>
+        </div>
+    </div>
+
+    <!-- Live Feed Content Area -->
+    <div class="live-feed-content">
+        @if (Model.IsLoading)
+        {
+            <div class="live-feed-grid">
+                @for (int i = 0; i < 4; i++)
+                {
+                    <div class="live-feed-article-card live-feed-article-card--skeleton">
+                        <Skeleton Width="100%" Height="180px" BorderRadius="0" />
+                        <div class="live-feed-article-body">
+                            <Skeleton Width="30%" Height="0.8rem" BorderRadius="4px" />
+                            <Skeleton Width="90%" Height="1.25rem" BorderRadius="4px" />
+                            <Skeleton Width="100%" Height="0.9rem" BorderRadius="4px" />
+                            <Skeleton Width="70%" Height="0.9rem" BorderRadius="4px" />
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="user-profile-feedback" role="alert">
+                @Model.ErrorMessage
+            </div>
+        }
+        else if (!Model.HasSearched)
+        {
+            <div class="live-feed-empty">
+                <p class="live-feed-empty-title">Bereit für deine Suche</p>
+                <p class="live-feed-empty-text">Wähle Suchbegriffe, Kategorien, Sprachen oder Länder aus und klicke auf „Aktualisieren“, um passende Nachrichten zu durchsuchen.</p>
+            </div>
+        }
+        else if (Model.Articles.Count == 0)
+        {
+            <div class="live-feed-empty">
+                <p class="live-feed-empty-title">Keine Artikel gefunden</p>
+                <p class="live-feed-empty-text">Für die ausgewählten Filterkriterien wurden aktuell keine Nachrichten gefunden. Versuche weniger spezifische Suchbegriffe oder wähle weitere Kategorien aus.</p>
+            </div>
+        }
+        else
+        {
+            <div class="live-feed-grid">
+                @foreach (NewsArticleDto article in Model.Articles)
+                {
+                    <article class="live-feed-article-card">
+                        @if (!string.IsNullOrWhiteSpace(article.ImageUrl))
+                        {
+                            <div class="live-feed-article-img-wrap">
+                                <img src="@article.ImageUrl" alt="@article.Title" class="live-feed-article-img" loading="lazy" />
+                            </div>
+                        }
+                        <div class="live-feed-article-body">
+                            <div class="live-feed-article-meta">
+                                @if (article.Category is { Count: > 0 })
+                                {
+                                    <span class="live-feed-category-tag">@string.Join(", ", article.Category)</span>
+                                }
+                            </div>
+                            <h2 class="live-feed-article-title">
+                                <a href="@article.Link" target="_blank" rel="noopener noreferrer">@article.Title</a>
+                            </h2>
+                            @if (!string.IsNullOrWhiteSpace(article.Description))
+                            {
+                                <p class="live-feed-article-desc">@article.Description</p>
+                            }
+                            <div class="live-feed-article-footer">
+                                <a href="@article.Link" target="_blank" rel="noopener noreferrer" class="live-feed-article-link">
+                                    Originalartikel lesen ↗
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Save Subscription Modal Dialog -->
+    @if (Model.ShowSaveModal)
+    {
+        <div class="hermes-modal-backdrop" @onclick="Model.CloseSaveModal">
+            <div class="hermes-modal-dialog" @onclick:stopPropagation>
+                <div class="hermes-modal-header">
+                    <h3 class="hermes-modal-title">Als Newsletter-Abonnement speichern</h3>
+                    <button type="button" class="hermes-modal-close" @onclick="Model.CloseSaveModal" aria-label="Schließen">✕</button>
+                </div>
+
+                <div class="hermes-modal-body">
+                    <p class="hermes-modal-desc">
+                        Erstelle basierend auf deiner aktuellen Suche einen automatischen E-Mail-Digest:
+                    </p>
+
+                    <div class="modal-schedule-card">
+                        <h4 class="modal-schedule-title">Zustellplan</h4>
+                        <div class="news-sub-field">
+                            <span class="news-sub-label">Zustellung an Wochentagen</span>
+                            <WeekdayPicker DayActive="Model.SubscriptionDays" OnToggleDay="Model.ToggleSubscriptionDay" />
+                        </div>
+
+                        <div class="news-sub-field">
+                            <span class="news-sub-label">Uhrzeiten (täglicher Versand)</span>
+                            <TimeSlotPicker SharedTimes="Model.SubscriptionTimes"
+                                            OnSetTime="Model.SetSubscriptionTime"
+                                            OnAddTimeSlot="Model.AddSubscriptionTimeSlot"
+                                            OnRemoveTimeSlot="Model.RemoveSubscriptionTimeSlot" />
+                        </div>
+                    </div>
+
+                    <div class="hermes-toggle-switch-row">
+                        <label class="hermes-toggle-switch">
+                            <input type="checkbox" class="hermes-toggle-switch__input" role="switch" @bind="Model.SubscriptionEnabled" />
+                            <span class="hermes-toggle-switch__track" aria-hidden="true"></span>
+                        </label>
+                        <span class="hermes-toggle-switch-caption">E-Mail-Versand sofort aktivieren</span>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.SaveError))
+                    {
+                        <p class="user-profile-feedback" role="alert">@Model.SaveError</p>
+                    }
+                </div>
+
+                <div class="hermes-modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="Model.CloseSaveModal" disabled="@Model.IsSaving">
+                        Abbrechen
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" @onclick="Model.SaveAsSubscriptionAsync" disabled="@Model.IsSaving">
+                        @(Model.IsSaving ? "Speichert…" : "Abonnement erstellen")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly IReadOnlyList<NewsCategory> AllNewsCategories = Enum.GetValues<NewsCategory>();
+    private static readonly IReadOnlyList<Language> AllLanguages = Enum.GetValues<Language>();
+    private static readonly IReadOnlyList<Country> AllCountries = Enum.GetValues<Country>();
+
+    /// <summary>
+    /// Subscribes to model updates and triggers initial article search.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        Model.StateChanged += OnModelStateChanged;
+        await Model.InitializeAsync();
+    }
+
+    private void OnModelStateChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>
+    /// Handles Enter key submission in search input.
+    /// </summary>
+    private async Task HandleSearchKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await Model.LoadArticlesAsync();
+        }
+    }
+
+    private async Task OnClearFiltersAsync()
+    {
+        Model.ClearFilters();
+        await Model.LoadArticlesAsync();
+    }
+
+    /// <summary>
+    /// Unsubscribes from ViewModel event handlers.
+    /// </summary>
+    public void Dispose()
+    {
+        Model.StateChanged -= OnModelStateChanged;
+    }
+}

@@ -1,0 +1,58 @@
+@inherits ErrorBoundary
+@inject NavigationManager Navigation
+
+@if (CurrentException is null)
+{
+    @ChildContent
+}
+else
+{
+    <div class="hermes-error-boundary-wrapper" role="alert">
+        <div class="hermes-error-boundary-card">
+            <div class="hermes-error-boundary-header">
+                <span class="hermes-error-boundary-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                </span>
+                <div>
+                    <h3 class="hermes-error-boundary-title">Ein unerwarteter Fehler ist aufgetreten</h3>
+                    <p class="hermes-error-boundary-subtitle">Die Ansicht konnte aufgrund eines Fehlers nicht vollständig geladen werden.</p>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(CurrentException.Message))
+            {
+                <div class="hermes-error-boundary-details">
+                    <code>@CurrentException.Message</code>
+                </div>
+            }
+
+            <div class="hermes-error-boundary-actions">
+                <button type="button" class="btn btn-sm btn-primary" @onclick="HandleRecover">
+                    Erneut versuchen
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="NavigateHome">
+                    Zur Startseite
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Resets the error boundary state and attempts to re-render child content.
+    /// </summary>
+    private void HandleRecover()
+    {
+        Recover();
+    }
+
+    /// <summary>
+    /// Recovers from the error and redirects the browser to the application home dashboard.
+    /// </summary>
+    private void NavigateHome()
+    {
+        Recover();
+        Navigation.NavigateTo("/home", forceLoad: false);
+    }
+}

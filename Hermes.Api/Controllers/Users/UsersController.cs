@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Distributed;
 
 using Hermes.Api.Constants;
 using Hermes.Api.Http;
@@ -10,11 +11,14 @@ using Hermes.Api.Mapping.Users;
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
+using FluentResults;
 
 namespace Hermes.Api.Controllers.Users;
 
 /// <summary>
-/// Controller for managing user profiles, registrations, and account verification actions.
+/// Provides lifecycle management for user accounts. 
+/// Handles self-registration, profile updates, account deletion, and email address verification workflows.
 /// </summary>
 [Authorize]
 [ApiController]
@@ -22,173 +26,234 @@ namespace Hermes.Api.Controllers.Users;
 public class UsersController(
     IUserService userService,
     IUserAuthenticationService authService,
-    IUserVerificationService verificationService) : ControllerBase
+    IUserVerificationService verificationService,
+    IDistributedCache? distributedCache = null,
+    TimeProvider? timeProvider = null) : ControllerBase
 {
     private static readonly TimeSpan _verificationMailCooldown = TimeSpan.FromSeconds(60);
     private static readonly ConcurrentDictionary<int, DateTimeOffset> _lastVerificationMailByUserId = new();
 
     /// <summary>
-    /// Registers a new user with the specified credentials.
-    /// Validation is handled automatically by the global filters.
+    /// Creates a new user identity and provisions their initial data structures.
+    /// Acts as the public entry point for new customers to join the platform.
+    /// Returns 201 Created with the Location header pointing to the created user resource,
+    /// or 409 Conflict if a user with the requested email already exists.
     /// </summary>
-    /// <param name="request">The registration payload.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A response containing the registered user details.</returns>
+    /// <param name="request">The registration payload containing name, email, and password.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A 201 Created result containing the created user profile.</returns>
     [AllowAnonymous]
     [HttpPost]
+    [EnableRateLimiting("AuthRegisterPolicy")]
     public async Task<ActionResult<UserResponseDto>> SetNewUser([FromBody] RegisterUserRequestDto request, CancellationToken cancellationToken)
     {
-        UserScopeDto userScope = await authService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
-        return Ok(userScope.ToUserResponse());
+        Result<UserScopeDto> registerResult = await authService.RegisterUserAsync(request, cancellationToken).ConfigureAwait(false);
+        if (registerResult.IsFailed)
+            return this.ToProblemResult(registerResult.Errors.First());
+
+        UserResponseDto response = registerResult.Value.ToUserResponse();
+        return CreatedAtAction(nameof(GetUserById), new { id = registerResult.Value.UserId }, response);
     }
 
     /// <summary>
-    /// Updates the profile (name, email, or password) of the authenticated user.
-    /// Validation is handled automatically by the global filters.
-    /// Exceptions are caught by global middleware.
+    /// Applies changes to a user's master record. 
+    /// Automatically revokes email verification status if the email address is changed.
+    /// Enforces IDOR authorization matching caller identity against route parameter id.
     /// </summary>
-    /// <param name="request">The profile update payload.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <param name="id">The target user ID in the URL path.</param>
+    /// <param name="request">The updated profile payload.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated user profile response.</returns>
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
-    [HttpPut]
-    public async Task<ActionResult<UserResponseDto>> UpdateUser([FromBody] UserProfileUpdateRequestDto request, CancellationToken cancellationToken)
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, [FromBody] UserProfileUpdateRequestDto request, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(request.Id) is { } denied)
+        if (id != request.Id)
+            request.Id = id;
+
+        if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        User user = new()
-        {
-            Id = request.Id,
-            Name = request.Name,
-            Email = request.Email,
-            PasswordHash = request.NewPassword
-        };
+        Result updateResult = await authService.UpdateUserAsync(id, request.Name, request.Email, request.NewPassword, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
+        if (updateResult.IsFailed)
+            return this.ToProblemResult(updateResult.Errors.First());
 
-        await authService.UpdateUserAsync(user, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
-
-        UserScopeDto? updated = await userService.GetUserByIdAsync(request.Id, cancellationToken).ConfigureAwait(false);
-        return updated is null ? this.NotFoundProblem() : Ok(updated.ToUserResponse());
+        Result<UserScopeDto> updatedResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
+        return updatedResult.IsFailed ? this.ToProblemResult(updatedResult.Errors.First()) : Ok(updatedResult.Value.ToUserResponse());
     }
 
     /// <summary>
-    /// Deletes a user profile and all associated data.
+    /// Permanently removes a user and their cascaded data (e.g. subscriptions, tokens) from the system.
+    /// Satisfies right-to-be-forgotten GDPR requirements and returns 204 No Content upon success.
     /// </summary>
-    /// <param name="id">The ID of the user to delete.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>An OK result if deleted successfully.</returns>
+    /// <param name="id">The target user ID in the URL path.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A 204 No Content result.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteUser(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
-        if (user is null)
-            return this.NotFoundProblem();
+        Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
+        if (userResult.IsFailed)
+            return this.ToProblemResult(userResult.Errors.First());
 
-        await userService.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
-        return Ok();
+        await userService.DeleteUserAsync(userResult.Value, cancellationToken).ConfigureAwait(false);
+        return NoContent();
     }
 
     /// <summary>
-    /// Retrieves user profile details by ID.
+    /// Fetches the user's current state to synchronize client applications.
+    /// Typically called upon application startup to restore session context.
     /// </summary>
-    /// <param name="id">The ID of the user.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The user details.</returns>
+    /// <param name="id">The user ID in the route path.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The user profile response DTO.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
-        return user is null ? this.NotFoundProblem() : Ok(user.ToUserResponse());
+        Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
+        return userResult.IsFailed ? this.ToProblemResult(userResult.Errors.First()) : Ok(userResult.Value.ToUserResponse());
     }
 
     /// <summary>
-    /// Retrieves user profile details by their email address.
+    /// Looks up a user account by email query parameter for the currently authenticated caller.
+    /// Returns 404 if the user is not found, or 403 Forbidden if the requested email belongs to a different user.
     /// </summary>
-    /// <param name="email">The email address of the user.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The user details.</returns>
-    [HttpGet("by-email/{email}")]
-    public async Task<ActionResult<UserResponseDto>> GetUserByEmail(string email, CancellationToken cancellationToken)
+    /// <param name="email">The email address query string.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The matching user profile response.</returns>
+    [HttpGet]
+    public async Task<ActionResult<UserResponseDto>> GetUserByEmail([FromQuery] string email, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email))
-            return this.BadRequestProblem("Path segment 'email' is required.");
+            return this.BadRequestProblem("Query parameter 'email' is required.");
 
-        UserScopeDto? user = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
-        if (user is null)
+        if (!this.TryGetCurrentUserId(out int currentUserId))
+            return this.UnauthorizedProblem("Missing user identity.");
+
+        Result<UserScopeDto> userResult = await userService.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        if (userResult.IsFailed)
             return this.NotFoundProblem();
 
-        if (this.WhenCannotAccessUser(user.UserId) is { } denied)
-            return denied;
+        if (userResult.Value.UserId != currentUserId)
+            return this.ForbiddenProblem();
 
-        return Ok(user.ToUserResponse());
+        return Ok(userResult.Value.ToUserResponse());
     }
 
     /// <summary>
-    /// Requests a new verification email for the specified user ID (subject to a cooldown limit).
+    /// Dispatches an email containing a 6-digit OTP to prove domain ownership.
+    /// Returns 202 Accepted when the verification email delivery task is enqueued.
+    /// Protects against spam by enforcing a strict in-memory cooldown period per user.
     /// </summary>
-    /// <param name="id">The ID of the user to send the verification email to.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The result status of the verification email request.</returns>
+    /// <param name="id">The target user ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A 202 Accepted response with verification dispatch metadata.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("VerifyMailPolicy")]
-    [HttpPost("{id:int}/verify")]
+    [HttpPost("{id:int}/email-verifications")]
     public async Task<ActionResult<SendVerificationMailResponseDto>> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
-        UserScopeDto? user = await userService.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
-        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+        Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
+        if (userResult.IsFailed || string.IsNullOrWhiteSpace(userResult.Value.Email))
             return this.NotFoundProblem();
 
-        if (TryGetVerificationMailCooldownResponse(id) is { } cooldownResult)
+        if (await TryGetVerificationMailCooldownResponseAsync(id, cancellationToken).ConfigureAwait(false) is { } cooldownResult)
             return cooldownResult;
 
-        await verificationService.SendVerificationMailAsync(user.Email, cancellationToken).ConfigureAwait(false);
-        RegisterVerificationMailSend(id);
-        return Ok(new SendVerificationMailResponseDto(id, user.Email));
+        Result sendResult = await verificationService.SendVerificationMailAsync(userResult.Value.Email, cancellationToken).ConfigureAwait(false);
+        if (sendResult.IsFailed)
+            return this.ToProblemResult(sendResult.Errors.First());
+
+        await RegisterVerificationMailSendAsync(id, cancellationToken).ConfigureAwait(false);
+        return Accepted(new SendVerificationMailResponseDto(id, userResult.Value.Email));
     }
 
     /// <summary>
-    /// Verifies the user's email address by checking the supplied numeric verification code.
-    /// Validation is handled automatically by the global filters.
+    /// Consumes the OTP provided via email to mark the account as verified.
+    /// Unlocks platform features that require a confirmed email address.
     /// </summary>
-    /// <param name="request">The verification payload containing the code.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The updated user details if verification was successful.</returns>
+    /// <param name="id">The target user ID in the route path.</param>
+    /// <param name="request">The verification code payload.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated user profile reflecting the verified email status.</returns>
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("VerifyCodePolicy")]
-    [HttpPost("verify/code")]
-    public async Task<ActionResult<UserResponseDto>> CheckVerificationCode([FromBody] UserVerificationCodeRequestDto request, CancellationToken cancellationToken)
+    [HttpPost("{id:int}/email-verifications/confirmations")]
+    public async Task<ActionResult<UserResponseDto>> CheckVerificationCode(int id, [FromBody] UserVerificationCodeRequestDto request, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(request.UserId) is { } denied)
+        if (request.UserId != id)
+            request.UserId = id;
+
+        if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        await verificationService.CheckVerificationCodeAsync(request.UserId, request.Code, cancellationToken).ConfigureAwait(false);
+        Result checkResult = await verificationService.CheckVerificationCodeAsync(new UserId(id), request.Code, cancellationToken).ConfigureAwait(false);
+        if (checkResult.IsFailed)
+            return this.ToProblemResult(checkResult.Errors.First());
 
-        UserScopeDto? refreshed = await userService.GetUserByIdAsync(request.UserId, cancellationToken).ConfigureAwait(false);
-        return refreshed is null ? this.NotFoundProblem() : Ok(refreshed.ToUserResponse());
+        Result<UserScopeDto> refreshedResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
+        return refreshedResult.IsFailed ? this.ToProblemResult(refreshedResult.Errors.First()) : Ok(refreshedResult.Value.ToUserResponse());
     }
 
     /// <summary>
-    /// Checks if a verification email has been sent recently to enforce a rate limit cooldown.
+    /// Evaluates the time elapsed since the last OTP dispatch across distributed instances to prevent SMTP abuse.
+    /// Returns a Retry-After header hint if the cooldown is still active.
     /// </summary>
-    private ActionResult? TryGetVerificationMailCooldownResponse(int userId)
+    private async Task<ActionResult?> TryGetVerificationMailCooldownResponseAsync(int userId, CancellationToken cancellationToken)
     {
-        if (!_lastVerificationMailByUserId.TryGetValue(userId, out DateTimeOffset lastSentAt))
-            return null;
+        DateTimeOffset now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+        string cacheKey = $"cooldown:email-verify:{userId}";
 
-        TimeSpan elapsed = DateTimeOffset.UtcNow - lastSentAt;
-        if (elapsed >= _verificationMailCooldown)
-            return null;
+        if (distributedCache is not null)
+        {
+            string? cachedTimestamp = await distributedCache.GetStringAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(cachedTimestamp) && long.TryParse(cachedTimestamp, out long unixSeconds))
+            {
+                DateTimeOffset lastSentAt = DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
+                TimeSpan elapsed = now - lastSentAt;
+                if (elapsed < _verificationMailCooldown)
+                {
+                    int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
+                    Response.Headers.RetryAfter = remainingSeconds.ToString();
+                    return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
+                }
+            }
+        }
+        else if (_lastVerificationMailByUserId.TryGetValue(userId, out DateTimeOffset lastSentAt))
+        {
+            TimeSpan elapsed = now - lastSentAt;
+            if (elapsed < _verificationMailCooldown)
+            {
+                int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
+                Response.Headers.RetryAfter = remainingSeconds.ToString();
+                return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
+            }
+        }
 
-        int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_verificationMailCooldown - elapsed).TotalSeconds));
-        Response.Headers.RetryAfter = remainingSeconds.ToString();
-        return this.BadRequestProblem($"Please wait {remainingSeconds}s before requesting another verification email.");
+        return null;
     }
 
     /// <summary>
-    /// Registers the timestamp of a verification email send.
+    /// Updates the distributed cache and in-memory fallback with the current UTC timestamp after a successful dispatch.
     /// </summary>
-    private static void RegisterVerificationMailSend(int userId)
-        => _lastVerificationMailByUserId[userId] = DateTimeOffset.UtcNow;
+    private async Task RegisterVerificationMailSendAsync(int userId, CancellationToken cancellationToken)
+    {
+        DateTimeOffset now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+        string cacheKey = $"cooldown:email-verify:{userId}";
+
+        if (distributedCache is not null)
+        {
+            var options = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = _verificationMailCooldown
+            };
+            await distributedCache.SetStringAsync(cacheKey, now.ToUnixTimeSeconds().ToString(), options, cancellationToken).ConfigureAwait(false);
+        }
+
+        _lastVerificationMailByUserId[userId] = now;
+    }
 }

@@ -1,0 +1,75 @@
+@using Hermes.WebFrontend.Client.ViewModels
+
+@if (Model.ShowVerificationModal)
+{
+    <div class="verify-email-overlay" role="dialog" aria-modal="true" aria-labelledby="verify-email-dialog-title">
+        <div class="verify-email-overlay__backdrop" aria-hidden="true"></div>
+        <div class="verify-email-overlay__dialog" @onclick:stopPropagation>
+            <div class="verify-email-dialog__header">
+                <h3 id="verify-email-dialog-title" class="verify-email-dialog__title">E-Mail-Verifizierung</h3>
+                <button type="button" class="verify-email-dialog__close"
+                        @onclick="Model.CloseEmailVerificationModal"
+                        aria-label="Dialog schließen">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                        <path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <label class="verify-email-dialog__label" for="verify-code-input">Verifizierungscode eingeben</label>
+            <div class="user-profile-input-wrap">
+                <span class="user-profile-input-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                </span>
+                <input id="verify-code-input" class="user-profile-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="12"
+                       placeholder="Code aus E-Mail einfügen…" @bind="Model.VerificationCodeInput" @bind:event="oninput" />
+            </div>
+
+            <button type="button" class="verify-email-dialog__confirm" @onclick="() => Model.ConfirmVerificationCodeAsync()" disabled="@Model.ConfirmCodeBusy">
+                @(Model.ConfirmCodeBusy ? "Wird geprüft…" : "Code bestätigen")
+            </button>
+
+            @if (!string.IsNullOrEmpty(Model.VerificationCodeError))
+            {
+                <p class="verify-email-dialog__code-feedback" role="alert">@Model.VerificationCodeError</p>
+            }
+
+            <div class="verify-email-dialog__info">
+                <div>
+                    <strong>E-Mail noch nicht angekommen?</strong>
+                    Falls die E-Mail nicht nach einigen Minuten angekommen ist, können Sie eine neue anfordern.
+                </div>
+                <div style="margin-top:0.65rem;">
+                    @if (Model.ResendCooldownSecondsRemaining > 0)
+                    {
+                        <span class="verify-email-dialog__resend-link" aria-disabled="true">Neue E-Mail anfordern (verfügbar in @UserSettingsViewModel.FormatMmSs(Model.ResendCooldownSecondsRemaining))</span>
+                    }
+                    else
+                    {
+                        <button type="button" class="verify-email-dialog__resend-link" @onclick="() => Model.OnResendVerificationEmailAsync()">Neue E-Mail anfordern</button>
+                    }
+                </div>
+            </div>
+
+            <button type="button" class="verify-email-dialog__send-secondary"
+                    disabled="@(Model.ResendCooldownSecondsRemaining > 0 || Model.ModalSendBusy)"
+                    @onclick="() => Model.OnResendVerificationEmailAsync()">
+                @(Model.ModalSendBusy ? "Wird gesendet…" : "E-Mail senden")
+            </button>
+            @if (Model.ResendCooldownSecondsRemaining > 0)
+            {
+                <p class="verify-email-dialog__wait">Bitte warten… @UserSettingsViewModel.FormatMmSs(Model.ResendCooldownSecondsRemaining)</p>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.VerificationSendError))
+            {
+                <p class="verify-email-dialog__feedback" role="alert">@Model.VerificationSendError</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public UserSettingsViewModel Model { get; set; } = null!;
+}

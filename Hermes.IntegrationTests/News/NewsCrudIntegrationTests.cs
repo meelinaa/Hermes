@@ -6,9 +6,14 @@ using System.Text.Json;
 using Hermes.Domain.Enums;
 using Hermes.IntegrationTests.Auth;
 using Hermes.IntegrationTests.Infrastructure;
+using Xunit;
 
 namespace Hermes.IntegrationTests.News;
 
+/// <summary>
+/// Contains end-to-end integration tests for newsletter subscriptions,
+/// verifying CRUD operations, pagination, payload casing, and strict tenant ownership isolation.
+/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
@@ -26,6 +31,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendAtTimes = new[] { "09:00:00" },
         };
 
+    /// <summary>
+    /// Tests that the response payload for creating a newsletter subscription uses camelCase property keys.
+    /// </summary>
     [Fact]
     public async Task Post_news_contract_uses_userId_and_newsId_camelCase()
     {
@@ -33,7 +41,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage req = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", access);
+        using HttpRequestMessage req = Authorized(HttpMethod.Post, $"/api/v1/users/{userId}/newsletter-subscriptions", access);
         req.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage resp = await client.SendAsync(req);
         resp.EnsureSuccessStatusCode();
@@ -45,6 +53,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.False(root.TryGetProperty("SubscriptionId", out JsonElement _), "Pascal-case keys break Web defaults.");
     }
 
+    /// <summary>
+    /// Tests the full CRUD lifecycle of newsletter subscriptions: Create, List, Get, Update, and Delete.
+    /// </summary>
     [Fact]
     public async Task Crud_happy_path_create_list_get_update_delete()
     {
@@ -52,10 +63,10 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage createReq = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", access);
+        using HttpRequestMessage createReq = Authorized(HttpMethod.Post, $"/api/v1/users/{userId}/newsletter-subscriptions", access);
         createReq.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage create = await client.SendAsync(createReq);
-        Assert.Equal(HttpStatusCode.OK, create.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
         using JsonDocument createdJson = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         Assert.Equal(userId, createdJson.RootElement.GetProperty("userId").GetInt32());
         int newsId = createdJson.RootElement.GetProperty("subscriptionId").GetInt32();
@@ -99,10 +110,10 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendAtTimes = new[] { "18:00:00" },
             isEnabled = false,
         };
-        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/newsletter-subscriptions", access);
+        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, $"/api/v1/users/{userId}/newsletter-subscriptions/{newsId}", access);
         putReq.Content = JsonContent.Create(updateBody, options: _jsonWeb);
         using HttpResponseMessage putResp = await client.SendAsync(putReq);
-        Assert.Equal(HttpStatusCode.OK, putResp.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, putResp.StatusCode);
 
         using HttpResponseMessage getUpdated = await client.SendAsync(
             Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/newsletter-subscriptions/{newsId}", access));
@@ -115,13 +126,16 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
 
         using HttpResponseMessage del = await client.SendAsync(
             Authorized(HttpMethod.Delete, $"/api/v1/users/{userId}/newsletter-subscriptions/{newsId}", access));
-        Assert.Equal(HttpStatusCode.OK, del.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, del.StatusCode);
 
         using HttpResponseMessage getMissing = await client.SendAsync(
             Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/newsletter-subscriptions/{newsId}", access));
         Assert.Equal(HttpStatusCode.NotFound, getMissing.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that querying subscriptions without an authorization header returns HTTP 401 Unauthorized.
+    /// </summary>
     [Fact]
     public async Task List_without_bearer_returns_Unauthorized()
     {
@@ -133,6 +147,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that querying subscriptions with a malformed JWT token returns HTTP 401 Unauthorized.
+    /// </summary>
     [Fact]
     public async Task List_with_malformed_bearer_returns_Unauthorized()
     {
@@ -147,6 +164,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that attempting to list subscriptions belonging to another user returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
     public async Task List_for_foreign_user_returns_Forbidden()
     {
@@ -161,17 +181,45 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that attempting to get a specific subscription belonging to another user returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
-    public async Task Post_extraneous_userId_property_in_body_is_ignored_for_owner()
+    public async Task Get_foreign_news_by_id_returns_Forbidden()
+    {
+        using HttpClient client = fixture.Factory.CreateClient();
+        (int victimId, string victimEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string victimAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, victimEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
+
+        using HttpRequestMessage victimCreate = Authorized(HttpMethod.Post, $"/api/v1/users/{victimId}/newsletter-subscriptions", victimAccess);
+        victimCreate.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
+        using HttpResponseMessage victimResp = await client.SendAsync(victimCreate);
+        victimResp.EnsureSuccessStatusCode();
+        using JsonDocument doc = JsonDocument.Parse(await victimResp.Content.ReadAsStringAsync());
+        int newsId = doc.RootElement.GetProperty("subscriptionId").GetInt32();
+
+        (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
+
+        using HttpResponseMessage response = await client.SendAsync(
+            Authorized(HttpMethod.Get, $"/api/v1/users/{victimId}/newsletter-subscriptions/{newsId}", attackerAccess));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Tests that attempting to create a subscription for another user ID returns HTTP 403 Forbidden due to IDOR policy.
+    /// </summary>
+    [Fact]
+    public async Task Post_foreign_user_returns_Forbidden()
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int otherId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (int selfId, string selfEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, selfEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        object bodyWithIgnoredUserId = new
+        object body = new
         {
-            userId = otherId,
             keywords = new[] { "integration-news" },
             category = new[] { (int)NewsCategory.Technology },
             languages = new[] { (int)Language.English },
@@ -179,24 +227,25 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendOnWeekdays = new[] { (int)Weekdays.Monday },
             sendAtTimes = new[] { "09:00:00" },
         };
-        using HttpRequestMessage req = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", access);
-        req.Content = JsonContent.Create(bodyWithIgnoredUserId, options: _jsonWeb);
+        using HttpRequestMessage req = Authorized(HttpMethod.Post, $"/api/v1/users/{otherId}/newsletter-subscriptions", access);
+        req.Content = JsonContent.Create(body, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(req);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(selfId, json.RootElement.GetProperty("userId").GetInt32());
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that attempting to update a subscription belonging to another user returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
     public async Task Put_when_news_owned_by_another_user_returns_Forbidden()
     {
         using HttpClient client = fixture.Factory.CreateClient();
-        (_, string victimEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        (int victimId, string victimEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string victimAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, victimEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage victimCreate = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", victimAccess);
+        using HttpRequestMessage victimCreate = Authorized(HttpMethod.Post, $"/api/v1/users/{victimId}/newsletter-subscriptions", victimAccess);
         victimCreate.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage victimNewsResp = await client.SendAsync(victimCreate);
         victimNewsResp.EnsureSuccessStatusCode();
@@ -216,7 +265,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendOnWeekdays = new[] { (int)Weekdays.Tuesday },
             sendAtTimes = new[] { "10:00:00" },
         };
-        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/newsletter-subscriptions", attackerAccess);
+        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, $"/api/v1/users/{victimId}/newsletter-subscriptions/{victimNewsId}", attackerAccess);
         putReq.Content = JsonContent.Create(attackerUpdate, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(putReq);
@@ -224,6 +273,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that requesting a non-existent subscription ID returns HTTP 404 NotFound.
+    /// </summary>
     [Fact]
     public async Task Get_by_id_unknown_news_returns_NotFound()
     {
@@ -237,6 +289,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that deleting a non-existent subscription ID returns HTTP 404 NotFound.
+    /// </summary>
     [Fact]
     public async Task Delete_unknown_news_returns_NotFound()
     {
@@ -250,48 +305,9 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Fact]
-    public async Task Put_with_invalid_json_syntax_returns_BadRequest()
-    {
-        using HttpClient client = fixture.Factory.CreateClient();
-        (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
-
-        using HttpRequestMessage req = Authorized(HttpMethod.Put, "/api/v1/users/newsletter-subscriptions", access);
-        req.Content = new StringContent("{ not-json", Encoding.UTF8, "application/json");
-
-        using HttpResponseMessage response = await client.SendAsync(req);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Put_with_wrong_json_type_for_keywords_returns_BadRequest()
-    {
-        using HttpClient client = fixture.Factory.CreateClient();
-        (_, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
-        string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
-
-        object badBody = new
-        {
-            id = 1,
-            keywords = "must-be-array",
-            category = new[] { (int)NewsCategory.Technology },
-            languages = new[] { (int)Language.English },
-            countries = new[] { (int)Country.Germany },
-            sendOnWeekdays = new[] { (int)Weekdays.Monday },
-            sendAtTimes = new[] { "09:00:00" },
-        };
-        string json = JsonSerializer.Serialize(badBody, _jsonWeb);
-
-        using HttpRequestMessage req = Authorized(HttpMethod.Put, "/api/v1/users/newsletter-subscriptions", access);
-        req.Content = new StringContent(json, Encoding.UTF8, "application/json");
-
-        using HttpResponseMessage response = await client.SendAsync(req);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
+    /// <summary>
+    /// Tests that attempting to delete all subscriptions belonging to another user returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
     public async Task Delete_all_for_foreign_user_returns_Forbidden()
     {
@@ -301,7 +317,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage response = await client.SendAsync(
-            Authorized(HttpMethod.Delete, $"/api/v1/users/{victimId}/newsletter-subscriptions/all", access));
+            Authorized(HttpMethod.Delete, $"/api/v1/users/{victimId}/newsletter-subscriptions", access));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

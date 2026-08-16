@@ -1,0 +1,27 @@
+<div class="news-sub-field">
+    <p class="news-sub-hint mb-2">Die folgenden Zeiten gelten für <strong>alle aktiven</strong> Sende-Tage. Du kannst mehrere Uhrzeiten hinzufügen.</p>
+    @for (int i = 0; i < SharedTimes.Count; i++)
+    {
+        int index = i;
+        <div class="news-time-row">
+            <input class="form-control news-sub-time" type="time" step="60"
+                   value="@SharedTimes[index]"
+                   @onchange="e => OnSetTime(index, e.Value?.ToString())" />
+            @if (SharedTimes.Count > 1)
+            {
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        @onclick="() => OnRemoveTimeSlot(index)">Entfernen</button>
+            }
+        </div>
+    }
+    <button type="button" class="btn btn-sm btn-outline-primary mt-1" @onclick="OnAddTimeSlot">
+        + weitere Zeit
+    </button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<string> SharedTimes { get; set; } = [];
+    [Parameter, EditorRequired] public Action<int, string?> OnSetTime { get; set; } = null!;
+    [Parameter, EditorRequired] public Action OnAddTimeSlot { get; set; } = null!;
+    [Parameter, EditorRequired] public Action<int> OnRemoveTimeSlot { get; set; } = null!;
+}

@@ -103,6 +103,10 @@
     transform: none;
 }
 
+[data-theme="dark"] .poster-home__vertical--part3 {
+    color: #0d0d0d;
+}
+
 .poster-home__main {
     background: var(--poster-beige, #f2efe8);
     padding: clamp(2rem, 5vw, 4rem) clamp(1.5rem, 4vw, 3.5rem) 3rem;

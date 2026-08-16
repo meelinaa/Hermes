@@ -26,40 +26,25 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
 
         User user = new()
         {
-            Id = 0,
+            Id = new Hermes.Domain.ValueObjects.UserId(0),
             Name = "schedule-due-test",
             Email = $"sched-due-{Guid.NewGuid():N}@test.local",
             PasswordHash = "hash",
             IsEmailVerified = true,
         };
         await users.SetUserAsync(user, CancellationToken.None);
-        int userId = user.Id;
+        Hermes.Domain.ValueObjects.UserId userId = user.Id;
 
-        NewsletterSubscription mondaySlot = new()
-        {
-            Id = 0,
-            UserId = userId,
-            SendOnWeekdays = [Weekdays.Monday],
-            SendAtTimes = [new TimeOnly(9, 30)],
-        };
+        NewsletterSubscription mondaySlot = NewsletterSubscription.CreateForUser(userId);
+        mondaySlot.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(9, 30)]));
         await newsStore.SetNewsAsync(mondaySlot, CancellationToken.None);
 
-        NewsletterSubscription wrongWeekday = new()
-        {
-            Id = 0,
-            UserId = userId,
-            SendOnWeekdays = [Weekdays.Tuesday],
-            SendAtTimes = [new TimeOnly(9, 30)],
-        };
+        NewsletterSubscription wrongWeekday = NewsletterSubscription.CreateForUser(userId);
+        wrongWeekday.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Tuesday], [new TimeOnly(9, 30)]));
         await newsStore.SetNewsAsync(wrongWeekday, CancellationToken.None);
 
-        NewsletterSubscription wrongTime = new()
-        {
-            Id = 0,
-            UserId = userId,
-            SendOnWeekdays = [Weekdays.Monday],
-            SendAtTimes = [new TimeOnly(14, 0)],
-        };
+        NewsletterSubscription wrongTime = NewsletterSubscription.CreateForUser(userId);
+        wrongTime.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(14, 0)]));
         await newsStore.SetNewsAsync(wrongTime, CancellationToken.None);
 
         // Direct INewsletterSubscriptionRepository inserts leave NextDigestSlotUtc null, so matching uses the JSON_SEARCH path only;
@@ -67,7 +52,7 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
         DateTime slotStartUtc = new(2026, 5, 4, 7, 0, 0, DateTimeKind.Utc);
         DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
 
-        List<(int NewsId, int UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
+        List<(Hermes.Domain.ValueObjects.NewsletterId NewsId, Hermes.Domain.ValueObjects.UserId UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
             Weekdays.Monday,
             9,
             30,
@@ -92,39 +77,29 @@ public sealed class NewsletterScheduleDueQueryIntegrationTests(MySqlApiFixture f
 
         User user = new()
         {
-            Id = 0,
+            Id = new Hermes.Domain.ValueObjects.UserId(0),
             Name = "schedule-disabled-test",
             Email = $"sched-off-{Guid.NewGuid():N}@test.local",
             PasswordHash = "hash",
             IsEmailVerified = true,
         };
         await users.SetUserAsync(user, CancellationToken.None);
-        int userId = user.Id;
+        Hermes.Domain.ValueObjects.UserId userId = user.Id;
 
-        NewsletterSubscription enabledRow = new()
-        {
-            Id = 0,
-            UserId = userId,
-            SendOnWeekdays = [Weekdays.Monday],
-            SendAtTimes = [new TimeOnly(9, 30)],
-            IsEnabled = true,
-        };
+        NewsletterSubscription enabledRow = NewsletterSubscription.CreateForUser(userId);
+        enabledRow.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(9, 30)]));
+        enabledRow.Enable();
         await newsStore.SetNewsAsync(enabledRow, CancellationToken.None);
 
-        NewsletterSubscription disabledRow = new()
-        {
-            Id = 0,
-            UserId = userId,
-            SendOnWeekdays = [Weekdays.Monday],
-            SendAtTimes = [new TimeOnly(9, 30)],
-            IsEnabled = false,
-        };
+        NewsletterSubscription disabledRow = NewsletterSubscription.CreateForUser(userId);
+        disabledRow.AssignDigestSchedule(Hermes.Domain.ValueObjects.ScheduleWindow.EnsureForDigestScheduling([Weekdays.Monday], [new TimeOnly(9, 30)]));
+        disabledRow.Disable();
         await newsStore.SetNewsAsync(disabledRow, CancellationToken.None);
 
         DateTime slotStartUtc = new(2026, 5, 4, 7, 0, 0, DateTimeKind.Utc);
         DateTime slotEndUtc = slotStartUtc.AddMinutes(1);
 
-        List<(int NewsId, int UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
+        List<(Hermes.Domain.ValueObjects.NewsletterId NewsId, Hermes.Domain.ValueObjects.UserId UserId)> due = await newsStore.GetDueNewsScheduleForSlotAsync(
             Weekdays.Monday,
             9,
             30,

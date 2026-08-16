@@ -1,3 +1,5 @@
+using FluentResults;
+using Hermes.Application.Errors;
 using Hermes.Domain.Constants;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,6 +11,30 @@ namespace Hermes.Api.Http;
 public static class ApiProblemResultExtensions
 {
     private const string RFC_7231 = "https://tools.ietf.org/html/rfc7231";
+
+    /// <summary>
+    /// Maps a strongly-typed domain error (<see cref="IError"/>) to an appropriate RFC Problem Details <see cref="ActionResult"/> via pattern matching.
+    /// Eliminates error-prone string parsing in API controllers.
+    /// </summary>
+    /// <param name="controller">The controller instance generating the response.</param>
+    /// <param name="error">The domain error to map.</param>
+    /// <returns>An <see cref="ActionResult"/> corresponding to the semantic HTTP error status code.</returns>
+    public static ActionResult ToProblemResult(this ControllerBase controller, IError error)
+    {
+        ArgumentNullException.ThrowIfNull(controller);
+        ArgumentNullException.ThrowIfNull(error);
+
+        return error switch
+        {
+            DuplicateEmailError duplicate => controller.ConflictProblem(duplicate.Message),
+            InvalidCurrentPasswordError wrongPass => controller.WrongCurrentPasswordProblem(wrongPass.Message),
+            UserNotFoundError notFound => controller.NotFoundProblem(notFound.Message),
+            InvalidCredentialsError unauthorized => controller.UnauthorizedProblem(unauthorized.Message),
+            TokenCompromisedError compromised => controller.UnauthorizedProblem(compromised.Message),
+            VerificationCodeMismatchError mismatch => controller.BadRequestProblem(mismatch.Message),
+            _ => controller.BadRequestProblem(error.Message)
+        };
+    }
 
     /// <summary>
     /// Generates an HTTP 400 Bad Request ProblemDetails response with specified detail message.
@@ -74,4 +100,18 @@ public static class ApiProblemResultExtensions
             statusCode: StatusCodes.Status400BadRequest,
             title: "Invalid current password",
             type: HermesProblemTypeConstants.WRONG_CURRENT_PASSWORD);
+
+    /// <summary>
+    /// Generates an HTTP 409 Conflict ProblemDetails response with specified detail message.
+    /// Used when a resource already exists or a uniqueness constraint is violated.
+    /// </summary>
+    /// <param name="controller">The controller instance.</param>
+    /// <param name="detail">Detailed description of the conflict.</param>
+    /// <returns>An <see cref="ActionResult"/> configured as HTTP 409 ProblemDetails.</returns>
+    public static ActionResult ConflictProblem(this ControllerBase controller, string detail) =>
+        controller.Problem(
+            title: "Conflict",
+            detail: detail,
+            statusCode: StatusCodes.Status409Conflict,
+            type: $"{RFC_7231}#section-6.5.8");
 }

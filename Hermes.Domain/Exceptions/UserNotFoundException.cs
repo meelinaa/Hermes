@@ -1,7 +1,7 @@
-namespace Hermes.Domain.Exceptions;
+﻿namespace Hermes.Domain.Exceptions;
 
-/// <summary>User row missing → map to HTTP 404 at the API boundary.</summary>
-public sealed class UserNotFoundException : Exception
+/// <summary>User row missing â†’ map to HTTP 404 at the API boundary.</summary>
+public sealed class UserNotFoundException : DomainException
 {
     public UserNotFoundException()
         : base("The requested user was not found.")

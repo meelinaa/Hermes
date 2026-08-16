@@ -3,6 +3,7 @@ using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Newsletter;
 using Hermes.Domain.Enums;
+using Hermes.Domain.ValueObjects;
 using Moq;
 using Xunit;
 
@@ -43,7 +44,7 @@ public sealed class NewsletterScheduleServiceTests
         NewsletterScheduleService sut = new(store.Object);
 
         // Act
-        IReadOnlyList<(int NewsId, int UserId)> result =
+        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> result =
             await sut.GetDueItemsAsync(MondayAt(9, 30), _sampleSlotStartUtc, _sampleSlotEndUtc);
 
         // Assert
@@ -66,17 +67,17 @@ public sealed class NewsletterScheduleServiceTests
                 _sampleSlotStartUtc,
                 _sampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync([(42, 7), (43, 7)]);
+            .ReturnsAsync([(new NewsletterId(42), new UserId(7)), (new NewsletterId(43), new UserId(7))]);
         NewsletterScheduleService sut = new(store.Object);
 
         // Act
-        IReadOnlyList<(int NewsId, int UserId)> result =
+        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> result =
             await sut.GetDueItemsAsync(MondayAt(9, 30), _sampleSlotStartUtc, _sampleSlotEndUtc);
 
         // Assert
         Assert.Equal(2, result.Count);
-        Assert.Contains((42, 7), result);
-        Assert.Contains((43, 7), result);
+        Assert.Contains((new NewsletterId(42), new UserId(7)), result);
+        Assert.Contains((new NewsletterId(43), new UserId(7)), result);
     }
 
     // [R]IGHT: Maps local clock time to store slot query parameters correctly
@@ -96,11 +97,11 @@ public sealed class NewsletterScheduleServiceTests
                 _sampleSlotStartUtc,
                 _sampleSlotEndUtc,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync([(1, 2)]);
+            .ReturnsAsync([(new NewsletterId(1), new UserId(2))]);
         NewsletterScheduleService sut = new(store.Object);
 
         // Act
-        IReadOnlyList<(int NewsId, int UserId)> result =
+        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> result =
             await sut.GetDueItemsAsync(slot, _sampleSlotStartUtc, _sampleSlotEndUtc);
 
         // Assert

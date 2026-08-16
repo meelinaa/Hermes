@@ -3,42 +3,43 @@ using Hermes.Domain.Enums;
 namespace Hermes.Application.DTOs.NewsletterSubscription;
 
 /// <summary>
-/// Payload containing properties required to create a new newsletter subscription.
+/// Data transfer object used by the API to collect all necessary criteria and scheduling rules 
+/// for establishing a new, automated news digest delivery.
 /// </summary>
 public sealed record CreateNewsletterSubscriptionRequestDto
 {
     /// <summary>
-    /// Gets or sets the list of search keywords.
+    /// Free-text search terms passed directly to the external news provider API to filter matching articles.
     /// </summary>
     public List<string>? Keywords { get; init; }
 
     /// <summary>
-    /// Gets or sets the news categories.
+    /// Broad topical categories (e.g., Technology, Business) to restrict the scope of the generated digest.
     /// </summary>
     public List<NewsCategory>? Category { get; init; }
 
     /// <summary>
-    /// Gets or sets the languages filter.
+    /// ISO-639-1 language codes ensuring the user only receives content in languages they understand.
     /// </summary>
     public List<Language>? Languages { get; init; }
 
     /// <summary>
-    /// Gets or sets the countries filter.
+    /// ISO 3166-1 alpha-2 country codes to localize the news digest to specific geographic regions.
     /// </summary>
     public List<Country>? Countries { get; init; }
 
     /// <summary>
-    /// Gets or sets the weekdays schedule.
+    /// Determines on which days of the week the background job should generate and dispatch the digest.
     /// </summary>
     public List<Weekdays> SendOnWeekdays { get; init; } = [];
 
     /// <summary>
-    /// Gets or sets the time-of-day send triggers.
+    /// Exact times (in the user's local timezone) when the delivery engine should trigger the email generation.
     /// </summary>
     public List<TimeOnly> SendAtTimes { get; init; } = [];
 
     /// <summary>
-    /// Gets or sets whether the subscription is active.
+    /// Acts as a soft-kill switch. If false, the subscription is ignored by the delivery scheduler without losing its configuration.
     /// </summary>
     public bool? IsEnabled { get; init; }
 }

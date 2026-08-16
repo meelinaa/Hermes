@@ -9,7 +9,7 @@ namespace Hermes.WebFrontend.Client.Services.Auth;
 /// <summary>
 /// Validates sliding idle timeout, JWT access <c>exp</c>, and refreshes tokens via the API.
 /// </summary>
-public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory httpFactory, IConfiguration config)
+public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory httpFactory, IConfiguration config, ILogger<AuthSessionService> logger)
 {
     public const string ANONYMOUS_HTTP_CLIENT_NAME = "HermesApiAnonymous";
 
@@ -111,8 +111,9 @@ public sealed class AuthSessionService(AuthTokenStore tokens, IHttpClientFactory
             await tokens.PersistAsync(body.AccessToken, body.RefreshToken, cancellationToken).ConfigureAwait(false);
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to refresh token via API.");
             return false;
         }
     }

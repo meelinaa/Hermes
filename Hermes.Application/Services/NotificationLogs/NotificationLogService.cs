@@ -15,7 +15,7 @@ public sealed class NotificationLogService(INotificationLogRepository db) : INot
     /// </summary>
     /// <param name="log">The notification log entity describing the user, news item, delivery status, and potential error message.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
-    public async Task SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
+    public async ValueTask SetNotificationLogAsync(NotificationLog log, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(log);
         await db.SetNotificationLogAsync(log, cancellationToken).ConfigureAwait(false);

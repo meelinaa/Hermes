@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Hermes.Application.Options.External;
 
 /// <summary>
@@ -5,9 +7,13 @@ namespace Hermes.Application.Options.External;
 /// </summary>
 public sealed class HermesSiteUrlsOptions
 {
-    public const string SECTION_NAME = "Hermes";
+    public const string SECTION_NAME = "HermesSite";
 
-    public string PublicBaseUrl { get; set; } = "https://hermes.de";
+    [Required]
+    [Url]
+    public string PublicBaseUrl { get; set; } = null!;
 
-    public string SupportEmail { get; set; } = "support@hermes.de";
+    [Required]
+    [EmailAddress]
+    public string SupportEmail { get; set; } = null!;
 }

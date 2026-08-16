@@ -1,10 +1,26 @@
 services:
+  hermes-jaeger:
+    image: jaegertracing/all-in-one:latest
+    restart: always
+    ports:
+      - "16686:16686" # Jaeger Web UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
   hermes-mailhog:
     image: mailhog/mailhog:latest
     restart: always
     ports:
       - "1025:1025" # SMTP Port
       - "8025:8025" # Web UI Port
+
+  hermes-redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
 
   hermes-mysql:
     image: mysql:8.0
@@ -52,11 +68,16 @@ services:
       - ConnectionStrings__DefaultConnection=Server=hermes-mysql;Port=${MYSQL_INTERNAL_PORT};Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=none;AllowPublicKeyRetrieval=True;
       - Jwt__SigningKey=${JWT_SIGNING_KEY}
       - TZ=Europe/Berlin
+      - OpenTelemetry__Enabled=true
+      - OpenTelemetry__OtlpEndpoint=http://hermes-jaeger:4317
+      - OpenTelemetry__Protocol=grpc
     depends_on:
       hermes-mysql:
         condition: service_healthy
       hermes-migrate:
         condition: service_completed_successfully
+      hermes-jaeger:
+        condition: service_started
 
   hermes-worker:
     build: 
@@ -74,6 +95,10 @@ services:
       - NewsDataIo__Key=${NEWS_DATA_IO_KEY}
       - Newsletter__TimeZoneId=Europe/Berlin
       - TZ=Europe/Berlin
+      - ConnectionStrings__Redis=hermes-redis:6379
+      - OpenTelemetry__Enabled=true
+      - OpenTelemetry__OtlpEndpoint=http://hermes-jaeger:4317
+      - OpenTelemetry__Protocol=grpc
     depends_on:
       hermes-mysql:
         condition: service_healthy
@@ -81,18 +106,23 @@ services:
         condition: service_completed_successfully
       hermes-mailhog:
         condition: service_started
+      hermes-jaeger:
+        condition: service_started
 
-  # hermes-web:
-  #   build:
-  #     context: ..
-  #     dockerfile: Docker/Dockerfile.Web
-  #   ports:
-  #     - "7016:7016"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Production
-  #     - ApiBaseUrl=http://localhost:5165  
-  #   depends_on:
-  #     - hermes-api
+  hermes-web:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile.Web
+    ports:
+      - "7016:7016"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ApiBaseUrl=http://localhost:5165  
+    depends_on:
+      - hermes-api
+    profiles:
+      - full
+      - web
 
 volumes:
   hermes_data:

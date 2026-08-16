@@ -1,66 +1,84 @@
+using FluentResults;
 using Hermes.Application.DTOs.User;
+using Hermes.Application.Errors;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Domain.Entities;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Application.Services.Users;
 
 /// <summary>
 /// Service implementation for querying user profiles and executing user account deletion operations.
+/// Follows Interface Segregation by depending strictly on <see cref="IUserStore"/>.
 /// </summary>
-public sealed class UserService(IUserRepository db) : IUserService
+public sealed class UserService(IUserStore db) : IUserService
 {
     /// <summary>
-    /// Deletes a specific user account profile from the persistent database store.
+    /// Deletes a user account and purges associated resources from the system.
     /// </summary>
     /// <param name="user">The user scope DTO identifying the user to delete.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="user"/> is null.</exception>
-    public async Task DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
+    /// <returns>A Result indicating success or validation failure.</returns>
+    public async ValueTask<Result> DeleteUserAsync(UserScopeDto user, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(user);
+        if (user is null)
+            return Result.Fail(new ValidationError("User is required."));
+            
         await db.DeleteUserAsync(user, cancellationToken).ConfigureAwait(false);
+        return Result.Ok();
     }
 
     /// <summary>
-    /// Retrieves user scope details by display name.
+    /// Looks up a user account by its display name.
     /// </summary>
-    /// <param name="name">The account display name to search for.</param>
+    /// <param name="name">The display name to search for.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
-    /// <returns>A <see cref="UserScopeDto"/> if found; otherwise, <c>null</c>.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
-    public async Task<UserScopeDto?> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
+    /// <returns>A Result containing the user scope DTO or a not-found error.</returns>
+    public async ValueTask<Result<UserScopeDto>> GetUserByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Name cannot be null or whitespace.", nameof(name));
-        return await db.GetUserByNameAsync(name, cancellationToken).ConfigureAwait(false);
+            return Result.Fail(new ValidationError("Name cannot be null or whitespace."));
+            
+        UserScopeDto? user = await db.GetUserByNameAsync(name, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            return Result.Fail(new UserNotFoundError(name, isEmail: false));
+            
+        return Result.Ok(user);
     }
 
     /// <summary>
-    /// Retrieves user scope details by unique user identifier.
+    /// Looks up a user account by its unique identifier.
     /// </summary>
-    /// <param name="id">The positive integer user ID.</param>
+    /// <param name="id">The unique user identifier.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
-    /// <returns>A <see cref="UserScopeDto"/> if found; otherwise, <c>null</c>.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is non-positive.</exception>
-    public async Task<UserScopeDto?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    /// <returns>A Result containing the user scope DTO or a not-found error.</returns>
+    public async ValueTask<Result<UserScopeDto>> GetUserByIdAsync(UserId id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
-            throw new ArgumentException("Id must be greater than zero.", nameof(id));
-        return await db.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        if (id.Value <= 0)
+            return Result.Fail(new ValidationError("Id must be greater than zero."));
+            
+        UserScopeDto? user = await db.GetUserByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            return Result.Fail(new UserNotFoundError(id.Value));
+            
+        return Result.Ok(user);
     }
 
     /// <summary>
-    /// Retrieves user scope details by email address.
+    /// Looks up a user account by its email address.
     /// </summary>
-    /// <param name="email">The account email address to search for.</param>
+    /// <param name="email">The email address to search for.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
-    /// <returns>A <see cref="UserScopeDto"/> if found; otherwise, <c>null</c>.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="email"/> is null or whitespace.</exception>
-    public async Task<UserScopeDto?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
+    /// <returns>A Result containing the user scope DTO or a not-found error.</returns>
+    public async ValueTask<Result<UserScopeDto>> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
-        return await db.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+            return Result.Fail(new ValidationError("Email cannot be null or whitespace."));
+            
+        UserScopeDto? user = await db.GetUserByEmailAsync(email, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            return Result.Fail(new UserNotFoundError(email, isEmail: true));
+            
+        return Result.Ok(user);
     }
 }

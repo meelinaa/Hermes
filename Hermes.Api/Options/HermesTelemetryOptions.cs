@@ -29,4 +29,9 @@ public sealed class HermesTelemetryOptions
     /// Optional HTTP headers sent with OTLP telemetry exports.
     /// </summary>
     public string? OtlpHeaders { get; set; }
+
+    /// <summary>
+    /// OTLP exporter transport protocol ('grpc' or 'http'). Defaults to 'grpc'.
+    /// </summary>
+    public string Protocol { get; set; } = "grpc";
 }

@@ -1,0 +1,81 @@
+@using System.Globalization
+@using Hermes.WebFrontend.Client.ApiModels.Enums
+@using Hermes.WebFrontend.Client.Enums
+@using Hermes.WebFrontend.Client.ViewModels
+
+<div class="news-settings-toolbar">
+    <button type="button" class="news-settings-add" @onclick="Model.StartCreate" aria-label="Neue News-Einstellung" title="Neue News-Einstellung">
+        <span aria-hidden="true">+</span>
+    </button>
+    <button type="button"
+            class="@Model.FilterToggleClass"
+            @onclick="Model.ToggleFilters"
+            aria-expanded="@Model.ShowFilters"
+            aria-controls="news-settings-filters"
+            aria-label="@(Model.ShowFilters ? "Filter ausblenden" : "Filter anzeigen")"
+            title="@(Model.ShowFilters ? "Filter ausblenden" : "Such- und Listenfilter")">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M4.25 5.61C6.27 8.2 10 13 10 13v6c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-6s3.72-4.8 5.74-7.39c.49-.61.12-1.61-.75-1.61H5.46c-.87 0-1.24 1-.75 1.61z"/></svg>
+    </button>
+</div>
+
+<div id="news-settings-filters" class="news-settings-filters" hidden="@(!Model.ShowFilters)">
+    <label class="news-settings-field">
+        <span class="news-settings-label">Suche (Schlagworte)</span>
+        <input class="news-settings-input" type="search" @bind="Model.SearchInput" @bind:event="oninput" placeholder="Textfilter…" maxlength="200" />
+    </label>
+    <label class="news-settings-field">
+        <span class="news-settings-label">Kategorie</span>
+        <select class="news-settings-select" value="@Model.CategorySelectValue" @onchange="OnCategoryChange">
+            <option value="">Alle</option>
+            @foreach (NewsCategory c in Enum.GetValues<NewsCategory>())
+            {
+                <option value="@((int)c)">@NewsEnumGermanDisplayConstants.CategoryDe(c)</option>
+            }
+        </select>
+    </label>
+    <label class="news-settings-field">
+        <span class="news-settings-label">Sortierung</span>
+        <select class="news-settings-select" value="@(Model.SortDescending ? "-id" : "id")" @onchange="OnSortChange">
+            <option value="id">ID aufsteigend</option>
+            <option value="-id">ID absteigend</option>
+        </select>
+    </label>
+    <label class="news-settings-field">
+        <span class="news-settings-label">Pro Seite</span>
+        <select class="news-settings-select" value="@Model.PageSize.ToString(CultureInfo.InvariantCulture)" @onchange="OnPageSizeChange">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+        </select>
+    </label>
+    <div class="news-settings-filters-actions">
+        <button type="button" class="news-settings-btn news-settings-btn--primary" @onclick="() => Model.ApplyFiltersAsync()">Suchen</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public NewsSettingsViewModel Model { get; set; } = null!;
+
+    private Task OnCategoryChange(ChangeEventArgs e)
+    {
+        string? v = e.Value?.ToString();
+        NewsCategory? cat = string.IsNullOrEmpty(v) ? null : (NewsCategory)int.Parse(v, CultureInfo.InvariantCulture);
+        return Model.SetCategoryFilterAsync(cat);
+    }
+
+    private Task OnSortChange(ChangeEventArgs e)
+    {
+        string? v = e.Value?.ToString();
+        bool desc = string.Equals(v, "-id", StringComparison.Ordinal);
+        return Model.SetSortDescendingAsync(desc);
+    }
+
+    private Task OnPageSizeChange(ChangeEventArgs e)
+    {
+        string? v = e.Value?.ToString();
+        if (int.TryParse(v, CultureInfo.InvariantCulture, out int size))
+            return Model.SetPageSizeAsync(size);
+        return Task.CompletedTask;
+    }
+}

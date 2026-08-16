@@ -139,4 +139,45 @@ public sealed class UserProfileUpdateRequestValidatorTests
         // Assert
         result.ShouldNotHaveValidationErrorFor(x => x.CurrentPassword);
     }
+
+    // [B]OUNDARY: Invalid email format produces validation error
+    [Theory]
+    [InlineData("notanemail")]
+    [InlineData("plainaddress")]
+    [InlineData("@domain.com")]
+    public void Should_HaveError_When_EmailFormatIsInvalid(string invalidEmail)
+    {
+        // Arrange
+        UserProfileUpdateRequestDto request = new() { Id = 1, Name = "ValidName", Email = invalidEmail };
+
+        // Act
+        TestValidationResult<UserProfileUpdateRequestDto> result = _sut.TestValidate(request);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.Email);
+    }
+
+    // [B]OUNDARY: New password shorter than 8 characters produces validation error
+    [Fact]
+    public void Should_HaveError_When_NewPasswordIsTooShort()
+    {
+        // Arrange
+        UserProfileUpdateRequestDto request = new()
+        {
+            Id = 1,
+            Name = "ValidName",
+            Email = "test@example.com",
+            NewPassword = "short",
+            CurrentPassword = "CurrentPassword123"
+        };
+
+        // Act
+        TestValidationResult<UserProfileUpdateRequestDto> result = _sut.TestValidate(request);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.NewPassword)
+            .WithErrorMessage("New password must be at least 8 characters.");
+    }
 }
+
+

@@ -1,15 +1,10 @@
-using FluentValidation;
-using FluentValidation.Results;
-
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
 using Hermes.Api.Constants;
-using Hermes.Api.Extensions;
-using Hermes.Api.Http;
 using Hermes.Api.Mapping.NotificationLogs;
-using Hermes.Api.Validators.NotificationLogs;
 using Hermes.Application.DTOs.NotificationLogs;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;
@@ -17,7 +12,8 @@ using Hermes.Domain.Entities;
 namespace Hermes.Api.Controllers.NotificationLogs;
 
 /// <summary>
-/// Controller for managing and creating user notification delivery logs.
+/// Manages audit trails of dispatched notifications (e.g. newsletter emails). 
+/// Enables debugging of delivery failures and ensures the duplicate-prevention window functions correctly.
 /// </summary>
 [Authorize]
 [ApiController]
@@ -25,13 +21,9 @@ namespace Hermes.Api.Controllers.NotificationLogs;
 public class NotificationLogsController(INotificationLogService notificationLogService) : ControllerBase
 {
     /// <summary>
-    /// Creates a new notification log entry for the specified user.
+    /// Records a new delivery attempt. Used by background workers to register a sent, pending, or failed dispatch,
+    /// providing an audit history and enabling rate limiting (e.g. duplicate digest prevention).
     /// </summary>
-    /// <param name="userId">The ID of the user owning the log entry.</param>
-    /// <param name="request">The notification log payload.</param>
-    /// <param name="validator">The FluentValidation validator instance.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The created notification log response.</returns>
     /// <remarks>
     /// <code>
     /// {
@@ -52,15 +44,11 @@ public class NotificationLogsController(INotificationLogService notificationLogS
     public async Task<ActionResult<NotificationLogResponseDto>> Post(
         int userId,
         [FromBody] CreateNotificationLogRequestDto request,
-        [FromServices] IValidator<CreateNotificationLogRequestDto> validator,
         CancellationToken cancellationToken)
     {
-        ValidationResult fv = await validator.ValidateAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!fv.IsValid)
-            return fv.ToValidationProblem(this);
 
         NotificationLog entity = request.ToEntity(userId);
         await notificationLogService.SetNotificationLogAsync(entity, cancellationToken).ConfigureAwait(false);
-        return Ok(entity.ToResponse());
+        return StatusCode(StatusCodes.Status201Created, entity.ToResponse());
     }
 }

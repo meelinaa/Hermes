@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Hermes.Application.Options.Auth;
 
 /// <summary>
@@ -7,14 +9,26 @@ public sealed class JwtOptions
 {
     public const string SECTION_NAME = "Jwt";
 
-    public string Issuer { get; set; } = string.Empty;
+    [Required]
+    public string Issuer { get; set; } = null!;
 
-    public string Audience { get; set; } = string.Empty;
+    [Required]
+    public string Audience { get; set; } = null!;
 
     /// <summary>Symmetric HS256 secret — use a long random value outside source control in production.</summary>
-    public string SigningKey { get; set; } = string.Empty;
+    [Required]
+    public string SigningKey { get; set; } = null!;
 
-    public int AccessTokenMinutes { get; set; } = 60;
+    [Range(1, 10080)]
+    public int AccessTokenMinutes { get; set; } = 15;
 
+    [Range(1, 365)]
     public int RefreshTokenDays { get; set; } = 14;
+
+    /// <summary>
+    /// Absolute maximum session lifetime in days from initial credential authentication.
+    /// Prevents indefinite sliding token renewal.
+    /// </summary>
+    [Range(1, 365)]
+    public int MaxSessionDays { get; set; } = 30;
 }

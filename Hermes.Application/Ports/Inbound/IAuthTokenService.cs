@@ -1,16 +1,13 @@
+using FluentResults;
+using Hermes.Application.DTOs.Security;
+using Hermes.Domain.ValueObjects;
+
 namespace Hermes.Application.Ports.Inbound;
 
-using Hermes.Application.DTOs.Security;
-using Hermes.Application.Services.Security;
-/// <summary>Plain refresh returned once per issue/rotate; persistence is hash-only.</summary>
 public interface IAuthTokenService
 {
-    Task<AuthTokensResultDto> IssueTokensAsync(int userId, string? email, string? name, CancellationToken cancellationToken = default);
-
-    /// <summary>null = invalid/replay/expired/concurrency race.</summary>
-    Task<AuthTokensResultDto?> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default);
-
-    Task<bool> TryRevokeRefreshForUserAsync(string refreshTokenPlain, int userId, CancellationToken cancellationToken = default);
-
-    Task RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default);
+    ValueTask<Result<AuthTokensResultDto>> IssueTokensAsync(UserId userId, string? email, string? name, CancellationToken cancellationToken = default);
+    ValueTask<Result<AuthTokensResultDto>> RotateAsync(string refreshTokenPlain, CancellationToken cancellationToken = default);
+    ValueTask<Result> TryRevokeRefreshForUserAsync(string refreshTokenPlain, UserId userId, CancellationToken cancellationToken = default);
+    ValueTask<Result> RevokeAllForUserAsync(UserId userId, CancellationToken cancellationToken = default);
 }

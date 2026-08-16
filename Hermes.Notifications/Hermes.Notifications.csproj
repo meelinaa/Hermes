@@ -18,5 +18,10 @@
     <ProjectReference Include="..\Hermes.Application\Hermes.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.17.0" />
+    <PackageReference Include="Polly.Core" Version="8.7.0" />
+  </ItemGroup>
+
 </Project>
 

@@ -3,6 +3,8 @@ namespace Hermes.Application.Ports.Outbound;
 /// <summary>
 /// Defines the contract for background services handling the delivery of verification emails.
 /// </summary>
+using Hermes.Domain.ValueObjects;
+
 public interface IVerificationMailJobService
 {
     /// <summary>
@@ -10,5 +12,5 @@ public interface IVerificationMailJobService
     /// </summary>
     /// <param name="userId">The unique identifier of the user to send the verification email to.</param>
     /// <returns>The unique identifier of the enqueued job, or null if the job could not be enqueued.</returns>
-    string? EnqueueSendVerificationMail(int userId);
+    string? EnqueueSendVerificationMail(UserId userId);
 }

@@ -58,4 +58,40 @@ public sealed class RegisterUserRequestValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.Password)
             .WithErrorMessage("Password is required.");
     }
+
+    // [B]OUNDARY: Invalid email formats produce validation error
+    [Theory]
+    [InlineData("notanemail")]
+    [InlineData("plainaddress")]
+    [InlineData("@domain.com")]
+    public void Should_HaveError_When_EmailIsInvalid(string invalidEmail)
+    {
+        // Arrange
+        RegisterUserRequestDto request = new() { Name = "ValidName", Email = invalidEmail, Password = "ValidPassword" };
+
+        // Act
+        TestValidationResult<RegisterUserRequestDto> result = _sut.TestValidate(request);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.Email);
+    }
+
+    // [B]OUNDARY: Password shorter than 8 characters produces validation error
+    [Theory]
+    [InlineData("short")]
+    [InlineData("1234567")]
+    public void Should_HaveError_When_PasswordIsTooShort(string shortPassword)
+    {
+        // Arrange
+        RegisterUserRequestDto request = new() { Name = "ValidName", Email = "test@example.com", Password = shortPassword };
+
+        // Act
+        TestValidationResult<RegisterUserRequestDto> result = _sut.TestValidate(request);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.Password)
+            .WithErrorMessage("Password must be at least 8 characters.");
+    }
 }
+
+

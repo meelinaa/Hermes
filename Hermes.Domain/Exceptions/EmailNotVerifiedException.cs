@@ -1,7 +1,7 @@
-namespace Hermes.Domain.Exceptions;
+﻿namespace Hermes.Domain.Exceptions;
 
-/// <summary>Action requires verified mail → map to HTTP 403 at the API boundary.</summary>
-public sealed class EmailNotVerifiedException : Exception
+/// <summary>Action requires verified mail â†’ map to HTTP 403 at the API boundary.</summary>
+public sealed class EmailNotVerifiedException : DomainException
 {
     public EmailNotVerifiedException()
         : base("The email address has not been verified yet.")

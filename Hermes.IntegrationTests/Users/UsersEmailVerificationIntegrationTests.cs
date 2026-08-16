@@ -24,7 +24,7 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
     {
         using IServiceScope scope = factory.Services.CreateScope();
         HermesDbContext db = scope.ServiceProvider.GetRequiredService<HermesDbContext>();
-        User user = await db.Users.FirstAsync(userEntity => userEntity.Id == userId);
+        User user = await db.Users.FirstAsync(userEntity => userEntity.Id == new Hermes.Domain.ValueObjects.UserId(userId));
         user.TwoFactorCode = code;
         user.TwoFactorExpiry = expiryUtc;
         await db.SaveChangesAsync();
@@ -45,16 +45,16 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
     }
 
     [Fact]
-    public async Task Post_verify_with_own_userid_returns_OK()
+    public async Task Post_verify_with_own_userid_returns_Accepted()
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        string path = $"/api/v1/users/{userId}/verify";
+        string path = $"/api/v1/users/{userId}/email-verifications";
         using HttpResponseMessage response = await client.SendAsync(AuthorizedPost(path, access));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(userId, json.RootElement.GetProperty("userId").GetInt32());
         Assert.Equal(email, json.RootElement.GetProperty("email").GetString());
@@ -68,7 +68,7 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         int unknownUserId = int.MaxValue;
-        string path = $"/api/v1/users/{unknownUserId}/verify";
+        string path = $"/api/v1/users/{unknownUserId}/email-verifications";
         using HttpResponseMessage response = await client.SendAsync(AuthorizedPost(path, access));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -83,7 +83,7 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
 
         await SeedVerificationChallengeAsync(fixture.Factory, userId, "654321", DateTime.UtcNow.AddMinutes(10));
 
-        using HttpRequestMessage post = new(HttpMethod.Post, "/api/v1/users/verify/code");
+        using HttpRequestMessage post = new(HttpMethod.Post, $"/api/v1/users/{userId}/email-verifications/confirmations");
         post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         post.Content = JsonContent.Create(new { userId, code = 654321 }, options: _jsonWeb);
 
@@ -111,7 +111,7 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
 
         await SeedVerificationChallengeAsync(fixture.Factory, userId, "111111", DateTime.UtcNow.AddMinutes(10));
 
-        using HttpRequestMessage post = new(HttpMethod.Post, "/api/v1/users/verify/code");
+        using HttpRequestMessage post = new(HttpMethod.Post, $"/api/v1/users/{userId}/email-verifications/confirmations");
         post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         post.Content = JsonContent.Create(new { userId, code = 999999 }, options: _jsonWeb);
 
@@ -129,7 +129,7 @@ public sealed class UsersEmailVerificationIntegrationTests(MySqlApiFixture fixtu
 
         await SeedVerificationChallengeAsync(fixture.Factory, userId, "222222", DateTime.UtcNow.AddMinutes(-2));
 
-        using HttpRequestMessage post = new(HttpMethod.Post, "/api/v1/users/verify/code");
+        using HttpRequestMessage post = new(HttpMethod.Post, $"/api/v1/users/{userId}/email-verifications/confirmations");
         post.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         post.Content = JsonContent.Create(new { userId, code = 222222 }, options: _jsonWeb);
 

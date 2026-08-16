@@ -9,7 +9,7 @@ using Hermes.Api.Authorization;
 using Hermes.Api.Constants;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Services.Security;
+using Hermes.Infrastructure.Adapters.Outbound.Security;
 
 namespace Hermes.Api.Hosting;
 
@@ -27,7 +27,7 @@ public static class JwtAuthenticationExtensions
     public static IServiceCollection AddHermesJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         IConfigurationSection jwtSection = configuration.GetSection(JwtOptions.SECTION_NAME);
-        services.Configure<JwtOptions>(jwtSection);
+        services.AddOptions<JwtOptions>().BindConfiguration(JwtOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
 
         JwtOptions jwt = jwtSection.Get<JwtOptions>()
             ?? throw new InvalidOperationException($"Missing configuration section '{JwtOptions.SECTION_NAME}'.");
@@ -61,6 +61,7 @@ public static class JwtAuthenticationExtensions
                     ValidAudience = jwt.Audience,
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromMinutes(1),
+                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
                     NameClaimType = ClaimTypes.NameIdentifier,
                 };
             });

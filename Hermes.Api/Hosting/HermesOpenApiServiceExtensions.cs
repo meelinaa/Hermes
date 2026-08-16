@@ -26,7 +26,7 @@ public static class HermesOpenApiServiceExtensions
     /// <returns>The updated service collection instance.</returns>
     public static IServiceCollection AddHermesOpenApiDocument(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<HermesOpenApiOptions>(configuration.GetSection(HermesOpenApiOptions.SECTION_NAME));
+        services.AddOptions<HermesOpenApiOptions>().BindConfiguration(HermesOpenApiOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
 
         string documentName = configuration.GetSection(HermesOpenApiOptions.SECTION_NAME)
             .Get<HermesOpenApiOptions>()?.DocumentName ?? "v1";

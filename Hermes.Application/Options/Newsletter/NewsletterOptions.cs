@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Hermes.Application.Options.Newsletter;
 
 /// <summary>
@@ -9,5 +11,6 @@ public sealed class NewsletterOptions
 
     public string? SchedulingNote { get; set; }
 
-    public string TimeZoneId { get; set; } = string.Empty;
+    [Required]
+    public string TimeZoneId { get; set; } = null!;
 }

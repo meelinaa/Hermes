@@ -1,0 +1,72 @@
+.hermes-error-boundary-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 260px;
+    padding: 2rem 1rem;
+    width: 100%;
+}
+
+.hermes-error-boundary-card {
+    background: #1e1e24;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 12px;
+    padding: 1.75rem;
+    max-width: 540px;
+    width: 100%;
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.hermes-error-boundary-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.hermes-error-boundary-icon {
+    flex-shrink: 0;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+    padding: 0.5rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hermes-error-boundary-title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.hermes-error-boundary-subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #9ca3af;
+    line-height: 1.4;
+}
+
+.hermes-error-boundary-details {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: #131317;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow-x: auto;
+}
+
+.hermes-error-boundary-details code {
+    font-size: 0.8rem;
+    color: #f87171;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.hermes-error-boundary-actions {
+    margin-top: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}

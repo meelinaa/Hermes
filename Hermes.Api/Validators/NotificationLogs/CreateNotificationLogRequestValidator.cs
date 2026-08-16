@@ -14,5 +14,17 @@ public sealed class CreateNotificationLogRequestValidator : AbstractValidator<Cr
     public CreateNotificationLogRequestValidator()
     {
         RuleFor(request => request.RetryCount).GreaterThanOrEqualTo(0);
+
+        RuleFor(request => request.Status)
+            .IsInEnum().WithMessage("Invalid notification status specified.");
+
+        RuleFor(request => request.Channel)
+            .IsInEnum().WithMessage("Invalid delivery channel specified.");
+
+        When(request => !string.IsNullOrEmpty(request.ErrorMessage), () =>
+        {
+            RuleFor(request => request.ErrorMessage)
+                .MaximumLength(2000).WithMessage("Error message cannot exceed 2000 characters.");
+        });
     }
 }

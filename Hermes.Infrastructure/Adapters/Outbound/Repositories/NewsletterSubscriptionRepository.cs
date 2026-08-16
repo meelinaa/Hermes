@@ -9,6 +9,7 @@ using Hermes.Infrastructure.Adapters.Outbound.Persistence.Data;
 using Hermes.Infrastructure.Adapters.Outbound.Persistence.Validators;
 using Hermes.Infrastructure.Adapters.Outbound.Scheduling;
 using Microsoft.EntityFrameworkCore;
+using Hermes.Domain.ValueObjects;
 
 namespace Hermes.Infrastructure.Adapters.Outbound.Repositories;
 
@@ -20,13 +21,15 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Persists a new newsletter subscription in the database.
     /// </summary>
-    public async Task SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask SetNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
-        if (news.Id != 0)
+        if (news.Id.Value != 0)
             throw new ArgumentException("Insert requires news id 0; use update for an existing row.", nameof(news));
 
-        await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        var existsResult = await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        if (existsResult.IsFailed)
+            throw new UserNotFoundException(existsResult.Errors[0].Message);
         await db.NewsletterSubscriptions.AddAsync(news, cancellationToken).ConfigureAwait(false);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -34,12 +37,12 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Updates an existing newsletter subscription in the database.
     /// </summary>
-    public async Task UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask UpdateNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
-        if (news.UserId <= 0)
+        if (news.UserId.Value <= 0)
             throw new ArgumentException("News.UserId must be greater than zero.", nameof(news));
-        if (news.Id <= 0)
+        if (news.Id.Value <= 0)
             throw new NewsletterSubscriptionNotFoundException("A valid news id is required for update.");
 
         NewsletterSubscription? existing = await db.NewsletterSubscriptions.AsNoTracking()
@@ -50,7 +53,9 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (existing.UserId != news.UserId)
             throw new NewsletterSubscriptionAccessDeniedException("This news entry belongs to another user.");
 
-        await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        var existsResult = await UserExistenceValidator.EnsureExistsAsync(db, news.UserId, cancellationToken).ConfigureAwait(false);
+        if (existsResult.IsFailed)
+            throw new UserNotFoundException(existsResult.Errors[0].Message);
         db.NewsletterSubscriptions.Update(news);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -58,12 +63,12 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Deletes a specific newsletter subscription from the database.
     /// </summary>
-    public async Task DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
+    public async ValueTask DeleteNewsAsync(NewsletterSubscription news, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(news);
-        if (news.Id <= 0)
+        if (news.Id.Value <= 0)
             throw new ArgumentException("News id must be greater than zero.", nameof(news));
-        if (news.UserId <= 0)
+        if (news.UserId.Value <= 0)
             throw new ArgumentException("News.UserId must be greater than zero.", nameof(news));
 
         bool exists = await db.NewsletterSubscriptions.AsNoTracking()
@@ -79,7 +84,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Retrieves a paged list of newsletter subscriptions matching the query parameters.
     /// </summary>
-    public async Task<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscriptionListResultDto> GetNewsListAsync(NewsletterSubscriptionListQueryDto query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         if (query.UserId <= 0)
@@ -89,9 +94,11 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         if (query.PageSize < 1)
             throw new ArgumentOutOfRangeException(nameof(query.PageSize), query.PageSize, "Page size must be at least 1.");
 
-        await UserExistenceValidator.EnsureExistsAsync(db, query.UserId, cancellationToken).ConfigureAwait(false);
+        var existsResult = await UserExistenceValidator.EnsureExistsAsync(db, new UserId(query.UserId), cancellationToken).ConfigureAwait(false);
+        if (existsResult.IsFailed)
+            throw new UserNotFoundException(existsResult.Errors[0].Message);
 
-        IQueryable<NewsletterSubscription> filtered = db.NewsletterSubscriptions.AsNoTracking().Where(n => n.UserId == query.UserId);
+        IQueryable<NewsletterSubscription> filtered = db.NewsletterSubscriptions.AsNoTracking().Where(n => n.UserId == new UserId(query.UserId));
 
         if (query.Category is NewsCategory category)
             filtered = filtered.Where(n => n.Category != null && n.Category.Contains(category));
@@ -107,7 +114,8 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
 
         if (query.AfterId is int after)
         {
-            IQueryable<NewsletterSubscription> cursorQuery = filtered.OrderBy(n => n.Id).Where(n => n.Id > after);
+            NewsletterId afterId = new(after);
+            IQueryable<NewsletterSubscription> cursorQuery = filtered.OrderBy(n => n.Id).Where(n => n.Id > afterId);
             List<NewsletterSubscription> window = await cursorQuery
                 .Take(query.PageSize + 1)
                 .ToListAsync(cancellationToken)
@@ -115,7 +123,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
             bool hasNext = window.Count > query.PageSize;
             if (hasNext)
                 window.RemoveAt(window.Count - 1);
-            int? nextAfter = hasNext && window.Count > 0 ? window[^1].Id : null;
+            int? nextAfter = hasNext && window.Count > 0 ? window[^1].Id.Value : null;
             return new NewsletterSubscriptionListResultDto(window, 1, query.PageSize, null, null, hasNext, nextAfter);
         }
 
@@ -139,7 +147,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// Retrieves newsletter subscription schedules that are due for delivery in the specified slot.
     /// Uses database SQL queries for complex JSON searches (MySQL specific).
     /// </summary>
-    public async Task<List<(int NewsId, int UserId)>> GetDueNewsScheduleForSlotAsync(
+    public async ValueTask<List<(NewsletterId NewsId, UserId UserId)>> GetDueNewsScheduleForSlotAsync(
         Weekdays weekday,
         int hour,
         int minute,
@@ -156,7 +164,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
         DateTime slotEnd = DateTime.SpecifyKind(slotEndUtc, DateTimeKind.Utc);
 
         var rawMaterialized = await db.NewsletterSubscriptions.AsNoTracking()
-            .Where(n => n.Id > 0 && n.UserId > 0 && n.IsEnabled
+            .Where(n => n.IsEnabled
                 && n.NextDigestSlotUtc != null
                 && n.NextDigestSlotUtc >= slotStart
                 && n.NextDigestSlotUtc < slotEnd)
@@ -165,7 +173,7 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        List<(int Id, int UserId)> materialized = rawMaterialized.Select(x => (x.Id, x.UserId)).ToList();
+        List<(int Id, int UserId)> materialized = rawMaterialized.Select(x => (x.Id.Value, x.UserId.Value)).ToList();
 
         string weekdayLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(weekday, HermesJsonOptions._forEnums))!;
         string timeLabel = JsonSerializer.Deserialize<string>(JsonSerializer.Serialize(new TimeOnly(hour, minute)))!;
@@ -206,57 +214,78 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        HashSet<(int Id, int UserId)> merged = new();
-        foreach ((int id, int uid) in materialized)
-            merged.Add((id, uid));
+        HashSet<(NewsletterId Id, UserId UserId)> merged = new();
+        foreach (var item in materialized)
+            merged.Add((new NewsletterId(item.Id), new UserId(item.UserId)));
         foreach (DueNewsScheduleSlotRow row in fromJson)
-            merged.Add((row.Id, row.UserId));
+            merged.Add((new NewsletterId(row.Id), new UserId(row.UserId)));
 
-        return merged.OrderBy(t => t.Id).Select(t => (t.Id, t.UserId)).ToList();
+        return merged.OrderBy(t => t.Id.Value).Select(t => (t.Id, t.UserId)).ToList();
     }
 
     /// <summary>
-    /// Calculates and advances the next digest run slot for a newsletter subscription.
+    /// Atomically calculates and advances the next digest run slot for a newsletter subscription if not already advanced past the reference time.
     /// </summary>
-    public async Task AdvanceNextDigestSlotAsync(
-        int newsId,
-        int userId,
+    public async ValueTask AdvanceNextDigestSlotAsync(
+        NewsletterId newsId,
+        UserId userId,
         TimeZoneInfo newsletterTimeZone,
         DateTime referenceUtcExclusive,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(newsletterTimeZone);
-        NewsletterSubscription? row = await db.NewsletterSubscriptions
-            .FirstOrDefaultAsync(n => n.Id == newsId && n.UserId == userId, cancellationToken)
+
+        var schedule = await db.NewsletterSubscriptions.AsNoTracking()
+            .Where(n => n.Id == newsId && n.UserId == userId)
+            .Select(n => new { n.SendOnWeekdays, n.SendAtTimes, n.NextDigestSlotUtc })
+            .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (row is null)
-            return;
-        if (row.SendOnWeekdays.Count == 0 || row.SendAtTimes.Count == 0)
+
+        if (schedule is null || schedule.SendOnWeekdays.Count == 0 || schedule.SendAtTimes.Count == 0)
             return;
 
-        DateTime? next = NewsletterNextRunService.ComputeNextOccurrenceUtcAfter(
-            row.SendOnWeekdays,
-            row.SendAtTimes,
+        if (schedule.NextDigestSlotUtc != null && schedule.NextDigestSlotUtc > referenceUtcExclusive)
+            return; // Already advanced past this slot
+
+        DateTime? next = NewsletterNextRunUtility.ComputeNextOccurrenceUtcAfter(
+            schedule.SendOnWeekdays,
+            schedule.SendAtTimes,
             newsletterTimeZone,
             referenceUtcExclusive);
 
-        if (next.HasValue)
+        if (!next.HasValue)
+            return;
+
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
         {
-            row.NextDigestSlotUtc = next.Value;
+            NewsletterSubscription? row = await db.NewsletterSubscriptions
+                .FirstOrDefaultAsync(n => n.Id == newsId && n.UserId == userId && (n.NextDigestSlotUtc == null || n.NextDigestSlotUtc <= referenceUtcExclusive), cancellationToken)
+                .ConfigureAwait(false);
+
+            if (row is not null)
+            {
+                row.SetNextDigestSlot(next.Value);
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            return;
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await db.NewsletterSubscriptions
+            .Where(n => n.Id == newsId && n.UserId == userId && (n.NextDigestSlotUtc == null || n.NextDigestSlotUtc <= referenceUtcExclusive))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(n => n.NextDigestSlotUtc, next.Value), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
     /// Retrieves a newsletter subscription by ID for a specific user. Throws exception if not found.
     /// </summary>
-    public async Task<NewsletterSubscription?> GetNewsByIdAsync(int userId, int id, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscription?> GetNewsByIdAsync(UserId userId, NewsletterId id, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
-            throw new ArgumentOutOfRangeException(nameof(userId), userId, "User id must be greater than zero.");
-        if (id <= 0)
-            throw new ArgumentOutOfRangeException(nameof(id), id, "News id must be greater than zero.");
+        if (userId.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(userId), userId.Value, "User id must be greater than zero.");
+        if (id.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id.Value, "News id must be greater than zero.");
 
         NewsletterSubscription? news = await db.NewsletterSubscriptions.AsNoTracking()
             .FirstOrDefaultAsync(newsEntity => newsEntity.Id == id && newsEntity.UserId == userId, cancellationToken)
@@ -267,10 +296,10 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Finds a newsletter subscription by its ID. Returns null if not found.
     /// </summary>
-    public async Task<NewsletterSubscription?> FindNewsByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async ValueTask<NewsletterSubscription?> FindNewsByIdAsync(NewsletterId id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
-            throw new ArgumentOutOfRangeException(nameof(id), id, "News id must be greater than zero.");
+        if (id.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id.Value, "News id must be greater than zero.");
 
         return await db.NewsletterSubscriptions.AsNoTracking()
             .FirstOrDefaultAsync(newsEntity => newsEntity.Id == id, cancellationToken)
@@ -280,9 +309,9 @@ public sealed class NewsletterSubscriptionRepository(HermesDbContext db) : INews
     /// <summary>
     /// Deletes all newsletter subscriptions belonging to a user.
     /// </summary>
-    public async Task<int> DeleteAllNewsByUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async ValueTask<int> DeleteAllNewsByUserAsync(UserId userId, CancellationToken cancellationToken = default)
     {
-        if (userId <= 0)
+        if (userId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(userId), "User id must be greater than zero.");
         return await db.NewsletterSubscriptions.Where(newsEntity => newsEntity.UserId == userId)
             .ExecuteDeleteAsync(cancellationToken)

@@ -1,0 +1,40 @@
+@using Hermes.WebFrontend.Client.Components.UI
+
+<ul class="news-settings-list" aria-label="Lade Newsletter-Abonnements…" aria-busy="true">
+    @for (int i = 0; i < Count; i++)
+    {
+        <li class="news-settings-card news-settings-card--skeleton">
+            <div class="news-settings-card-head">
+                <Skeleton Width="45%" Height="1.4rem" BorderRadius="6px" />
+                <div class="news-settings-card-actions">
+                    <Skeleton Width="36px" Height="20px" BorderRadius="12px" />
+                    <Skeleton Width="28px" Height="28px" BorderRadius="6px" />
+                    <Skeleton Width="28px" Height="28px" BorderRadius="6px" />
+                </div>
+            </div>
+            <dl class="news-settings-dl">
+                <div class="news-settings-row">
+                    <dt><Skeleton Width="90px" Height="0.85rem" /></dt>
+                    <dd><Skeleton Width="60%" Height="0.85rem" /></dd>
+                </div>
+                <div class="news-settings-row">
+                    <dt><Skeleton Width="110px" Height="0.85rem" /></dt>
+                    <dd><Skeleton Width="45%" Height="0.85rem" /></dd>
+                </div>
+                <div class="news-settings-row">
+                    <dt><Skeleton Width="80px" Height="0.85rem" /></dt>
+                    <dd><Skeleton Width="75%" Height="0.85rem" /></dd>
+                </div>
+                <div class="news-settings-row">
+                    <dt><Skeleton Width="95px" Height="0.85rem" /></dt>
+                    <dd><Skeleton Width="35%" Height="0.85rem" /></dd>
+                </div>
+            </dl>
+        </li>
+    }
+</ul>
+
+@code {
+    /// <summary>Gets or sets the number of skeleton cards to render.</summary>
+    [Parameter] public int Count { get; set; } = 3;
+}

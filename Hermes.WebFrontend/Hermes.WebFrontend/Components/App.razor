@@ -5,8 +5,11 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#d90429" />
+    <meta name="description" content="Hermes - Curated high-performance news digest" />
     <base href="/" />
     <ResourcePreloader />
+    <link rel="manifest" href="manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -19,13 +22,25 @@
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet />
+    <script src="@Assets["hermes-theme.js"]"></script>
 </head>
 
 <body>
-    <Routes />
+    <Routes @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
     <GlobalAuthGuard @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
-    <script src="_content/Hermes.WebFrontend.Client/hermes-auth.js"></script>
-    <script src="_framework/blazor.web.js"></script>
+    <script src="@Assets["hermes-auth.js"]"></script>
+    <script src="@Assets["hermes-dropdown.js"]"></script>
+    <script src="@Assets["hermes-push.js"]"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js').catch(function(err) {
+                    console.warn('Service worker registration failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>

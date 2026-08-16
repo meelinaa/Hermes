@@ -1,8 +1,13 @@
 @inherits LayoutComponentBase
+@using Hermes.WebFrontend.Client.Components.Notifications
+@using Hermes.WebFrontend.Client.Components.UI
 
 <div class="app-home-root app-home-shell">
     <HermesTopNavigation />
     <div class="app-home-main app-home-main--with-topnav">
-        @Body
+        <HermesErrorBoundary>
+            @Body
+        </HermesErrorBoundary>
     </div>
+    <ToastContainer />
 </div>

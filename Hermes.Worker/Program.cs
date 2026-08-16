@@ -3,6 +3,7 @@ using Serilog;
 
 using Hermes.Application.Constants;
 using Hermes.Application.Options.Newsletter;
+using Hermes.Application.Ports.Inbound;
 using Hermes.Application.Services.Newsletter;
 using Hermes.Worker.Hosting;
 using Hermes.Worker.Services.Scheduling;
@@ -32,13 +33,23 @@ try
             JobStorage.Current = storage;
     }
 
-    host.LogMailHogDevHints();
+    host.LogSmtpDevHints();
 
     RecurringJob.AddOrUpdate<NewsletterSchedulerWorkerService>(
         RecurringJobConstants.ID,
         scheduler => scheduler.RunAsync(CancellationToken.None),
         Cron.Minutely(),
         new RecurringJobOptions { TimeZone = hangfireNewsletterTz });
+
+    RecurringJob.AddOrUpdate<IOutboxMessageProcessor>(
+        "outbox-message-processor",
+        processor => processor.ProcessPendingMessagesAsync(50, CancellationToken.None),
+        Cron.Minutely());
+
+    RecurringJob.AddOrUpdate<NotificationReaperWorkerService>(
+        "stale-notification-reaper",
+        reaper => reaper.RunAsync(CancellationToken.None),
+        "*/5 * * * *");
 
     host.Run();
 }

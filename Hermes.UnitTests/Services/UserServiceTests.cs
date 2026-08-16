@@ -1,6 +1,8 @@
+using FluentResults;
 using Hermes.Application.DTOs.User;
 using Hermes.Application.Ports.Outbound;
 using Hermes.Application.Services.Users;
+using Hermes.Domain.ValueObjects;
 using Moq;
 using Xunit;
 
@@ -10,106 +12,103 @@ public sealed class UserServiceTests
 {
     private static UserService CreateUserService(IUserRepository db) => new(db);
 
-    // [R]IGHT: Retrieves matching user scope by display name
     [Fact]
     public async Task GetUserByNameAsync_Should_ReturnScope_FromStore()
     {
-        // Arrange
-        UserScopeDto expected = new() { UserId = 7, Name = "Sam", Email = "sam@test.dev" };
+        UserScopeDto expected = new() { UserId = 7, Name = "Sam", Email = Email.Parse("sam@test.dev") };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
         UserService sut = CreateUserService(db.Object);
 
-        // Act
-        UserScopeDto? r = await sut.GetUserByNameAsync("sam");
+        Result<UserScopeDto> r = await sut.GetUserByNameAsync("sam");
 
-        // Assert
-        Assert.Same(expected, r);
+        Assert.True(r.IsSuccess);
+        Assert.Same(expected, r.Value);
     }
 
-    // [B]OUNDARY: Rejects empty or whitespace-only display name input
     [Fact]
     public async Task GetUserByNameAsync_Should_RejectBlankName()
     {
-        // Arrange
         UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByNameAsync("  "));
+        Result<UserScopeDto> r = await sut.GetUserByNameAsync("  ");
+        
+        Assert.True(r.IsFailed);
+    }
+    
+    [Fact]
+    public async Task GetUserByNameAsync_Should_ReturnFailed_WhenNotFound()
+    {
+        Mock<IUserRepository> db = new();
+        db.Setup(dataStore => dataStore.GetUserByNameAsync("sam", It.IsAny<CancellationToken>())).ReturnsAsync((UserScopeDto?)null);
+        UserService sut = CreateUserService(db.Object);
+
+        Result<UserScopeDto> r = await sut.GetUserByNameAsync("sam");
+
+        Assert.True(r.IsFailed);
     }
 
-    // [R]IGHT: Retrieves matching user scope by unique identifier
     [Fact]
     public async Task GetUserByIdAsync_Should_ReturnScope_FromStore()
     {
-        // Arrange
-        UserScopeDto expected = new() { UserId = 3, Email = "e@e.e", Name = "E" };
+        UserScopeDto expected = new() { UserId = 3, Email = Email.Parse("e@e.e"), Name = "E" };
         Mock<IUserRepository> db = new();
-        db.Setup(dataStore => dataStore.GetUserByIdAsync(3, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+        db.Setup(dataStore => dataStore.GetUserByIdAsync(new UserId(3), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
         UserService sut = CreateUserService(db.Object);
 
-        // Act
-        UserScopeDto? r = await sut.GetUserByIdAsync(3);
+        Result<UserScopeDto> r = await sut.GetUserByIdAsync(new UserId(3));
 
-        // Assert
-        Assert.Same(expected, r);
+        Assert.True(r.IsSuccess);
+        Assert.Same(expected, r.Value);
     }
 
-    // [R]IGHT: Retrieves matching user scope by email address
     [Fact]
     public async Task GetUserByEmailAsync_Should_ReturnScope_FromStore_WhenNormalized()
     {
-        // Arrange
-        UserScopeDto expected = new() { UserId = 9, Email = "a@b.c", Name = "A" };
+        UserScopeDto expected = new() { UserId = 9, Email = Email.Parse("a@b.c"), Name = "A" };
         Mock<IUserRepository> db = new();
         db.Setup(dataStore => dataStore.GetUserByEmailAsync("a@b.c", It.IsAny<CancellationToken>())).ReturnsAsync(expected);
         UserService sut = CreateUserService(db.Object);
 
-        // Act
-        UserScopeDto? r = await sut.GetUserByEmailAsync("a@b.c");
+        Result<UserScopeDto> r = await sut.GetUserByEmailAsync("a@b.c");
 
-        // Assert
-        Assert.Same(expected, r);
+        Assert.True(r.IsSuccess);
+        Assert.Same(expected, r.Value);
     }
 
-    // [B]OUNDARY: Rejects non-positive user ID inputs
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public async Task GetUserByIdAsync_Should_RejectNonPositiveId(int invalidId)
     {
-        // Arrange
         UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByIdAsync(invalidId));
+        Result<UserScopeDto> r = await sut.GetUserByIdAsync(new UserId(invalidId));
+        
+        Assert.True(r.IsFailed);
     }
 
-    // [B]OUNDARY: Rejects empty or whitespace-only email input
     [Fact]
     public async Task GetUserByEmailAsync_Should_RejectBlankEmail()
     {
-        // Arrange
         UserService sut = CreateUserService(Mock.Of<IUserRepository>());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetUserByEmailAsync("  "));
+        Result<UserScopeDto> r = await sut.GetUserByEmailAsync("  ");
+        
+        Assert.True(r.IsFailed);
     }
 
-    // [R]IGHT: Delegates user deletion operation to underlying repository store
     [Fact]
     public async Task DeleteUserAsync_Should_DelegateToStore_WhenScopeValid()
     {
-        // Arrange
         Mock<IUserRepository> db = new();
-        UserScopeDto scope = new() { UserId = 1, Email = "a@b", Name = "A" };
-        db.Setup(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        UserScopeDto scope = new() { UserId = 1, Email = Email.Parse("a@b"), Name = "A" };
+        db.Setup(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
         UserService sut = CreateUserService(db.Object);
 
-        // Act
-        await sut.DeleteUserAsync(scope);
+        Result r = await sut.DeleteUserAsync(scope);
 
-        // Assert
+        Assert.True(r.IsSuccess);
         db.Verify(dataStore => dataStore.DeleteUserAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

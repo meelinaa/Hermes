@@ -1,0 +1,81 @@
+@typeparam TItem where TItem : notnull
+@inject IJSRuntime JSRuntime
+
+<div class="news-sub-field">
+    <span class="news-sub-label">@Label</span>
+    <details class="news-ms">
+        <summary class="news-ms-summary">@SummaryText</summary>
+        <div class="news-ms-body">
+            <div class="news-ms-search">
+                <input type="search" class="form-control form-control-sm" placeholder="@Placeholder"
+                       aria-label="@Placeholder" @bind="searchQuery" @bind:event="oninput" />
+            </div>
+            @foreach (TItem item in VisibleItems)
+            {
+                <label class="news-ms-row">
+                    <input type="checkbox" checked="@SelectedItems.Contains(item)"
+                           @onchange="e => OnCheckboxChanged(item, e)" />
+                    <span>@GetDisplayName(item)</span>
+                </label>
+            }
+        </div>
+    </details>
+</div>
+
+@code {
+    /// <summary>Gets or sets the field label displayed above the dropdown.</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the placeholder text for the internal search input.</summary>
+    [Parameter] public string Placeholder { get; set; } = "Durchsuchen…";
+
+    /// <summary>Gets or sets the complete list of available selectable items.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> AllItems { get; set; } = [];
+
+    /// <summary>Gets or sets the set of currently selected items.</summary>
+    [Parameter, EditorRequired] public HashSet<TItem> SelectedItems { get; set; } = [];
+
+    /// <summary>Gets or sets the function that resolves a human-readable display label for an item.</summary>
+    [Parameter, EditorRequired] public Func<TItem, string> GetDisplayName { get; set; } = null!;
+
+    /// <summary>Gets or sets the callback action invoked when an item selection is toggled.</summary>
+    [Parameter, EditorRequired] public Action<TItem, bool> OnToggle { get; set; } = null!;
+
+    /// <summary>Gets or sets the summarized display text rendered in the dropdown summary header.</summary>
+    [Parameter, EditorRequired] public string SummaryText { get; set; } = string.Empty;
+
+    private string searchQuery = string.Empty;
+
+    private IEnumerable<TItem> VisibleItems =>
+        AllItems.Where(item => MatchesSearch(searchQuery, item.ToString() ?? string.Empty, GetDisplayName(item)));
+
+    /// <summary>Initializes the client-side click-outside and escape event listeners on initial render.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("hermesDropdown.initClickOutside").ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static bool MatchesSearch(string query, string rawName, string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return true;
+        string q = query.Trim();
+        return displayName.Contains(q, StringComparison.CurrentCultureIgnoreCase)
+               || rawName.Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OnCheckboxChanged(TItem item, ChangeEventArgs e)
+    {
+        if (e.Value is bool isChecked)
+            OnToggle(item, isChecked);
+    }
+}
