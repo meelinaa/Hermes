@@ -256,7 +256,7 @@ jobs:
 
       - name: Download Docker Image Artifact (PR only)
         if: github.event_name != 'push'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: docker-image-${{ matrix.service }}
           path: /tmp
