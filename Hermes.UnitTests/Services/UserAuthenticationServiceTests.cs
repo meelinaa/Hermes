@@ -18,8 +18,11 @@ namespace Hermes.UnitTests.Services;
 /// </summary>
 public sealed class UserAuthenticationServiceTests
 {
-    private static UserAuthenticationService CreateService(IUserRepository db, IRefreshTokenRepository? refreshTokens = null) =>
-        new(db, refreshTokens ?? Mock.Of<IRefreshTokenRepository>());
+    private static UserAuthenticationService CreateService(
+        IUserRepository db,
+        IRefreshTokenRepository? refreshTokens = null,
+        IPasswordHasher? passwordHasher = null) =>
+        new(db, refreshTokens ?? Mock.Of<IRefreshTokenRepository>(), passwordHasher ?? new Hermes.Infrastructure.Adapters.Outbound.Security.BCryptPasswordHasher());
 
     /// <summary>
     /// Tests that <see cref="UserAuthenticationService.RegisterUserAsync"/> normalizes email addresses,

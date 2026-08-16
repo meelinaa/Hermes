@@ -11,14 +11,15 @@ using Hermes.Domain.ValueObjects;
 namespace Hermes.Application.Services.Users;
 
 /// <summary>
-/// Service implementation for user account registration, authentication via BCrypt password verification, credential updates, and session token invalidation.
+/// Service implementation for user account registration, authentication via password verification, credential updates, and session token invalidation.
 /// </summary>
 public sealed class UserAuthenticationService(
     IUserRepository db,
-    IRefreshTokenRepository refreshTokenRepository) : IUserAuthenticationService
+    IRefreshTokenRepository refreshTokenRepository,
+    IPasswordHasher passwordHasher) : IUserAuthenticationService
 {
     /// <summary>
-    /// Registers a new user account with BCrypt password hashing and persists it in the database.
+    /// Registers a new user account with cryptographic password hashing and persists it in the database.
     /// </summary>
     /// <param name="request">The registration request details containing username, email, and plain password.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the async operation to complete.</param>
@@ -49,7 +50,7 @@ public sealed class UserAuthenticationService(
         if (existing is not null)
             return Result.Fail(new DuplicateEmailError(email.Value));
             
-        string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "");
+        string passwordHash = passwordHasher.HashPassword(request.Password ?? "");
         
         User user;
         try
@@ -76,7 +77,7 @@ public sealed class UserAuthenticationService(
     }
 
     /// <summary>
-    /// Authenticates a user by username or email and validates the supplied password against the stored BCrypt hash.
+    /// Authenticates a user by username or email and validates the supplied password against the stored cryptographic hash.
     /// </summary>
     /// <param name="nameOrEmail">The user's username or email address.</param>
     /// <param name="password">The plain-text password to verify.</param>
@@ -100,9 +101,9 @@ public sealed class UserAuthenticationService(
         bool valid;
         try
         {
-            valid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+            valid = passwordHasher.VerifyPassword(password, user.PasswordHash);
         }
-        catch (Exception ex) when (ex is BCrypt.Net.SaltParseException or ArgumentException)
+        catch (Exception)
         {
             valid = false;
         }
@@ -157,9 +158,9 @@ public sealed class UserAuthenticationService(
             bool valid;
             try
             {
-                valid = BCrypt.Net.BCrypt.Verify(currentPasswordPlain.Trim(), existing.PasswordHash);
+                valid = passwordHasher.VerifyPassword(currentPasswordPlain.Trim(), existing.PasswordHash);
             }
-            catch (Exception ex) when (ex is BCrypt.Net.SaltParseException or ArgumentException)
+            catch (Exception)
             {
                 valid = false;
             }
@@ -169,7 +170,7 @@ public sealed class UserAuthenticationService(
 
             try
             {
-                existing.ReplacePasswordHash(BCrypt.Net.BCrypt.HashPassword(newPasswordPlain.Trim()));
+                existing.ReplacePasswordHash(passwordHasher.HashPassword(newPasswordPlain.Trim()));
                 passwordChanged = true;
             }
             catch (DomainValidationException ex)

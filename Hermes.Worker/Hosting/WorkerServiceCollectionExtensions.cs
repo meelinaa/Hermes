@@ -55,6 +55,7 @@ public static class WorkerServiceCollectionExtensions
         builder.Services.AddScoped<INewsletterSubscriptionRepository, NewsletterSubscriptionRepository>();
         builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
+        builder.Services.AddSingleton<IPasswordHasher, Hermes.Infrastructure.Adapters.Outbound.Security.BCryptPasswordHasher>();
         builder.Services.AddOptions<EmailOptions>().BindConfiguration(EmailOptions.SECTION_NAME).ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value);
         builder.Services.AddSingleton<IEmailProvider, SmtpEmailClient>();
