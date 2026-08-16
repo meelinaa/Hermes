@@ -9,10 +9,11 @@ using Hermes.Domain.ValueObjects;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Hermes.Application.Services.Security;
+namespace Hermes.Infrastructure.Adapters.Outbound.Security;
 
 /// <summary>
 /// Issues JWT access tokens signed with the configured HMAC-SHA256 key using standard OpenID Connect claims.
+/// Implements the outbound port <see cref="IJwtTokenProvider"/>.
 /// </summary>
 public sealed class JwtTokenProvider(IOptions<JwtOptions> options, TimeProvider timeProvider) : IJwtTokenProvider
 {

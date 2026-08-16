@@ -9,7 +9,7 @@ using Hermes.Api.Authorization;
 using Hermes.Api.Constants;
 using Hermes.Application.Options.Auth;
 using Hermes.Application.Ports.Outbound;
-using Hermes.Application.Services.Security;
+using Hermes.Infrastructure.Adapters.Outbound.Security;
 
 namespace Hermes.Api.Hosting;
 
