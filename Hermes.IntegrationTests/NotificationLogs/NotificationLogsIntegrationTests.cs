@@ -47,7 +47,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 
         using HttpResponseMessage response = await client.SendAsync(req);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.True(json.RootElement.GetProperty("id").GetInt32() > 0);
         Assert.Equal(userId, json.RootElement.GetProperty("userId").GetInt32());
@@ -84,7 +84,7 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 
         using HttpResponseMessage response = await client.SendAsync(req);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(attackerId, json.RootElement.GetProperty("userId").GetInt32());
     }

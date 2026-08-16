@@ -114,8 +114,8 @@ public sealed class NewsletterExecutionIntegrationTests(MySqlApiFixture fixture)
         db.NewsletterSubscriptions.Add(sub);
         await db.SaveChangesAsync();
 
-        IUserRepository userRepo = new UserStore(db);
-        INewsletterSubscriptionRepository newsRepo = new NewsStore(db);
+        IUserRepository userRepo = new UserRepository(db);
+        INewsletterSubscriptionRepository newsRepo = new NewsletterSubscriptionRepository(db);
 
         Mock<IArticleFetchingService> articleFetchingMock = new();
         articleFetchingMock.Setup(f => f.FetchArticlesForSubscriptionAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()))
@@ -152,8 +152,8 @@ public sealed class NewsletterExecutionIntegrationTests(MySqlApiFixture fixture)
         Assert.True(result.IsSuccess);
         Assert.True(result.Value);
         Assert.NotNull(capturedEmail);
-        Assert.Equal(user.Email.Value, capturedEmail!.Recipient.Email);
+        Assert.Equal(user.Email.Value, capturedEmail!.To.Address);
         Assert.Contains("Hermes Newsletter", capturedEmail.Subject);
-        Assert.Contains("Hello Digest Recipient", capturedEmail.HtmlBody);
+        Assert.Contains("Hello Digest Recipient", capturedEmail.Body);
     }
 }

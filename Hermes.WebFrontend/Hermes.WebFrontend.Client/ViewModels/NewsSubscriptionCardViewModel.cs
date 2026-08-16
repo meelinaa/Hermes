@@ -267,7 +267,7 @@ public sealed class NewsSubscriptionCardViewModel(
                 };
 
                 using HttpResponseMessage response = await http.PostAsJsonAsync(
-                    "api/v1/users/newsletter-subscriptions",
+                    $"api/v1/users/{userId.Value}/newsletter-subscriptions",
                     createPayload,
                     HermesNewsJsonMapper.Options,
                     cancellationToken).ConfigureAwait(false);
@@ -306,7 +306,7 @@ public sealed class NewsSubscriptionCardViewModel(
                 };
 
                 using HttpResponseMessage response = await http.PutAsJsonAsync(
-                    "api/v1/users/newsletter-subscriptions",
+                    $"api/v1/users/{userId.Value}/newsletter-subscriptions/{EditingId}",
                     updatePayload,
                     HermesNewsJsonMapper.Options,
                     cancellationToken).ConfigureAwait(false);

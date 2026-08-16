@@ -4,23 +4,24 @@ using Hermes.Application.DTOs.NewsletterSubscription;
 namespace Hermes.Api.Validators.Newsletter;
 
 /// <summary>
-/// Validator for the UpdateNewsletterSubscriptionRequestDto DTO to ensure update parameters are valid.
+/// Validator for <see cref="CreateNewsletterSubscriptionRequestDto"/> to ensure newsletter creation parameters are semantically valid and secure.
 /// </summary>
-public sealed class UpdateNewsletterSubscriptionRequestValidator : AbstractValidator<UpdateNewsletterSubscriptionRequestDto>
+public sealed class CreateNewsletterSubscriptionRequestValidator : AbstractValidator<CreateNewsletterSubscriptionRequestDto>
 {
     /// <summary>
-    /// Initializes validation rules for newsletter subscription updates.
+    /// Initializes validation rules for delivery schedule, search keywords, categories, languages, and country filters.
+    /// Ensures that delivery days and times are specified and within valid domain bounds.
     /// </summary>
-    public UpdateNewsletterSubscriptionRequestValidator()
+    public CreateNewsletterSubscriptionRequestValidator()
     {
-        RuleFor(request => request.Id)
-            .GreaterThan(0).WithMessage("Subscription ID must be greater than zero.");
+        RuleFor(request => request.SendOnWeekdays)
+            .NotEmpty().WithMessage("At least one weekday must be specified for digest delivery.");
 
-        When(request => request.SendOnWeekdays is { Count: > 0 }, () =>
-        {
-            RuleForEach(request => request.SendOnWeekdays)
-                .IsInEnum().WithMessage("Invalid weekday specified.");
-        });
+        RuleForEach(request => request.SendOnWeekdays)
+            .IsInEnum().WithMessage("Invalid weekday specified.");
+
+        RuleFor(request => request.SendAtTimes)
+            .NotEmpty().WithMessage("At least one delivery time must be specified for digest delivery.");
 
         When(request => request.Keywords is not null, () =>
         {

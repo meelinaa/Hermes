@@ -272,7 +272,7 @@ public sealed class NewsSettingsViewModel(
             };
 
             using HttpResponseMessage response = await http.PutAsJsonAsync(
-                "api/v1/users/newsletter-subscriptions",
+                $"api/v1/users/{userId.Value}/newsletter-subscriptions/{n.Id}",
                 payload,
                 HermesNewsJsonMapper.Options,
                 cancellationToken).ConfigureAwait(false);

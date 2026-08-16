@@ -38,7 +38,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
 
         using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, options: _jsonWeb);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.True(json.RootElement.GetProperty("userId").GetInt32() > 0);
         Assert.Equal(email, json.RootElement.GetProperty("email").GetString());
@@ -66,7 +66,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         };
 
         using HttpResponseMessage first = await client.PostAsJsonAsync("/api/v1/users", firstDto, options: _jsonWeb);
-        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
 
         object secondDto = new
         {
@@ -134,7 +134,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        string path = $"/api/v1/users/by-email/{Uri.EscapeDataString(email)}";
+        string path = $"/api/v1/users?email={Uri.EscapeDataString(email)}";
         using HttpResponseMessage response = await client.SendAsync(AuthorizedGet(path, access));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -161,7 +161,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             currentPassword = "totally-wrong-current-password",
         };
 
-        using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users");
+        using HttpRequestMessage put = new(HttpMethod.Put, $"/api/v1/users/{userId}");
         put.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         put.Content = JsonContent.Create(body, options: _jsonWeb);
 
@@ -194,7 +194,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             currentPassword = AuthIntegrationFlows.DEFAULT_PASSWORD,
         };
 
-        using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users");
+        using HttpRequestMessage put = new(HttpMethod.Put, $"/api/v1/users/{userId}");
         put.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         put.Content = JsonContent.Create(body, options: _jsonWeb);
 
@@ -228,7 +228,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             currentPassword = (string?)null,
         };
 
-        using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users");
+        using HttpRequestMessage put = new(HttpMethod.Put, $"/api/v1/users/{userId}");
         put.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         put.Content = JsonContent.Create(body, options: _jsonWeb);
 
@@ -258,7 +258,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage deleteResp = await client.SendAsync(AuthorizedDelete($"/api/v1/users/{userId}", access));
-        Assert.Equal(HttpStatusCode.OK, deleteResp.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, deleteResp.StatusCode);
 
         using HttpResponseMessage getResp = await client.SendAsync(AuthorizedGet($"/api/v1/users/{userId}", access));
         Assert.Equal(HttpStatusCode.NotFound, getResp.StatusCode);
@@ -300,7 +300,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             currentPassword = (string?)null,
         };
 
-        using HttpRequestMessage put = new(HttpMethod.Put, "/api/v1/users");
+        using HttpRequestMessage put = new(HttpMethod.Put, $"/api/v1/users/{victimId}");
         put.Headers.Authorization = new AuthenticationHeaderValue("Bearer", attackerAccess);
         put.Content = JsonContent.Create(body, options: _jsonWeb);
 
@@ -336,7 +336,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         (_, string attackerEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string attackerAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        string path = $"/api/v1/users/by-email/{Uri.EscapeDataString(victimEmail)}";
+        string path = $"/api/v1/users?email={Uri.EscapeDataString(victimEmail)}";
         using HttpResponseMessage response = await client.SendAsync(AuthorizedGet(path, attackerAccess));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -360,7 +360,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
             currentPassword = (string?)null,
         };
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/api/v1/users", body, options: _jsonWeb);
+        using HttpResponseMessage response = await client.PutAsJsonAsync($"/api/v1/users/{userId}", body, options: _jsonWeb);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -376,7 +376,7 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         string ghost = $"ghost-{Guid.NewGuid():N}@integration.hermes";
-        string path = $"/api/v1/users/by-email/{Uri.EscapeDataString(ghost)}";
+        string path = $"/api/v1/users?email={Uri.EscapeDataString(ghost)}";
 
         using HttpResponseMessage response = await client.SendAsync(AuthorizedGet(path, access));
 

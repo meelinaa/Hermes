@@ -51,14 +51,11 @@ public sealed class UserCascadeDeleteIntegrationTests(MySqlApiFixture fixture)
             db.NewsletterSubscriptions.AddRange(sub1, sub2);
 
             // 2. Add Notification Logs
-            NotificationLog log1 = new(
+            NotificationLog log1 = NotificationLog.Create(
                 typedUserId,
-                null,
-                "user@integration.hermes",
-                NotificationChannel.Email,
-                NotificationStatus.Sent,
-                null,
+                DeliveryChannel.Email,
                 DateTime.UtcNow);
+            log1.MarkAsSent(DateTime.UtcNow);
 
             db.NotificationLogs.Add(log1);
             await db.SaveChangesAsync();

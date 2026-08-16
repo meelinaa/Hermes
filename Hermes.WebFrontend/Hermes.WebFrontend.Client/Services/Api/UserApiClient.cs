@@ -50,7 +50,7 @@ public sealed class UserApiClient(HttpClient http) : IUserApiClient
     {
         try
         {
-            using HttpResponseMessage response = await http.PutAsJsonAsync("api/v1/users", request, _json, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await http.PutAsJsonAsync($"api/v1/users/{request.Id}", request, _json, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 var (msg, type, validation) = await ApiResponseReader.ReadErrorAsync(response, cancellationToken).ConfigureAwait(false);
@@ -78,7 +78,7 @@ public sealed class UserApiClient(HttpClient http) : IUserApiClient
     {
         try
         {
-            using HttpResponseMessage response = await http.PostAsync($"api/v1/users/{userId}/verify", null, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await http.PostAsync($"api/v1/users/{userId}/email-verifications", null, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 var (msg, type, validation) = await ApiResponseReader.ReadErrorAsync(response, cancellationToken).ConfigureAwait(false);
@@ -108,7 +108,7 @@ public sealed class UserApiClient(HttpClient http) : IUserApiClient
         try
         {
             var body = new UserVerificationCodeRequestDto(userId, code);
-            using HttpResponseMessage response = await http.PostAsJsonAsync("api/v1/users/verify/code", body, _json, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await http.PostAsJsonAsync($"api/v1/users/{userId}/email-verifications/confirmations", body, _json, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 var (msg, type, validation) = await ApiResponseReader.ReadErrorAsync(response, cancellationToken).ConfigureAwait(false);

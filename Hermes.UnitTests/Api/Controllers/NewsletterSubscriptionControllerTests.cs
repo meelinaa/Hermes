@@ -77,7 +77,7 @@ public sealed class NewsletterSubscriptionControllerTests
         };
 
         // Act
-        ActionResult result = await sut.UpdateNews(request, CancellationToken.None);
+        ActionResult result = await sut.UpdateNews(callerUserId, newsId, request, CancellationToken.None);
 
         // Assert: Access is forbidden and update is never called
         ObjectResult objectResult = Assert.IsType<ObjectResult>(result);
@@ -117,10 +117,10 @@ public sealed class NewsletterSubscriptionControllerTests
         };
 
         // Act
-        ActionResult result = await sut.UpdateNews(request, CancellationToken.None);
+        ActionResult result = await sut.UpdateNews(callerUserId, newsId, request, CancellationToken.None);
 
         // Assert
-        Assert.IsType<OkResult>(result);
+        Assert.IsType<NoContentResult>(result);
         newsServiceMock.Verify(s => s.UpdateNewsAsync(It.IsAny<NewsletterSubscription>(), It.IsAny<CancellationToken>()), Times.Once);
         triggerMock.Verify(t => t.RequestRunAfterNewsMutation(), Times.Once);
     }

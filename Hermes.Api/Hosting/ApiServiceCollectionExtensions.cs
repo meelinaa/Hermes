@@ -171,11 +171,17 @@ public static class ApiServiceCollectionExtensions
                 Timeout = TimeSpan.FromSeconds(30),
                 WriteTimeoutResponse = async context =>
                 {
+                    IProblemDetailsService problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
                     context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
-                    await context.Response.WriteAsJsonAsync(new
+                    await problemDetailsService.WriteAsync(new ProblemDetailsContext
                     {
-                        error = "Timeout",
-                        message = "The server took too long to respond."
+                        HttpContext = context,
+                        ProblemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
+                        {
+                            Status = StatusCodes.Status504GatewayTimeout,
+                            Title = "Gateway Timeout",
+                            Detail = "The server took too long to respond."
+                        }
                     });
                 }
             };

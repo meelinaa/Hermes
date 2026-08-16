@@ -79,7 +79,8 @@ public sealed class OutboxIntegrationTests(MySqlApiFixture fixture)
 
         OutboxMessage unresolvableMessage = OutboxMessage.Create(
             type: "NonExistentNamespace.UnknownEvent",
-            content: "{\"UnknownField\": 123}");
+            content: "{\"UnknownField\": 123}",
+            createdAtUtc: DateTime.UtcNow);
 
         db.OutboxMessages.Add(unresolvableMessage);
         await db.SaveChangesAsync();

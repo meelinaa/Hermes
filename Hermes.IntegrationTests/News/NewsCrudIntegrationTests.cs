@@ -41,7 +41,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage req = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", access);
+        using HttpRequestMessage req = Authorized(HttpMethod.Post, $"/api/v1/users/{userId}/newsletter-subscriptions", access);
         req.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage resp = await client.SendAsync(req);
         resp.EnsureSuccessStatusCode();
@@ -63,10 +63,10 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (int userId, string email) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, email, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage createReq = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", access);
+        using HttpRequestMessage createReq = Authorized(HttpMethod.Post, $"/api/v1/users/{userId}/newsletter-subscriptions", access);
         createReq.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage create = await client.SendAsync(createReq);
-        Assert.Equal(HttpStatusCode.OK, create.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
         using JsonDocument createdJson = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         Assert.Equal(userId, createdJson.RootElement.GetProperty("userId").GetInt32());
         int newsId = createdJson.RootElement.GetProperty("subscriptionId").GetInt32();
@@ -110,10 +110,10 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendAtTimes = new[] { "18:00:00" },
             isEnabled = false,
         };
-        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/newsletter-subscriptions", access);
+        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, $"/api/v1/users/{userId}/newsletter-subscriptions/{newsId}", access);
         putReq.Content = JsonContent.Create(updateBody, options: _jsonWeb);
         using HttpResponseMessage putResp = await client.SendAsync(putReq);
-        Assert.Equal(HttpStatusCode.OK, putResp.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, putResp.StatusCode);
 
         using HttpResponseMessage getUpdated = await client.SendAsync(
             Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/newsletter-subscriptions/{newsId}", access));
@@ -126,7 +126,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
 
         using HttpResponseMessage del = await client.SendAsync(
             Authorized(HttpMethod.Delete, $"/api/v1/users/{userId}/newsletter-subscriptions/{newsId}", access));
-        Assert.Equal(HttpStatusCode.OK, del.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, del.StatusCode);
 
         using HttpResponseMessage getMissing = await client.SendAsync(
             Authorized(HttpMethod.Get, $"/api/v1/users/{userId}/newsletter-subscriptions/{newsId}", access));
@@ -191,7 +191,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         (int victimId, string victimEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string victimAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, victimEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage victimCreate = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", victimAccess);
+        using HttpRequestMessage victimCreate = Authorized(HttpMethod.Post, $"/api/v1/users/{victimId}/newsletter-subscriptions", victimAccess);
         victimCreate.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage victimResp = await client.SendAsync(victimCreate);
         victimResp.EnsureSuccessStatusCode();
@@ -208,19 +208,18 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
     }
 
     /// <summary>
-    /// Tests that an extraneous userId passed in POST body is safely ignored and overridden by JWT identity.
+    /// Tests that attempting to create a subscription for another user ID returns HTTP 403 Forbidden due to IDOR policy.
     /// </summary>
     [Fact]
-    public async Task Post_extraneous_userId_property_in_body_is_ignored_for_owner()
+    public async Task Post_foreign_user_returns_Forbidden()
     {
         using HttpClient client = fixture.Factory.CreateClient();
         (int otherId, _) = await AuthIntegrationFlows.RegisterUserAsync(client);
         (int selfId, string selfEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, selfEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        object bodyWithIgnoredUserId = new
+        object body = new
         {
-            userId = otherId,
             keywords = new[] { "integration-news" },
             category = new[] { (int)NewsCategory.Technology },
             languages = new[] { (int)Language.English },
@@ -228,14 +227,12 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendOnWeekdays = new[] { (int)Weekdays.Monday },
             sendAtTimes = new[] { "09:00:00" },
         };
-        using HttpRequestMessage req = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", access);
-        req.Content = JsonContent.Create(bodyWithIgnoredUserId, options: _jsonWeb);
+        using HttpRequestMessage req = Authorized(HttpMethod.Post, $"/api/v1/users/{otherId}/newsletter-subscriptions", access);
+        req.Content = JsonContent.Create(body, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(req);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(selfId, json.RootElement.GetProperty("userId").GetInt32());
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     /// <summary>
@@ -245,10 +242,10 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
     public async Task Put_when_news_owned_by_another_user_returns_Forbidden()
     {
         using HttpClient client = fixture.Factory.CreateClient();
-        (_, string victimEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
+        (int victimId, string victimEmail) = await AuthIntegrationFlows.RegisterUserAsync(client);
         string victimAccess = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, victimEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
-        using HttpRequestMessage victimCreate = Authorized(HttpMethod.Post, "/api/v1/users/newsletter-subscriptions", victimAccess);
+        using HttpRequestMessage victimCreate = Authorized(HttpMethod.Post, $"/api/v1/users/{victimId}/newsletter-subscriptions", victimAccess);
         victimCreate.Content = JsonContent.Create(MinimalNewsCreatePayload(), options: _jsonWeb);
         using HttpResponseMessage victimNewsResp = await client.SendAsync(victimCreate);
         victimNewsResp.EnsureSuccessStatusCode();
@@ -268,7 +265,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
             sendOnWeekdays = new[] { (int)Weekdays.Tuesday },
             sendAtTimes = new[] { "10:00:00" },
         };
-        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, "/api/v1/users/newsletter-subscriptions", attackerAccess);
+        using HttpRequestMessage putReq = Authorized(HttpMethod.Put, $"/api/v1/users/{victimId}/newsletter-subscriptions/{victimNewsId}", attackerAccess);
         putReq.Content = JsonContent.Create(attackerUpdate, options: _jsonWeb);
 
         using HttpResponseMessage response = await client.SendAsync(putReq);
@@ -320,7 +317,7 @@ public sealed class NewsCrudIntegrationTests(MySqlApiFixture fixture)
         string access = await AuthIntegrationFlows.LoginAndGetAccessAsync(client, attackerEmail, AuthIntegrationFlows.DEFAULT_PASSWORD);
 
         using HttpResponseMessage response = await client.SendAsync(
-            Authorized(HttpMethod.Delete, $"/api/v1/users/{victimId}/newsletter-subscriptions/all", access));
+            Authorized(HttpMethod.Delete, $"/api/v1/users/{victimId}/newsletter-subscriptions", access));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

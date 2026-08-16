@@ -326,7 +326,7 @@ public sealed class LiveFeedViewModel(
             };
 
             HttpResponseMessage response = await http.PostAsJsonAsync(
-                "api/v1/users/newsletter-subscriptions",
+                $"api/v1/users/{userId.Value}/newsletter-subscriptions",
                 payload,
                 HermesNewsJsonMapper.Options).ConfigureAwait(false);
 

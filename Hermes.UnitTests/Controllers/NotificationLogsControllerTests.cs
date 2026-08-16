@@ -3,6 +3,7 @@ using Hermes.Application.DTOs.NotificationLogs;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;
 using Hermes.Domain.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
@@ -46,8 +47,9 @@ public sealed class NotificationLogsControllerTests
         ActionResult<NotificationLogResponseDto> actionResult = await sut.Post(42, request, CancellationToken.None);
 
         // Assert
-        OkObjectResult ok = Assert.IsType<OkObjectResult>(actionResult.Result);
-        NotificationLogResponseDto response = Assert.IsType<NotificationLogResponseDto>(ok.Value);
+        ObjectResult created = Assert.IsType<ObjectResult>(actionResult.Result);
+        Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        NotificationLogResponseDto response = Assert.IsType<NotificationLogResponseDto>(created.Value);
 
         Assert.Equal(42, response.UserId);
         Assert.Equal(10, response.NewsId);

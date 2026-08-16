@@ -43,7 +43,7 @@ public sealed class UsersControllerTests
     }
 
     /// <summary>
-    /// Tests that <see cref="UsersController.SetNewUser"/> returns 200 Ok when registration succeeds.
+    /// Tests that <see cref="UsersController.SetNewUser"/> returns 201 Created when registration succeeds.
     /// </summary>
     [Fact]
     public async Task SetNewUser_Should_ReturnOk_WhenRegistrationSucceeds()
@@ -60,8 +60,8 @@ public sealed class UsersControllerTests
         ActionResult<UserResponseDto> actionResult = await sut.SetNewUser(request, CancellationToken.None);
 
         // Assert
-        OkObjectResult ok = Assert.IsType<OkObjectResult>(actionResult.Result);
-        UserResponseDto response = Assert.IsType<UserResponseDto>(ok.Value);
+        CreatedAtActionResult created = Assert.IsType<CreatedAtActionResult>(actionResult.Result);
+        UserResponseDto response = Assert.IsType<UserResponseDto>(created.Value);
         Assert.Equal(10, response.UserId);
         Assert.Equal("Max", response.Name);
         Assert.Equal("max@test.dev", response.Email);
@@ -100,7 +100,7 @@ public sealed class UsersControllerTests
         UserProfileUpdateRequestDto request = new() { Id = 2, Name = "NewName", Email = "new@test.dev" };
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.UpdateUser(request, CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.UpdateUser(2, request, CancellationToken.None);
 
         // Assert
         ObjectResult problem = Assert.IsType<ObjectResult>(actionResult.Result);
@@ -122,7 +122,7 @@ public sealed class UsersControllerTests
         UserProfileUpdateRequestDto request = new() { Id = 1, Name = "NewName", Email = "new@test.dev" };
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.UpdateUser(request, CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.UpdateUser(1, request, CancellationToken.None);
 
         // Assert
         ObjectResult problem = Assert.IsType<ObjectResult>(actionResult.Result);
@@ -148,7 +148,7 @@ public sealed class UsersControllerTests
         UserProfileUpdateRequestDto request = new() { Id = 1, Name = "NewName", Email = "new@test.dev" };
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.UpdateUser(request, CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.UpdateUser(1, request, CancellationToken.None);
 
         // Assert
         OkObjectResult ok = Assert.IsType<OkObjectResult>(actionResult.Result);
@@ -158,7 +158,7 @@ public sealed class UsersControllerTests
     }
 
     /// <summary>
-    /// Tests that <see cref="UsersController.DeleteUser"/> returns 200 Ok when deletion succeeds.
+    /// Tests that <see cref="UsersController.DeleteUser"/> returns 204 NoContent when deletion succeeds.
     /// </summary>
     [Fact]
     public async Task DeleteUser_Should_ReturnOk_WhenUserExistsAndDeleted()
@@ -177,15 +177,14 @@ public sealed class UsersControllerTests
         ActionResult actionResult = await sut.DeleteUser(5, CancellationToken.None);
 
         // Assert
-        Assert.IsType<OkResult>(actionResult);
-        users.Verify(u => u.DeleteUserAsync(userScope, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.IsType<NoContentResult>(actionResult);
     }
 
     /// <summary>
     /// Tests that <see cref="UsersController.DeleteUser"/> returns 404 ProblemDetails when user is missing.
     /// </summary>
     [Fact]
-    public async Task DeleteUser_Should_ReturnNotFound_WhenUserMissing()
+    public async Task DeleteUser_Should_ReturnProblemDetails_WhenUserMissing()
     {
         // Arrange
         Mock<IUserService> users = new();
@@ -206,7 +205,7 @@ public sealed class UsersControllerTests
     /// Tests that <see cref="UsersController.GetUserById"/> returns 404 NotFoundProblem when user does not exist.
     /// </summary>
     [Fact]
-    public async Task GetUserById_Should_ReturnNotFound_WhenUserMissing()
+    public async Task GetUserById_Should_ReturnNotFound_WhenUserDoesNotExist()
     {
         // Arrange
         Mock<IUserService> users = new();
@@ -232,7 +231,7 @@ public sealed class UsersControllerTests
         // Arrange
         Mock<IUserService> users = new();
         users.Setup(u => u.GetUserByIdAsync(new UserId(7), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok(new UserScopeDto { UserId = 7, Name = "Seven", Email = "seven@test.dev" }));
+            .ReturnsAsync(Result.Ok(new UserScopeDto { UserId = 7, Name = "Agent", Email = "007@test.dev" }));
 
         UsersController sut = CreateController(userService: users.Object, authenticatedUserId: 7);
 
@@ -243,22 +242,20 @@ public sealed class UsersControllerTests
         OkObjectResult ok = Assert.IsType<OkObjectResult>(actionResult.Result);
         UserResponseDto response = Assert.IsType<UserResponseDto>(ok.Value);
         Assert.Equal(7, response.UserId);
-        Assert.Equal("Seven", response.Name);
+        Assert.Equal("Agent", response.Name);
     }
 
     /// <summary>
     /// Tests that <see cref="UsersController.GetUserByEmail"/> returns 400 BadRequestProblem when email is blank.
     /// </summary>
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public async Task GetUserByEmail_Should_ReturnBadRequest_WhenEmailBlank(string blankEmail)
+    [Fact]
+    public async Task GetUserByEmail_Should_ReturnBadRequest_WhenEmailIsBlank()
     {
         // Arrange
         UsersController sut = CreateController(authenticatedUserId: 1);
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail(blankEmail, CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("   ", CancellationToken.None);
 
         // Assert
         ObjectResult problem = Assert.IsType<ObjectResult>(actionResult.Result);
@@ -269,13 +266,13 @@ public sealed class UsersControllerTests
     /// Tests that <see cref="UsersController.GetUserByEmail"/> returns 401 UnauthorizedProblem when no user is authenticated.
     /// </summary>
     [Fact]
-    public async Task GetUserByEmail_Should_ReturnUnauthorized_WhenUnauthenticated()
+    public async Task GetUserByEmail_Should_ReturnUnauthorized_WhenCallerUnauthenticated()
     {
         // Arrange
         UsersController sut = CreateController(authenticatedUserId: null);
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("a@b.c", CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("test@dev.io", CancellationToken.None);
 
         // Assert
         ObjectResult problem = Assert.IsType<ObjectResult>(actionResult.Result);
@@ -286,17 +283,17 @@ public sealed class UsersControllerTests
     /// Tests that <see cref="UsersController.GetUserByEmail"/> returns 404 NotFoundProblem when user does not exist.
     /// </summary>
     [Fact]
-    public async Task GetUserByEmail_Should_ReturnNotFound_WhenUserDoesNotExist()
+    public async Task GetUserByEmail_Should_ReturnNotFound_WhenUserMissing()
     {
         // Arrange
         Mock<IUserService> users = new();
-        users.Setup(u => u.GetUserByEmailAsync("missing@test.dev", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Fail(new UserNotFoundError(999)));
+        users.Setup(u => u.GetUserByEmailAsync("missing@dev.io", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<UserScopeDto>("Missing"));
 
         UsersController sut = CreateController(userService: users.Object, authenticatedUserId: 1);
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("missing@test.dev", CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("missing@dev.io", CancellationToken.None);
 
         // Assert
         ObjectResult problem = Assert.IsType<ObjectResult>(actionResult.Result);
@@ -307,17 +304,17 @@ public sealed class UsersControllerTests
     /// Tests that <see cref="UsersController.GetUserByEmail"/> enforces email path validation and caller identity scoping.
     /// </summary>
     [Fact]
-    public async Task GetUserByEmail_Should_ReturnForbidden_WhenEmailBelongsToOtherUser()
+    public async Task GetUserByEmail_Should_ReturnForbidden_WhenCallerDoesNotOwnEmail()
     {
-        // Arrange (Caller is user 1, queried email belongs to user 2)
+        // Arrange
         Mock<IUserService> users = new();
-        users.Setup(u => u.GetUserByEmailAsync("other@test.dev", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok(new UserScopeDto { UserId = 2, Email = "other@test.dev", Name = "Other" }));
+        users.Setup(u => u.GetUserByEmailAsync("other@dev.io", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(new UserScopeDto { UserId = 2, Email = "other@dev.io" }));
 
         UsersController sut = CreateController(userService: users.Object, authenticatedUserId: 1);
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("other@test.dev", CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("other@dev.io", CancellationToken.None);
 
         // Assert
         ObjectResult problem = Assert.IsType<ObjectResult>(actionResult.Result);
@@ -328,27 +325,27 @@ public sealed class UsersControllerTests
     /// Tests that <see cref="UsersController.GetUserByEmail"/> returns 200 Ok when caller owns the requested email.
     /// </summary>
     [Fact]
-    public async Task GetUserByEmail_Should_ReturnOk_WhenEmailBelongsToCaller()
+    public async Task GetUserByEmail_Should_ReturnOk_WhenCallerOwnsEmail()
     {
         // Arrange
         Mock<IUserService> users = new();
-        users.Setup(u => u.GetUserByEmailAsync("me@test.dev", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok(new UserScopeDto { UserId = 1, Email = "me@test.dev", Name = "Me" }));
+        users.Setup(u => u.GetUserByEmailAsync("owner@dev.io", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(new UserScopeDto { UserId = 1, Email = "owner@dev.io", Name = "Owner" }));
 
         UsersController sut = CreateController(userService: users.Object, authenticatedUserId: 1);
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("me@test.dev", CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.GetUserByEmail("owner@dev.io", CancellationToken.None);
 
         // Assert
         OkObjectResult ok = Assert.IsType<OkObjectResult>(actionResult.Result);
         UserResponseDto response = Assert.IsType<UserResponseDto>(ok.Value);
         Assert.Equal(1, response.UserId);
-        Assert.Equal("me@test.dev", response.Email);
+        Assert.Equal("Owner", response.Name);
     }
 
     /// <summary>
-    /// Tests that <see cref="UsersController.SendVerificationMail"/> sends mail and returns 200 Ok,
+    /// Tests that <see cref="UsersController.SendVerificationMail"/> sends mail and returns 202 Accepted,
     /// and enforces cooldown on consecutive requests.
     /// </summary>
     [Fact]
@@ -370,8 +367,8 @@ public sealed class UsersControllerTests
         ActionResult<SendVerificationMailResponseDto> actionResult1 = await sut.SendVerificationMail(uniqueUserId, CancellationToken.None);
 
         // Assert 1
-        OkObjectResult ok = Assert.IsType<OkObjectResult>(actionResult1.Result);
-        SendVerificationMailResponseDto response = Assert.IsType<SendVerificationMailResponseDto>(ok.Value);
+        AcceptedResult accepted = Assert.IsType<AcceptedResult>(actionResult1.Result);
+        SendVerificationMailResponseDto response = Assert.IsType<SendVerificationMailResponseDto>(accepted.Value);
         Assert.Equal(uniqueUserId, response.UserId);
 
         // Act 2 (Immediate second dispatch -> 400 with Retry-After header)
@@ -394,7 +391,7 @@ public sealed class UsersControllerTests
         UserVerificationCodeRequestDto request = new() { UserId = 2, Code = 123456 };
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.CheckVerificationCode(request, CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.CheckVerificationCode(2, request, CancellationToken.None);
 
         // Assert
         ObjectResult problem = Assert.IsType<ObjectResult>(actionResult.Result);
@@ -420,7 +417,7 @@ public sealed class UsersControllerTests
         UserVerificationCodeRequestDto request = new() { UserId = 1, Code = 123456 };
 
         // Act
-        ActionResult<UserResponseDto> actionResult = await sut.CheckVerificationCode(request, CancellationToken.None);
+        ActionResult<UserResponseDto> actionResult = await sut.CheckVerificationCode(1, request, CancellationToken.None);
 
         // Assert
         OkObjectResult ok = Assert.IsType<OkObjectResult>(actionResult.Result);

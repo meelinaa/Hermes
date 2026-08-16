@@ -32,8 +32,12 @@ public class UsersController(
     /// <summary>
     /// Creates a new user identity and provisions their initial data structures.
     /// Acts as the public entry point for new customers to join the platform.
-    /// Returns 409 Conflict if a user with the requested email already exists.
+    /// Returns 201 Created with the Location header pointing to the created user resource,
+    /// or 409 Conflict if a user with the requested email already exists.
     /// </summary>
+    /// <param name="request">The registration payload containing name, email, and password.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A 201 Created result containing the created user profile.</returns>
     [AllowAnonymous]
     [HttpPost]
     public async Task<ActionResult<UserResponseDto>> SetNewUser([FromBody] RegisterUserRequestDto request, CancellationToken cancellationToken)
@@ -42,33 +46,45 @@ public class UsersController(
         if (registerResult.IsFailed)
             return this.ToProblemResult(registerResult.Errors.First());
 
-        return Ok(registerResult.Value.ToUserResponse());
+        UserResponseDto response = registerResult.Value.ToUserResponse();
+        return CreatedAtAction(nameof(GetUserById), new { id = registerResult.Value.UserId }, response);
     }
 
     /// <summary>
     /// Applies changes to a user's master record. 
     /// Automatically revokes email verification status if the email address is changed.
-    /// Returns 400 with custom problem type when current password verification fails.
+    /// Enforces IDOR authorization matching caller identity against route parameter id.
     /// </summary>
+    /// <param name="id">The target user ID in the URL path.</param>
+    /// <param name="request">The updated profile payload.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated user profile response.</returns>
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
-    [HttpPut]
-    public async Task<ActionResult<UserResponseDto>> UpdateUser([FromBody] UserProfileUpdateRequestDto request, CancellationToken cancellationToken)
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, [FromBody] UserProfileUpdateRequestDto request, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(request.Id) is { } denied)
+        if (id != request.Id)
+            request.Id = id;
+
+        if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        Result updateResult = await authService.UpdateUserAsync(request.Id, request.Name, request.Email, request.NewPassword, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
+        Result updateResult = await authService.UpdateUserAsync(id, request.Name, request.Email, request.NewPassword, request.CurrentPassword, cancellationToken).ConfigureAwait(false);
         if (updateResult.IsFailed)
             return this.ToProblemResult(updateResult.Errors.First());
 
-        Result<UserScopeDto> updatedResult = await userService.GetUserByIdAsync(new UserId(request.Id), cancellationToken).ConfigureAwait(false);
+        Result<UserScopeDto> updatedResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
         return updatedResult.IsFailed ? this.ToProblemResult(updatedResult.Errors.First()) : Ok(updatedResult.Value.ToUserResponse());
     }
 
     /// <summary>
     /// Permanently removes a user and their cascaded data (e.g. subscriptions, tokens) from the system.
-    /// Satisfies right-to-be-forgotten GDPR requirements.
+    /// Satisfies right-to-be-forgotten GDPR requirements and returns 204 No Content upon success.
     /// </summary>
+    /// <param name="id">The target user ID in the URL path.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A 204 No Content result.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("SensitiveWritePolicy")]
     [HttpDelete("{id:int}")]
@@ -79,13 +95,16 @@ public class UsersController(
             return this.ToProblemResult(userResult.Errors.First());
 
         await userService.DeleteUserAsync(userResult.Value, cancellationToken).ConfigureAwait(false);
-        return Ok();
+        return NoContent();
     }
 
     /// <summary>
     /// Fetches the user's current state to synchronize client applications.
     /// Typically called upon application startup to restore session context.
     /// </summary>
+    /// <param name="id">The user ID in the route path.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The user profile response DTO.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserResponseDto>> GetUserById(int id, CancellationToken cancellationToken)
@@ -95,14 +114,17 @@ public class UsersController(
     }
 
     /// <summary>
-    /// Looks up a user account by email address for the currently authenticated caller.
+    /// Looks up a user account by email query parameter for the currently authenticated caller.
     /// Returns 404 if the user is not found, or 403 Forbidden if the requested email belongs to a different user.
     /// </summary>
-    [HttpGet("by-email/{email}")]
-    public async Task<ActionResult<UserResponseDto>> GetUserByEmail(string email, CancellationToken cancellationToken)
+    /// <param name="email">The email address query string.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The matching user profile response.</returns>
+    [HttpGet]
+    public async Task<ActionResult<UserResponseDto>> GetUserByEmail([FromQuery] string email, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email))
-            return this.BadRequestProblem("Path segment 'email' is required.");
+            return this.BadRequestProblem("Query parameter 'email' is required.");
 
         if (!this.TryGetCurrentUserId(out int currentUserId))
             return this.UnauthorizedProblem("Missing user identity.");
@@ -119,11 +141,15 @@ public class UsersController(
 
     /// <summary>
     /// Dispatches an email containing a 6-digit OTP to prove domain ownership.
+    /// Returns 202 Accepted when the verification email delivery task is enqueued.
     /// Protects against spam by enforcing a strict in-memory cooldown period per user.
     /// </summary>
+    /// <param name="id">The target user ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A 202 Accepted response with verification dispatch metadata.</returns>
     [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("VerifyMailPolicy")]
-    [HttpPost("{id:int}/verify")]
+    [HttpPost("{id:int}/email-verifications")]
     public async Task<ActionResult<SendVerificationMailResponseDto>> SendVerificationMail(int id, CancellationToken cancellationToken)
     {
         Result<UserScopeDto> userResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
@@ -135,23 +161,31 @@ public class UsersController(
 
         await verificationService.SendVerificationMailAsync(userResult.Value.Email, cancellationToken).ConfigureAwait(false);
         RegisterVerificationMailSend(id);
-        return Ok(new SendVerificationMailResponseDto(id, userResult.Value.Email));
+        return Accepted(new SendVerificationMailResponseDto(id, userResult.Value.Email));
     }
 
     /// <summary>
     /// Consumes the OTP provided via email to mark the account as verified.
     /// Unlocks platform features that require a confirmed email address.
     /// </summary>
+    /// <param name="id">The target user ID in the route path.</param>
+    /// <param name="request">The verification code payload.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated user profile reflecting the verified email status.</returns>
+    [Authorize(Policy = HermesAuthorizationPolicyConstants.OWN_USER_ROUTE_ID)]
     [EnableRateLimiting("VerifyCodePolicy")]
-    [HttpPost("verify/code")]
-    public async Task<ActionResult<UserResponseDto>> CheckVerificationCode([FromBody] UserVerificationCodeRequestDto request, CancellationToken cancellationToken)
+    [HttpPost("{id:int}/email-verifications/confirmations")]
+    public async Task<ActionResult<UserResponseDto>> CheckVerificationCode(int id, [FromBody] UserVerificationCodeRequestDto request, CancellationToken cancellationToken)
     {
-        if (this.WhenCannotAccessUser(request.UserId) is { } denied)
+        if (request.UserId != id)
+            request.UserId = id;
+
+        if (this.WhenCannotAccessUser(id) is { } denied)
             return denied;
 
-        await verificationService.CheckVerificationCodeAsync(new UserId(request.UserId), request.Code, cancellationToken).ConfigureAwait(false);
+        await verificationService.CheckVerificationCodeAsync(new UserId(id), request.Code, cancellationToken).ConfigureAwait(false);
 
-        Result<UserScopeDto> refreshedResult = await userService.GetUserByIdAsync(new UserId(request.UserId), cancellationToken).ConfigureAwait(false);
+        Result<UserScopeDto> refreshedResult = await userService.GetUserByIdAsync(new UserId(id), cancellationToken).ConfigureAwait(false);
         return refreshedResult.IsFailed ? this.NotFoundProblem() : Ok(refreshedResult.Value.ToUserResponse());
     }
 

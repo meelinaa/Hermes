@@ -1,15 +1,10 @@
-using FluentValidation;
-using FluentValidation.Results;
-
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
 using Hermes.Api.Constants;
-using Hermes.Api.Extensions;
-using Hermes.Api.Http;
 using Hermes.Api.Mapping.NotificationLogs;
-using Hermes.Api.Validators.NotificationLogs;
 using Hermes.Application.DTOs.NotificationLogs;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.Entities;
@@ -54,6 +49,6 @@ public class NotificationLogsController(INotificationLogService notificationLogS
 
         NotificationLog entity = request.ToEntity(userId);
         await notificationLogService.SetNotificationLogAsync(entity, cancellationToken).ConfigureAwait(false);
-        return Ok(entity.ToResponse());
+        return StatusCode(StatusCodes.Status201Created, entity.ToResponse());
     }
 }

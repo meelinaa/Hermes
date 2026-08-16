@@ -164,7 +164,7 @@ public sealed class NewsletterSubscriptionControllerTests
 
     /// <summary>
     /// Tests that <see cref="NewsletterSubscriptionController.SetNews"/> registers a new subscription,
-    /// triggers the scheduler evaluation, and returns HTTP 200 OK.
+    /// triggers the scheduler evaluation, and returns HTTP 201 Created.
     /// </summary>
     [Fact]
     public async Task SetNews_Should_CreateSubscriptionAndTriggerScheduler_When_Valid()
@@ -192,11 +192,11 @@ public sealed class NewsletterSubscriptionControllerTests
         };
 
         // Act
-        ActionResult<CreateNewsletterSubscriptionResponseDto> result = await sut.SetNews(request, CancellationToken.None);
+        ActionResult<CreateNewsletterSubscriptionResponseDto> result = await sut.SetNews(1, request, CancellationToken.None);
 
         // Assert
-        OkObjectResult ok = Assert.IsType<OkObjectResult>(result.Result);
-        CreateNewsletterSubscriptionResponseDto response = Assert.IsType<CreateNewsletterSubscriptionResponseDto>(ok.Value);
+        CreatedAtActionResult created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        CreateNewsletterSubscriptionResponseDto response = Assert.IsType<CreateNewsletterSubscriptionResponseDto>(created.Value);
         Assert.Equal(42, response.SubscriptionId);
         Assert.Equal(1, response.UserId);
         jobService.Verify(j => j.RequestRunAfterNewsMutation(), Times.Once);
@@ -230,7 +230,7 @@ public sealed class NewsletterSubscriptionControllerTests
         };
 
         // Act
-        ActionResult result = await sut.UpdateNews(request, CancellationToken.None);
+        ActionResult result = await sut.UpdateNews(1, 5, request, CancellationToken.None);
 
         // Assert
         ObjectResult problem = Assert.IsType<ObjectResult>(result);
@@ -265,7 +265,7 @@ public sealed class NewsletterSubscriptionControllerTests
         ActionResult result = await sut.DeleteNews(1, 10, CancellationToken.None);
 
         // Assert
-        Assert.IsType<OkResult>(result);
+        Assert.IsType<NoContentResult>(result);
         newsService.Verify(s => s.DeleteNewsAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
         jobService.Verify(j => j.RequestRunAfterNewsMutation(), Times.Once);
     }
