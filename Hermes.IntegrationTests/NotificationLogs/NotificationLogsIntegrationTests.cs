@@ -5,9 +5,14 @@ using System.Text;
 using System.Text.Json;
 using Hermes.IntegrationTests.Auth;
 using Hermes.IntegrationTests.Infrastructure;
+using Xunit;
 
 namespace Hermes.IntegrationTests.NotificationLogs;
 
+/// <summary>
+/// Contains integration tests for the notification logs API endpoints,
+/// validating audit trail recording, route parameter binding, and authentication rules.
+/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
@@ -26,6 +31,9 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
             nextRetryAt = (DateTime?)null,
         };
 
+    /// <summary>
+    /// Tests that an authenticated user can record a new notification delivery log entry and receives the persisted ID.
+    /// </summary>
     [Fact]
     public async Task Post_own_notification_log_returns_OK_and_persisted_id()
     {
@@ -35,9 +43,9 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"/api/v1/users/{userId}/notification-logs");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        req.Content = JsonContent.Create(MinimalLogBody(), options: _jsonWeb); // Create the POST request to create a new notification log entry for the authenticated user, with a minimal body containing default values, and capture the response to verify that the API successfully creates the log entry and returns the expected data in the response (e.g., generated ID, userId, status, channel).
+        req.Content = JsonContent.Create(MinimalLogBody(), options: _jsonWeb);
 
-        using HttpResponseMessage response = await client.SendAsync(req); // Send the POST request to create a new notification log entry and capture the response.
+        using HttpResponseMessage response = await client.SendAsync(req);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -47,6 +55,9 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal("Email", json.RootElement.GetProperty("channel").GetString(), ignoreCase: true);
     }
 
+    /// <summary>
+    /// Tests that an extraneous userId provided in the request body is safely ignored in favor of the authorized route parameter.
+    /// </summary>
     [Fact]
     public async Task Post_extraneous_userId_property_in_body_is_ignored_uses_route_user()
     {
@@ -78,6 +89,9 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(attackerId, json.RootElement.GetProperty("userId").GetInt32());
     }
 
+    /// <summary>
+    /// Tests that posting notification logs without an authorization bearer token returns HTTP 401 Unauthorized.
+    /// </summary>
     [Fact]
     public async Task Post_without_bearer_returns_Unauthorized()
     {
@@ -92,6 +106,9 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that posting notification logs with a malformed JWT token returns HTTP 401 Unauthorized.
+    /// </summary>
     [Fact]
     public async Task Post_with_malformed_bearer_returns_Unauthorized()
     {
@@ -107,6 +124,9 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that attempting to create notification logs under another user's route ID returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
     public async Task Post_for_foreign_user_returns_Forbidden()
     {
@@ -124,6 +144,9 @@ public sealed class NotificationLogsIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that submitting invalid JSON payload returns HTTP 400 Bad Request.
+    /// </summary>
     [Fact]
     public async Task Post_with_invalid_json_returns_BadRequest()
     {
