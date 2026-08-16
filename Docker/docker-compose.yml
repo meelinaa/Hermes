@@ -109,17 +109,20 @@ services:
       hermes-jaeger:
         condition: service_started
 
-  # hermes-web:
-  #   build:
-  #     context: ..
-  #     dockerfile: Docker/Dockerfile.Web
-  #   ports:
-  #     - "7016:7016"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Production
-  #     - ApiBaseUrl=http://localhost:5165  
-  #   depends_on:
-  #     - hermes-api
+  hermes-web:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile.Web
+    ports:
+      - "7016:7016"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ApiBaseUrl=http://localhost:5165  
+    depends_on:
+      - hermes-api
+    profiles:
+      - full
+      - web
 
 volumes:
   hermes_data:

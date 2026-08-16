@@ -59,6 +59,19 @@ public class NewsletterSubscription
     /// </summary>
     public DateTime? NextDigestSlotUtc { get; private set; }
 
+    /// <summary>
+    /// Private parameterless constructor required by EF Core for entity materialization.
+    /// External callers must use <see cref="CreateForUser"/> to ensure valid aggregate state.
+    /// </summary>
+    private NewsletterSubscription() { }
+
+    /// <summary>
+    /// Factory method that creates a new newsletter subscription instance bound to the specified owner user.
+    /// Enforces that the user ID invariant is strictly positive.
+    /// </summary>
+    /// <param name="userId">The strongly-typed identifier of the owning user.</param>
+    /// <returns>A new <see cref="NewsletterSubscription"/> instance.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="userId"/> is zero or negative.</exception>
     public static NewsletterSubscription CreateForUser(UserId userId)
     {
         if (userId.Value <= 0)
@@ -66,6 +79,14 @@ public class NewsletterSubscription
         return new NewsletterSubscription { UserId = userId };
     }
 
+    /// <summary>
+    /// Updates the topic, category, language, and country filtering criteria for news article matching.
+    /// Sanitizes keyword inputs by trimming whitespace and removing empty entries.
+    /// </summary>
+    /// <param name="keywords">The search keywords or topics.</param>
+    /// <param name="categories">The news categories to include.</param>
+    /// <param name="languages">The languages to filter articles by.</param>
+    /// <param name="countries">The countries to filter articles by.</param>
     public void UpdateFilters(
         IEnumerable<string>? keywords,
         IEnumerable<NewsCategory>? categories,
@@ -78,15 +99,31 @@ public class NewsletterSubscription
         Countries = countries?.ToList();
     }
 
+    /// <summary>
+    /// Enables this newsletter subscription so it is considered active during recurring background scheduling.
+    /// </summary>
     public void Enable() => IsEnabled = true;
+
+    /// <summary>
+    /// Disables this newsletter subscription to pause recurring background scheduling without deleting configuration.
+    /// </summary>
     public void Disable() => IsEnabled = false;
 
+    /// <summary>
+    /// Sets the database-generated surrogate identifier. Internal to infrastructure persistence adapters.
+    /// </summary>
+    /// <param name="id">The strongly-typed newsletter subscription ID.</param>
     internal void SetId(NewsletterId id) => Id = id;
 
+    /// <summary>
+    /// Sets the owning user ID. Internal to infrastructure persistence adapters.
+    /// </summary>
+    /// <param name="userId">The strongly-typed user ID.</param>
     internal void SetUserId(UserId userId) => UserId = userId;
 
     /// <summary>
     /// Assigns the schedule window configuration (weekdays and times) to this newsletter subscription.
+    /// Enforces the schedule invariant via <see cref="ScheduleWindow"/>.
     /// </summary>
     /// <param name="schedule">The schedule window configuration to apply.</param>
     public void AssignDigestSchedule(ScheduleWindow schedule)
@@ -95,11 +132,21 @@ public class NewsletterSubscription
         schedule.ApplyToSubscription(this);
     }
 
+    /// <summary>
+    /// Sets the weekdays and times on which the digest should be dispatched.
+    /// Invoked internally by <see cref="ScheduleWindow.ApplyToSubscription"/> to guarantee valid schedule combinations.
+    /// </summary>
+    /// <param name="weekdays">The collection of active weekdays.</param>
+    /// <param name="times">The collection of active daily send times.</param>
     internal void SetSchedule(IReadOnlyList<Weekdays> weekdays, IReadOnlyList<TimeOnly> times)
     {
         SendOnWeekdays = weekdays;
         SendAtTimes = times;
     }
 
+    /// <summary>
+    /// Sets the calculated next eligibility time slot in UTC for fast database index-backed querying.
+    /// </summary>
+    /// <param name="next">The next UTC dispatch time slot, or null if no further runs are scheduled.</param>
     public void SetNextDigestSlot(DateTime? next) => NextDigestSlotUtc = next;
 }
