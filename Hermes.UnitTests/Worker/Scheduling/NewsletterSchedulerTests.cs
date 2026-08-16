@@ -1,3 +1,4 @@
+using Hangfire;
 using Hermes.Application.Options.Newsletter;
 using Hermes.Application.Ports.Inbound;
 using Hermes.Domain.ValueObjects;
@@ -33,7 +34,7 @@ public sealed class NewsletterSchedulerTests
 
         NewsletterSchedulerWorkerService sut = new(
             schedule.Object,
-            Mock.Of<global::Hangfire.IBackgroundJobClient>(),
+            Mock.Of<IBackgroundJobClient>(),
             NullLogger<NewsletterSchedulerWorkerService>.Instance,
             Options.Create(new NewsletterOptions()));
 
@@ -70,7 +71,7 @@ public sealed class NewsletterSchedulerTests
 
         NewsletterSchedulerWorkerService sut = new(
             schedule.Object,
-            Mock.Of<global::Hangfire.IBackgroundJobClient>(),
+            Mock.Of<IBackgroundJobClient>(),
             NullLogger<NewsletterSchedulerWorkerService>.Instance,
             Options.Create(new NewsletterOptions()));
 
@@ -92,7 +93,8 @@ public sealed class NewsletterSchedulerTests
     public async Task RunAsync_Should_EnqueueJobs_ForEveryDueItem()
     {
         // Arrange
-        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> dueItems = [
+        IReadOnlyList<(NewsletterId NewsId, UserId UserId)> dueItems =
+        [
             (new NewsletterId(10), new UserId(1)),
             (new NewsletterId(11), new UserId(2))
         ];
@@ -100,7 +102,7 @@ public sealed class NewsletterSchedulerTests
         schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(dueItems);
 
-        Mock<global::Hangfire.IBackgroundJobClient> jobClient = new();
+        Mock<IBackgroundJobClient> jobClient = new();
 
         NewsletterSchedulerWorkerService sut = new(
             schedule.Object,
@@ -119,5 +121,27 @@ public sealed class NewsletterSchedulerTests
                     j.Method.Name == nameof(Hermes.Application.Services.NotificationLogs.NotificationJobService.SendNewsDigestAsync)),
                 It.IsAny<global::Hangfire.States.EnqueuedState>()),
             Times.Exactly(2));
+    }
+
+    /// <summary>
+    /// Tests that <see cref="NewsletterSchedulerWorkerService.RunAsync"/> propagates exceptions
+    /// thrown by the underlying scheduling service.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_Should_PropagateExceptions_WhenScheduleServiceFails()
+    {
+        // Arrange
+        Mock<INewsletterScheduleService> schedule = new();
+        schedule.Setup(s => s.GetDueItemsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("DB connectivity failure"));
+
+        NewsletterSchedulerWorkerService sut = new(
+            schedule.Object,
+            Mock.Of<IBackgroundJobClient>(),
+            NullLogger<NewsletterSchedulerWorkerService>.Instance,
+            Options.Create(new NewsletterOptions()));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RunAsync());
     }
 }
