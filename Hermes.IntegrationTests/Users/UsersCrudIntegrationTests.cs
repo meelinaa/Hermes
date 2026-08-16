@@ -5,15 +5,21 @@ using System.Text.Json;
 using Hermes.Domain.Constants;
 using Hermes.IntegrationTests.Infrastructure;
 
-
 namespace Hermes.IntegrationTests.Users;
 
+/// <summary>
+/// Contains integration tests for user management endpoints,
+/// verifying user registration, profile queries, password updates, delete operations, and cross-account authorization restrictions.
+/// </summary>
 [Trait("Integration", "Docker")]
 [Collection(nameof(HermesIntegrationCollection))]
 public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
 {
     private static readonly JsonSerializerOptions _jsonWeb = new(JsonSerializerDefaults.Web);
 
+    /// <summary>
+    /// Tests that anonymous user registration succeeds and returns the created user scope.
+    /// </summary>
     [Fact]
     public async Task Register_anonymous_returns_OK_and_user_scope()
     {
@@ -40,6 +46,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.False(json.RootElement.GetProperty("isEmailVerified").GetBoolean());
     }
 
+    /// <summary>
+    /// Tests that attempting to register an account with an already existing email address returns HTTP 409 Conflict.
+    /// </summary>
     [Fact]
     public async Task Register_duplicate_email_returns_Conflict()
     {
@@ -74,6 +83,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that registration attempts without a password return HTTP 400 Bad Request.
+    /// </summary>
     [Fact]
     public async Task Register_without_password_returns_BadRequest()
     {
@@ -94,6 +106,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that an authenticated user can retrieve their own profile information.
+    /// </summary>
     [Fact]
     public async Task Get_own_profile_returns_OK()
     {
@@ -109,6 +124,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(email, json.RootElement.GetProperty("email").GetString());
     }
 
+    /// <summary>
+    /// Tests that an authenticated user can retrieve their own profile by email query route.
+    /// </summary>
     [Fact]
     public async Task Get_own_profile_by_email_returns_OK()
     {
@@ -124,6 +142,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(userId, json.RootElement.GetProperty("userId").GetInt32());
     }
 
+    /// <summary>
+    /// Tests that updating a password with an incorrect current password returns ProblemDetails with WRONG_CURRENT_PASSWORD type.
+    /// </summary>
     [Fact]
     public async Task Update_password_with_wrong_current_password_returns_BadRequest_problem_type()
     {
@@ -153,6 +174,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("detail").GetString()));
     }
 
+    /// <summary>
+    /// Tests that updating a password with the correct current password succeeds and invalidates the previous password.
+    /// </summary>
     [Fact]
     public async Task Update_password_with_correct_current_password_succeeds_and_login_with_new_password()
     {
@@ -184,6 +208,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.OK, newLogin.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that updating a user's own profile updates properties correctly in the database.
+    /// </summary>
     [Fact]
     public async Task Update_own_profile_returns_OK_and_reflected_on_get()
     {
@@ -220,6 +247,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(newEmail, got.RootElement.GetProperty("email").GetString());
     }
 
+    /// <summary>
+    /// Tests that deleting an account removes the user and returns HTTP 404 NotFound on subsequent lookups.
+    /// </summary>
     [Fact]
     public async Task Delete_own_user_then_get_returns_NotFound()
     {
@@ -234,6 +264,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.NotFound, getResp.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that attempting to get another user's profile by ID returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
     public async Task Get_foreign_user_by_id_returns_Forbidden()
     {
@@ -247,6 +280,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that attempting to update another user's profile returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
     public async Task Put_foreign_user_returns_Forbidden()
     {
@@ -273,6 +309,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that attempting to delete another user's profile returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
     public async Task Delete_foreign_user_returns_Forbidden()
     {
@@ -286,6 +325,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that attempting to query another user's profile by email returns HTTP 403 Forbidden.
+    /// </summary>
     [Fact]
     public async Task Get_foreign_user_by_email_returns_Forbidden()
     {
@@ -300,6 +342,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that updating user profiles without an authorization bearer token returns HTTP 401 Unauthorized.
+    /// </summary>
     [Fact]
     public async Task Put_without_bearer_returns_Unauthorized()
     {
@@ -320,6 +365,9 @@ public sealed class UsersCrudIntegrationTests(MySqlApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>
+    /// Tests that querying an unassociated email address returns HTTP 404 NotFound.
+    /// </summary>
     [Fact]
     public async Task Get_unknown_email_returns_NotFound()
     {
