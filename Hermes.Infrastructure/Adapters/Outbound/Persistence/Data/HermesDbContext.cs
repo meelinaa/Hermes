@@ -186,6 +186,7 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
 
     /// <summary>
     /// Persists all pending entity changes to the database and atomically records domain events in the outbox table.
+    /// Uses an atomic database transaction when running against a relational provider to prevent inconsistent state if failure occurs between entity persistence and outbox persistence.
     /// Slices auto-increment identity keys into outbox messages and dispatches events if an immediate dispatcher is configured.
     /// </summary>
     /// <param name="acceptAllChangesOnSuccess">Indicates whether all changes should be accepted if the operation succeeds.</param>
@@ -204,86 +205,119 @@ public class HermesDbContext(DbContextOptions<HermesDbContext> options, IDomainE
             item.Entity.ClearDomainEvents();
         }
 
-        int result;
+        bool shouldManageTransaction = entriesWithEvents.Count > 0 && Database.IsRelational() && Database.CurrentTransaction is null;
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+
+        if (shouldManageTransaction)
+        {
+            transaction = await Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         try
         {
-            result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
-        }
-        catch (DbUpdateException ex)
-        {
-            var error = MySqlDbUpdateExceptionMapper.MapToError(ex);
-            if (error != null)
+            int result;
+            try
             {
-                if (error.Message.Contains("unique constraint"))
-                    throw new Hermes.Domain.Exceptions.EmailAlreadyExistsException(error.Message);
-                if (error.Message.Contains("foreign key constraint"))
-                    throw new Hermes.Domain.Exceptions.UserNotFoundException(error.Message);
-                
-                throw new Hermes.Domain.Exceptions.DomainValidationException(error.Message);
+                result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException ex)
+            {
+                var error = MySqlDbUpdateExceptionMapper.MapToError(ex);
+                if (error != null)
+                {
+                    if (error.Message.Contains("unique constraint"))
+                        throw new Hermes.Domain.Exceptions.EmailAlreadyExistsException(error.Message);
+                    if (error.Message.Contains("foreign key constraint"))
+                        throw new Hermes.Domain.Exceptions.UserNotFoundException(error.Message);
+                    
+                    throw new Hermes.Domain.Exceptions.DomainValidationException(error.Message);
+                }
+                throw;
+            }
+
+            // Convert and persist domain events as OutboxMessages atomically
+            if (entriesWithEvents.Count > 0)
+            {
+                DateTime nowUtc = DateTime.UtcNow;
+                List<OutboxMessage> outboxList = [];
+                List<IDomainEvent> eventsToDispatch = [];
+
+                foreach (var item in entriesWithEvents)
+                {
+                    foreach (var domainEvent in item.Events)
+                    {
+                        IDomainEvent eventToStore = domainEvent switch
+                        {
+                            UserRegisteredEvent ure when ure.UserId.Value <= 0 && item.Entity is User u
+                                => ure with { UserId = u.Id },
+                            UserEmailChangedEvent uec when uec.UserId.Value <= 0 && item.Entity is User u
+                                => uec with { UserId = u.Id },
+                            _ => domainEvent
+                        };
+
+                        string typeName = eventToStore.GetType().AssemblyQualifiedName ?? eventToStore.GetType().FullName ?? eventToStore.GetType().Name;
+                        string contentJson = JsonSerializer.Serialize(eventToStore, eventToStore.GetType());
+
+                        outboxList.Add(OutboxMessage.Create(typeName, contentJson, nowUtc));
+                        eventsToDispatch.Add(eventToStore);
+                    }
+                }
+
+                if (outboxList.Count > 0)
+                {
+                    await OutboxMessages.AddRangeAsync(outboxList, cancellationToken).ConfigureAwait(false);
+                    await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+                }
+
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                    transaction = null;
+                }
+
+                if (dispatcher is not null)
+                {
+                    for (int i = 0; i < eventsToDispatch.Count; i++)
+                    {
+                        try
+                        {
+                            await dispatcher.DispatchAsync(eventsToDispatch[i], cancellationToken).ConfigureAwait(false);
+                            if (i < outboxList.Count)
+                            {
+                                outboxList[i].MarkProcessed(DateTime.UtcNow);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            if (i < outboxList.Count)
+                            {
+                                outboxList[i].MarkFailed(ex.Message);
+                            }
+                        }
+                    }
+
+                    await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            else if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                await transaction.DisposeAsync().ConfigureAwait(false);
+                transaction = null;
+            }
+
+            return result;
+        }
+        catch
+        {
+            if (transaction is not null)
+            {
+                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                await transaction.DisposeAsync().ConfigureAwait(false);
             }
             throw;
         }
-
-        // Convert and persist domain events as OutboxMessages atomically
-        if (entriesWithEvents.Count > 0)
-        {
-            DateTime nowUtc = DateTime.UtcNow;
-            List<OutboxMessage> outboxList = [];
-            List<IDomainEvent> eventsToDispatch = [];
-
-            foreach (var item in entriesWithEvents)
-            {
-                foreach (var domainEvent in item.Events)
-                {
-                    IDomainEvent eventToStore = domainEvent switch
-                    {
-                        UserRegisteredEvent ure when ure.UserId.Value <= 0 && item.Entity is User u
-                            => ure with { UserId = u.Id },
-                        UserEmailChangedEvent uec when uec.UserId.Value <= 0 && item.Entity is User u
-                            => uec with { UserId = u.Id },
-                        _ => domainEvent
-                    };
-
-                    string typeName = eventToStore.GetType().AssemblyQualifiedName ?? eventToStore.GetType().FullName ?? eventToStore.GetType().Name;
-                    string contentJson = JsonSerializer.Serialize(eventToStore, eventToStore.GetType());
-
-                    outboxList.Add(OutboxMessage.Create(typeName, contentJson, nowUtc));
-                    eventsToDispatch.Add(eventToStore);
-                }
-            }
-
-            if (outboxList.Count > 0)
-            {
-                await OutboxMessages.AddRangeAsync(outboxList, cancellationToken).ConfigureAwait(false);
-                await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
-            }
-
-            if (dispatcher is not null)
-            {
-                for (int i = 0; i < eventsToDispatch.Count; i++)
-                {
-                    try
-                    {
-                        await dispatcher.DispatchAsync(eventsToDispatch[i], cancellationToken).ConfigureAwait(false);
-                        if (i < outboxList.Count)
-                        {
-                            outboxList[i].MarkProcessed(DateTime.UtcNow);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        if (i < outboxList.Count)
-                        {
-                            outboxList[i].MarkFailed(ex.Message);
-                        }
-                    }
-                }
-
-                await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        return result;
     }
 
     /// <summary>

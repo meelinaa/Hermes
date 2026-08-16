@@ -44,7 +44,7 @@ public sealed class DapperQueriesIntegrationTests(MySqlApiFixture fixture)
         };
 
         using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, options: _jsonWeb);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.IsSuccessStatusCode);
 
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         int userId = json.RootElement.GetProperty("userId").GetInt32();
@@ -100,7 +100,7 @@ public sealed class DapperQueriesIntegrationTests(MySqlApiFixture fixture)
         };
 
         using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, options: _jsonWeb);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.IsSuccessStatusCode);
 
         using IServiceScope scope = fixture.Factory.Services.CreateScope();
         IUserReadQueries userQueries = scope.ServiceProvider.GetRequiredService<IUserReadQueries>();

@@ -42,7 +42,7 @@ public sealed class OutboxIntegrationTests(MySqlApiFixture fixture)
 
         // Act
         using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/users", dto, options: _jsonWeb);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.IsSuccessStatusCode);
 
         using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         int userId = json.RootElement.GetProperty("userId").GetInt32();

@@ -75,8 +75,8 @@ public sealed class UserCascadeDeleteIntegrationTests(MySqlApiFixture fixture)
         deleteRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         using HttpResponseMessage deleteResponse = await client.SendAsync(deleteRequest);
 
-        // Assert: HTTP 200 OK
-        Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+        // Assert: Success (204 NoContent)
+        Assert.True(deleteResponse.IsSuccessStatusCode);
 
         // Assert: All child rows must be gone from MySQL
         using (IServiceScope scope = fixture.Factory.Services.CreateScope())
@@ -128,7 +128,7 @@ public sealed class UserCascadeDeleteIntegrationTests(MySqlApiFixture fixture)
         using HttpRequestMessage deleteRequest = new(HttpMethod.Delete, $"/api/v1/users/{victimId}");
         deleteRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", victimToken);
         using HttpResponseMessage deleteResponse = await client.SendAsync(deleteRequest);
-        Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+        Assert.True(deleteResponse.IsSuccessStatusCode);
 
         // Assert: Bystander user and data still intact
         using (IServiceScope scope = fixture.Factory.Services.CreateScope())

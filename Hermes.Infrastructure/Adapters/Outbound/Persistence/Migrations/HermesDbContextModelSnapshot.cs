@@ -83,6 +83,9 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("longtext");
 
@@ -94,6 +97,9 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Migrations
 
                     b.Property<int>("RetryCount")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("ScheduledSlotUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("SentAt")
                         .HasColumnType("datetime(6)");
@@ -126,6 +132,9 @@ namespace Hermes.Infrastructure.Adapters.Outbound.Persistence.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("AbsoluteExpiresAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("ExpiresAt")

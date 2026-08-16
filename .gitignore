@@ -486,3 +486,7 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 .aider*
+
+# Local build verification artifacts
+_build_verify/
+
